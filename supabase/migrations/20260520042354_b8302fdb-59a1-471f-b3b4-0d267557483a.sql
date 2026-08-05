@@ -1,0 +1,1 @@
+ALTER TABLE public.bills ADD COLUMN IF NOT EXISTS previous_dues numeric NOT NULL DEFAULT 0;

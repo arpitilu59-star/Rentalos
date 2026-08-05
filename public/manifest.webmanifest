@@ -1,0 +1,15 @@
+{
+  "name": "RentDesk – PG & Rent Manager",
+  "short_name": "RentDesk",
+  "description": "Manage rooms, tenants, meters, and WhatsApp rent reminders.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f10",
+  "theme_color": "#10b981",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
