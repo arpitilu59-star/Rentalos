@@ -14,7 +14,9 @@ import { Route as SystemAdminControlRouteImport } from './routes/system-admin-co
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as MyrRouteImport } from './routes/myr'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantIndexRouteImport } from './routes/tenant/index'
@@ -23,6 +25,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as TenantLoginRouteImport } from './routes/tenant.login'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant/$tenantId'
 import { Route as MyrSavedRouteImport } from './routes/myr/saved'
+import { Route as MyrRoommatesRouteImport } from './routes/myr/roommates'
 import { Route as MyrProfileRouteImport } from './routes/myr/profile'
 import { Route as MyrOnboardRouteImport } from './routes/myr/onboard'
 import { Route as MyrMessagesRouteImport } from './routes/myr/messages'
@@ -100,9 +103,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -142,6 +155,11 @@ const TenantTenantIdRoute = TenantTenantIdRouteImport.update({
 const MyrSavedRoute = MyrSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrRoommatesRoute = MyrRoommatesRouteImport.update({
+  id: '/roommates',
+  path: '/roommates',
   getParentRoute: () => MyrRoute,
 } as any)
 const MyrProfileRoute = MyrProfileRouteImport.update({
@@ -409,7 +427,9 @@ const AuthenticatedRoomsRoomIdAnalysisRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/signup': typeof SignupRoute
@@ -446,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/tenant/login': typeof TenantLoginRoute
@@ -475,6 +496,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
@@ -508,6 +531,7 @@ export interface FileRoutesByTo {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/tenant/login': typeof TenantLoginRoute
   '/admin': typeof AdminIndexRoute
@@ -538,7 +562,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
+  '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/signup': typeof SignupRoute
@@ -575,6 +601,7 @@ export interface FileRoutesById {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/tenant/login': typeof TenantLoginRoute
@@ -606,7 +633,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/admin'
+    | '/contact'
     | '/login'
     | '/myr'
     | '/signup'
@@ -643,6 +672,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommates'
     | '/myr/saved'
     | '/tenant/$tenantId'
     | '/tenant/login'
@@ -672,6 +702,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
+    | '/contact'
     | '/login'
     | '/signup'
     | '/system-admin-control'
@@ -705,6 +737,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommates'
     | '/myr/saved'
     | '/tenant/login'
     | '/admin'
@@ -734,7 +767,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/about'
     | '/admin'
+    | '/contact'
     | '/login'
     | '/myr'
     | '/signup'
@@ -771,6 +806,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommates'
     | '/myr/saved'
     | '/tenant/$tenantId'
     | '/tenant/login'
@@ -802,7 +838,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
   MyrRoute: typeof MyrRouteWithChildren
   SignupRoute: typeof SignupRoute
@@ -848,11 +886,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -909,6 +961,13 @@ declare module '@tanstack/react-router' {
       path: '/saved'
       fullPath: '/myr/saved'
       preLoaderRoute: typeof MyrSavedRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/roommates': {
+      id: '/myr/roommates'
+      path: '/roommates'
+      fullPath: '/myr/roommates'
+      preLoaderRoute: typeof MyrRoommatesRouteImport
       parentRoute: typeof MyrRoute
     }
     '/myr/profile': {
@@ -1372,6 +1431,7 @@ interface MyrRouteChildren {
   MyrMessagesRoute: typeof MyrMessagesRoute
   MyrOnboardRoute: typeof MyrOnboardRoute
   MyrProfileRoute: typeof MyrProfileRoute
+  MyrRoommatesRoute: typeof MyrRoommatesRoute
   MyrSavedRoute: typeof MyrSavedRoute
   MyrIndexRoute: typeof MyrIndexRoute
   MyrListingIdRoute: typeof MyrListingIdRoute
@@ -1385,6 +1445,7 @@ const MyrRouteChildren: MyrRouteChildren = {
   MyrMessagesRoute: MyrMessagesRoute,
   MyrOnboardRoute: MyrOnboardRoute,
   MyrProfileRoute: MyrProfileRoute,
+  MyrRoommatesRoute: MyrRoommatesRoute,
   MyrSavedRoute: MyrSavedRoute,
   MyrIndexRoute: MyrIndexRoute,
   MyrListingIdRoute: MyrListingIdRoute,
@@ -1441,7 +1502,9 @@ const TenantRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
+  ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
   MyrRoute: MyrRouteWithChildren,
   SignupRoute: SignupRoute,
