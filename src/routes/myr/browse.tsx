@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search,
@@ -7,17 +7,28 @@ import {
   ShieldCheck,
   Loader2,
   SlidersHorizontal,
-  BedDouble,
   Sparkles,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 
-type BrowseSearch = { city?: string; maxRent?: number };
+type BrowseSearch = { city?: string; minRent?: number; maxRent?: number };
+
+const RENT_MIN = 0;
+const RENT_MAX = 50000;
+const RENT_STEP = 500;
 
 export const Route = createFileRoute("/myr/browse")({
   component: BrowsePage,
   validateSearch: (s: Record<string, unknown>): BrowseSearch => ({
     city: typeof s.city === "string" ? s.city : undefined,
+    minRent:
+      typeof s.minRent === "string"
+        ? Number(s.minRent) || undefined
+        : typeof s.minRent === "number"
+          ? s.minRent
+          : undefined,
     maxRent:
       typeof s.maxRent === "string"
         ? Number(s.maxRent) || undefined
@@ -53,19 +64,174 @@ const formatINR = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+/** Dual-handle budget slider — two overlapping native range inputs (no extra dependency). */
+function BudgetSlider({
+  min,
+  max,
+  onChange,
+}: {
+  min: number;
+  max: number;
+  onChange: (min: number, max: number) => void;
+}) {
+  const [localMin, setLocalMin] = useState(min);
+  const [localMax, setLocalMax] = useState(max);
+
+  useEffect(() => {
+    setLocalMin(min);
+    setLocalMax(max);
+  }, [min, max]);
+
+  const commit = (nMin: number, nMax: number) => {
+    const safeMin = Math.min(nMin, nMax - RENT_STEP);
+    const safeMax = Math.max(nMax, nMin + RENT_STEP);
+    setLocalMin(safeMin);
+    setLocalMax(safeMax);
+    onChange(safeMin, safeMax);
+  };
+
+  const pctMin = ((localMin - RENT_MIN) / (RENT_MAX - RENT_MIN)) * 100;
+  const pctMax = ((localMax - RENT_MIN) / (RENT_MAX - RENT_MIN)) * 100;
+
+  return (
+    <div className="px-1 pt-1 pb-2">
+      <div className="flex items-center justify-between text-xs font-medium mb-2">
+        <span>{formatINR(localMin)}</span>
+        <span>
+          {formatINR(localMax)}
+          {localMax >= RENT_MAX ? "+" : ""}
+        </span>
+      </div>
+      <div className="relative h-5">
+        <div className="absolute top-1/2 -translate-y-1/2 w-full h-1.5 rounded-full bg-muted" />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-primary"
+          style={{ left: `${pctMin}%`, right: `${100 - pctMax}%` }}
+        />
+        <input
+          type="range"
+          min={RENT_MIN}
+          max={RENT_MAX}
+          step={RENT_STEP}
+          value={localMin}
+          onChange={(e) => commit(Number(e.target.value), localMax)}
+          className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
+        />
+        <input
+          type="range"
+          min={RENT_MIN}
+          max={RENT_MAX}
+          step={RENT_STEP}
+          value={localMax}
+          onChange={(e) => commit(localMin, Number(e.target.value))}
+          className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** City picker — click to see all cities that actually have listings, instead of typing. */
+function CityPicker({
+  value,
+  cities,
+  onSelect,
+}: {
+  value: string;
+  cities: string[];
+  onSelect: (c: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative col-span-2 md:col-span-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 pl-3 pr-3 py-2.5 rounded-xl bg-background border border-input text-sm text-left"
+      >
+        <MapPin className="size-4 text-muted-foreground shrink-0" />
+        <span className={value ? "" : "text-muted-foreground"}>{value || "Select city"}</span>
+        <ChevronDown className="size-3.5 text-muted-foreground ml-auto shrink-0" />
+        {value && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect("");
+            }}
+            className="p-0.5 rounded hover:bg-accent"
+          >
+            <X className="size-3.5" />
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute z-40 mt-1 w-full max-h-64 overflow-y-auto rounded-xl bg-card border border-border shadow-elevated p-2 grid grid-cols-2 gap-1">
+          {cities.length === 0 ? (
+            <div className="col-span-2 text-xs text-muted-foreground p-2">Loading cities…</div>
+          ) : (
+            cities.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  onSelect(c);
+                  setOpen(false);
+                }}
+                className={`text-left px-2.5 py-1.5 rounded-lg text-sm ${value === c ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+              >
+                {c}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BrowsePage() {
   const search = Route.useSearch();
   const nav = Route.useNavigate();
   const [items, setItems] = useState<PublicRoom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allCities, setAllCities] = useState<string[]>([]);
+
   const [city, setCity] = useState(search.city || "");
-  const [maxRent, setMaxRent] = useState<string>(search.maxRent ? String(search.maxRent) : "");
+  const [minRent, setMinRent] = useState(search.minRent ?? RENT_MIN);
+  const [maxRent, setMaxRent] = useState(search.maxRent ?? RENT_MAX);
+
+  // City list — fetched once, independent of current filters, so the picker always shows every city with listings.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("properties")
+        .select("myr_city, city")
+        .eq("is_public_listing", true)
+        .limit(300);
+      const set = new Set<string>();
+      (data ?? []).forEach((p: { myr_city: string | null; city: string | null }) => {
+        const c = p.myr_city || p.city;
+        if (c) set.add(c);
+      });
+      setAllCities(Array.from(set).sort());
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // Query RentDesk rooms table (single source of truth). RLS policy already filters to
-      // is_public=true AND property is_public_listing=true AND verified.
       let q = supabase
         .from("rooms")
         .select(
@@ -79,18 +245,32 @@ function BrowsePage() {
         q = q.or(`myr_city.ilike.%${search.city}%,city.ilike.%${search.city}%`, {
           foreignTable: "properties",
         });
-      if (search.maxRent) q = q.lte("rent_amount", search.maxRent);
+      if (search.minRent) q = q.gte("rent_amount", search.minRent);
+      if (search.maxRent && search.maxRent < RENT_MAX) q = q.lte("rent_amount", search.maxRent);
 
       const { data } = await q;
       setItems((data ?? []) as unknown as PublicRoom[]);
       setLoading(false);
     })();
-  }, [search.city, search.maxRent]);
+  }, [search.city, search.minRent, search.maxRent]);
 
-  const apply = (e: React.FormEvent) => {
-    e.preventDefault();
-    nav({ search: { city: city || undefined, maxRent: maxRent ? Number(maxRent) : undefined } });
+  const apply = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    nav({
+      search: {
+        city: city || undefined,
+        minRent: minRent > RENT_MIN ? minRent : undefined,
+        maxRent: maxRent < RENT_MAX ? maxRent : undefined,
+      },
+    });
   };
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (city) n++;
+    if (minRent > RENT_MIN || maxRent < RENT_MAX) n++;
+    return n;
+  }, [city, minRent, maxRent]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,28 +300,49 @@ function BrowsePage() {
 
         <form
           onSubmit={apply}
-          className="grid grid-cols-2 md:grid-cols-[1fr_160px_auto] gap-2 mb-6 bg-card border border-border p-2 rounded-2xl shadow-card"
+          className="bg-card border border-border p-3 rounded-2xl shadow-card mb-2 space-y-3"
         >
-          <div className="relative col-span-2 md:col-span-1">
-            <MapPin className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-background border border-input text-sm outline-none focus:ring-2 ring-ring/40"
-            />
+          <div className="grid grid-cols-2 md:grid-cols-[1fr_1fr_auto] gap-2 items-start">
+            <CityPicker value={city} cities={allCities} onSelect={(c) => setCity(c)} />
+
+            <div className="col-span-2 md:col-span-1 rounded-xl border border-input bg-background px-3">
+              <BudgetSlider
+                min={minRent}
+                max={maxRent}
+                onChange={(a, b) => {
+                  setMinRent(a);
+                  setMaxRent(b);
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium h-fit self-center"
+            >
+              <Search className="size-4" /> Search
+            </button>
           </div>
-          <input
-            value={maxRent}
-            onChange={(e) => setMaxRent(e.target.value)}
-            placeholder="Max rent"
-            inputMode="numeric"
-            className="px-3 py-2.5 rounded-xl bg-background border border-input text-sm"
-          />
-          <button className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium">
-            <Search className="size-4" /> Search
-          </button>
         </form>
+
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 mb-6 text-xs text-muted-foreground">
+            <SlidersHorizontal className="size-3.5" /> {activeFilterCount} filter
+            {activeFilterCount > 1 ? "s" : ""} active
+            <button
+              type="button"
+              onClick={() => {
+                setCity("");
+                setMinRent(RENT_MIN);
+                setMaxRent(RENT_MAX);
+                nav({ search: {} });
+              }}
+              className="underline hover:text-foreground"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-20 grid place-items-center">
