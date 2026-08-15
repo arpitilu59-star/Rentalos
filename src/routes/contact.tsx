@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin } from "lucide-react";
 import { SiteNavbar } from "@/components/SiteNavbar";
 
 export const Route = createFileRoute("/contact")({
@@ -16,8 +16,19 @@ function ContactPage() {
         <p className="mt-3 text-muted-foreground">
           Questions, feedback, or a landlord issue — reach out any of these ways.
         </p>
-        {/* TODO — fill in real values. See chat for what's needed. */}
         <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-3 text-sm">
+            <Linkedin className="size-4 text-primary" />
+            <a
+              href="https://www.linkedin.com/company/smartpg/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground font-medium hover:text-primary"
+            >
+              linkedin.com/company/smartpg
+            </a>
+          </div>
+          {/* TODO — fill in real values. See chat for what's needed. */}
           <div className="flex items-center gap-3 text-sm">
             <Mail className="size-4 text-primary" />
             <span className="text-muted-foreground">[your support email]</span>
