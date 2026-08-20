@@ -27,9 +27,25 @@ export const publishProperty = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!p || p.owner_id !== userId) throw new Error("Forbidden");
 
+    // #8 — a landlord must have an admin-verified KYC record before they
+    // can publish a property to the public MYR marketplace. This is what
+    // makes the "Verified owner" trust claim actually mean something.
+    if (data.publish) {
+      const { data: kyc } = await supabase
+        .from("myr_verifications")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("kind", "landlord")
+        .eq("status", "verified")
+        .maybeSingle();
+      if (!kyc) throw new Error("KYC_REQUIRED");
+    }
+
     const patch = {
       is_public_listing: data.publish,
-      ...(data.publish ? { verification_status: "verified", verified_at: new Date().toISOString() } : {}),
+      ...(data.publish
+        ? { verification_status: "verified", verified_at: new Date().toISOString() }
+        : {}),
       ...(data.city !== undefined ? { myr_city: data.city } : {}),
       ...(data.address !== undefined ? { myr_address: data.address } : {}),
       ...(data.description !== undefined ? { myr_description: data.description } : {}),
@@ -65,6 +81,17 @@ export const publishRoom = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!r || r.owner_id !== userId) throw new Error("Forbidden");
 
+    if (data.publish) {
+      const { data: kyc } = await supabase
+        .from("myr_verifications")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("kind", "landlord")
+        .eq("status", "verified")
+        .maybeSingle();
+      if (!kyc) throw new Error("KYC_REQUIRED");
+    }
+
     const patch = {
       is_public: data.publish,
       ...(data.amenities ? { myr_amenities: data.amenities } : {}),
@@ -73,7 +100,10 @@ export const publishRoom = createServerFn({ method: "POST" })
       ...(data.available !== undefined ? { myr_available: data.available } : {}),
     };
 
-    const { error } = await supabase.from("rooms").update(patch as never).eq("id", data.room_id);
+    const { error } = await supabase
+      .from("rooms")
+      .update(patch as never)
+      .eq("id", data.room_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -134,7 +164,9 @@ export const listMyBookings = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("bookings")
-      .select("id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))")
+      .select(
+        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
+      )
       .eq("tenant_user_id", userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -148,7 +180,9 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("bookings")
-      .select("id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)")
+      .select(
+        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)",
+      )
       .eq("landlord_id", userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -170,7 +204,9 @@ export const decideBooking = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: b } = await supabase
       .from("bookings")
-      .select("id, landlord_id, room_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, status")
+      .select(
+        "id, landlord_id, room_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, status",
+      )
       .eq("id", data.booking_id)
       .maybeSingle();
     if (!b || b.landlord_id !== userId) throw new Error("Forbidden");

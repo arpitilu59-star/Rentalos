@@ -4,10 +4,22 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getMyAdmin } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ShieldCheck, LayoutDashboard, Users, ClipboardList, KeyRound, LogOut, Lock, Activity, ShieldAlert, BadgeCheck } from "lucide-react";
+import {
+  Loader2,
+  ShieldCheck,
+  LayoutDashboard,
+  Users,
+  ClipboardList,
+  KeyRound,
+  LogOut,
+  Lock,
+  Activity,
+  ShieldAlert,
+  BadgeCheck,
+  Video,
+} from "lucide-react";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
-
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
@@ -57,7 +69,6 @@ function AdminLayout() {
     };
   }, [q.data, nav]);
 
-
   if (!bootChecked || q.isLoading || !q.data) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
@@ -74,6 +85,7 @@ function AdminLayout() {
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/fraud", label: "Fraud", icon: ShieldAlert },
     { to: "/admin/myr-verifications", label: "MYR Verify", icon: BadgeCheck },
+    { to: "/admin/live-feed-review", label: "Live Feed", icon: Video },
     { to: "/admin/activity", label: "Activity", icon: Activity },
     { to: "/admin/diagnostics", label: "Diagnostics", icon: Activity },
     { to: "/admin/audits", label: "Audit logs", icon: ClipboardList },
@@ -81,9 +93,10 @@ function AdminLayout() {
     ...(isRoot ? [{ to: "/admin/admins", label: "Admins", icon: KeyRound }] : []),
   ] as const;
 
-
   const isActive = (to: string, exact?: boolean) =>
-    exact ? pathname === "/admin" || pathname === "/admin/" : pathname.startsWith(to) && to !== "/admin";
+    exact
+      ? pathname === "/admin" || pathname === "/admin/"
+      : pathname.startsWith(to) && to !== "/admin";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -93,11 +106,16 @@ function AdminLayout() {
             <ShieldCheck className="size-5 text-primary" />
             <div>
               <div className="text-sm font-semibold tracking-tight">System Admin Control</div>
-              <div className="text-[11px] text-muted-foreground uppercase">{me.role.replace(/_/g, " ")}</div>
+              <div className="text-[11px] text-muted-foreground uppercase">
+                {me.role.replace(/_/g, " ")}
+              </div>
             </div>
           </div>
           <button
-            onClick={async () => { await supabase.auth.signOut(); nav({ to: "/system-admin-control" }); }}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              nav({ to: "/system-admin-control" });
+            }}
             className="text-xs inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 hover:bg-accent"
           >
             <LogOut className="size-3.5" /> Sign out
@@ -106,7 +124,8 @@ function AdminLayout() {
         <nav className="max-w-6xl mx-auto px-2 pb-2 flex flex-wrap gap-1">
           {items.map((it) => (
             <Link
-              key={it.to} to={it.to as never}
+              key={it.to}
+              to={it.to as never}
               className={`text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors ${
                 isActive(it.to, "exact" in it ? it.exact : false)
                   ? "bg-primary text-primary-foreground"
