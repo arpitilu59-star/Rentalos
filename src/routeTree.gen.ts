@@ -36,6 +36,7 @@ import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
 import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
+import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
 import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
 import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
 import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
@@ -210,6 +211,11 @@ const AdminSecurityRoute = AdminSecurityRouteImport.update({
 const AdminMyrVerificationsRoute = AdminMyrVerificationsRouteImport.update({
   id: '/myr-verifications',
   path: '/myr-verifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLiveFeedReviewRoute = AdminLiveFeedReviewRouteImport.update({
+  id: '/live-feed-review',
+  path: '/live-feed-review',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminFraudRoute = AdminFraudRouteImport.update({
@@ -456,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
+  '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
+  '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -591,6 +599,7 @@ export interface FileRoutesById {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
+  '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -662,6 +671,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/diagnostics'
     | '/admin/fraud'
+    | '/admin/live-feed-review'
     | '/admin/myr-verifications'
     | '/admin/security'
     | '/admin/users'
@@ -728,6 +738,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/diagnostics'
     | '/admin/fraud'
+    | '/admin/live-feed-review'
     | '/admin/myr-verifications'
     | '/admin/security'
     | '/admin/users'
@@ -796,6 +807,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/diagnostics'
     | '/admin/fraud'
+    | '/admin/live-feed-review'
     | '/admin/myr-verifications'
     | '/admin/security'
     | '/admin/users'
@@ -1038,6 +1050,13 @@ declare module '@tanstack/react-router' {
       path: '/myr-verifications'
       fullPath: '/admin/myr-verifications'
       preLoaderRoute: typeof AdminMyrVerificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/live-feed-review': {
+      id: '/admin/live-feed-review'
+      path: '/live-feed-review'
+      fullPath: '/admin/live-feed-review'
+      preLoaderRoute: typeof AdminLiveFeedReviewRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/fraud': {
@@ -1380,6 +1399,7 @@ interface AdminRouteChildren {
   AdminAuditsRoute: typeof AdminAuditsRoute
   AdminDiagnosticsRoute: typeof AdminDiagnosticsRoute
   AdminFraudRoute: typeof AdminFraudRoute
+  AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1392,6 +1412,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditsRoute: AdminAuditsRoute,
   AdminDiagnosticsRoute: AdminDiagnosticsRoute,
   AdminFraudRoute: AdminFraudRoute,
+  AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,
   AdminSecurityRoute: AdminSecurityRoute,
   AdminUsersRoute: AdminUsersRoute,

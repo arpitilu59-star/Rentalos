@@ -48,10 +48,9 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
     } = data;
 
     if (duration_seconds < 5 || duration_seconds > 45) {
-      throw new Error("Video duration must be 5–45 seconds.");
+      throw new Error("Video duration must be 5-45 seconds.");
     }
 
-    // Resolve target coordinates through the user's RLS (verifies ownership)
     let target_lat: number | null = null;
     let target_lng: number | null = null;
     const targetCol: Record<LiveFeedTarget["kind"], string> = {
@@ -99,12 +98,6 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
     }
 
     let distance_m: number | null = null;
-    // GPS is now only a fraud SIGNAL, never the final decision — an admin
-    // always reviews before a video counts as "verified" (see
-    // live-feed-admin.functions.ts). A clear GPS mismatch still gets an
-    // immediate "flagged" so it sorts to the top of the admin queue, but a
-    // GPS match no longer auto-verifies on its own — GPS alone is
-    // spoofable and shouldn't be the thing a tenant ends up trusting.
     let verification_status: "pending" | "verified" | "flagged" = "pending";
     if (target_lat != null && target_lng != null) {
       distance_m = haversineMeters(captured_lat, captured_lng, target_lat, target_lng);
@@ -180,7 +173,6 @@ export const deleteLiveVideo = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Public — returns a signed URL only for a verified video (used by cover/detail)
 export const getVerifiedVideoUrl = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
@@ -204,7 +196,6 @@ export const getVerifiedVideoUrl = createServerFn({ method: "GET" })
     return { url: sig?.signedUrl ?? null };
   });
 
-// Public — get the primary verified video id for a target (used by cover)
 export const getCoverVideoId = createServerFn({ method: "GET" })
   .inputValidator((d: { target: LiveFeedTarget }) => d)
   .handler(async ({ data }) => {
@@ -234,4 +225,52 @@ export const getCoverVideoId = createServerFn({ method: "GET" })
       verifiedAt:
         (row?.reviewed_at as string | undefined) ?? (row?.created_at as string | undefined) ?? null,
     };
+  });
+
+// Owner-only — lets the recording's owner watch their OWN video regardless
+// of verification_status (pending / flagged / verified / rejected).
+// Deliberately separate from getVerifiedVideoUrl (public path) rather than
+// adding a bypass flag to it, so the public function's guarantees never
+// change. Ownership is checked twice, on purpose:
+//   1. Implicitly — the "owner manages own live feed videos" RLS policy
+//      already means this select only ever returns a row if it's yours.
+//   2. Explicitly — we re-check row.owner_id === userId after the fetch,
+//      so a missing/renamed RLS policy would fail closed (empty result),
+//      never silently grant access to someone else's video.
+// The signed URL itself still comes from the service-role client (same
+// pattern already used for admin review), since that's the reliable way
+// to sign a private-bucket object regardless of storage RLS nuances.
+export const getOwnLiveFeedVideoUrl = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await supabase
+      .from("live_feed_videos")
+      .select("id, owner_id, storage_path, verification_status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Video not found.");
+    if (row.owner_id !== userId)
+      throw new Error("Forbidden — this recording does not belong to you.");
+    if (!row.storage_path)
+      throw new Error("This recording has no stored file (upload may have failed).");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sig, error: signErr } = await supabaseAdmin.storage
+      .from("live-feed-videos")
+      .createSignedUrl(row.storage_path, 900);
+    if (signErr || !sig?.signedUrl) {
+      // Don't leak storage internals to the client — log server-side only.
+      console.error("getOwnLiveFeedVideoUrl: failed to sign", {
+        id: data.id,
+        storage_path: row.storage_path,
+        signErr,
+      });
+      throw new Error(
+        "Could not load this video right now — the file may be missing. Try again or contact support.",
+      );
+    }
+    return { url: sig.signedUrl, status: row.verification_status as string };
   });

@@ -16,17 +16,11 @@ async function assertAdmin(supabase: any, userId: string) {
 
 const VERIFICATION_VALIDITY_DAYS = 150;
 
-// Admin review queue — this is the piece that was completely missing
-// before: videos got recorded but no one (human or automatic) ever
-// actually decided whether they counted as "verified".
 export const listPendingLiveFeedVideos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    // RLS already grants admins read access to all live_feed_videos rows
-    // ("admins read all live feed videos" policy), so the authenticated
-    // client is enough here — no need for the service-role client.
     const { data, error } = await supabase
       .from("live_feed_videos")
       .select(
@@ -82,8 +76,6 @@ export const decideLiveFeedVideo = createServerFn({ method: "POST" })
       expires.setDate(expires.getDate() + VERIFICATION_VALIDITY_DAYS);
       patch.expires_at = expires.toISOString();
     }
-    // RLS "admins update live feed videos" policy already permits this via
-    // the authenticated client.
     const { error } = await supabase.from("live_feed_videos").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
