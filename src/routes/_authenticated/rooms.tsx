@@ -54,9 +54,9 @@ function RoomsPage() {
       const msg = (e as Error).message;
       if (msg === "KYC_REQUIRED") {
         alert(
-          "Publish karne se pehle apni landlord identity verify karni hogi. Verifications page se ID + selfie submit karein — admin review ke baad publish ho sakega.",
+          "Publish karne se pehle apni landlord identity verify karni hogi. ID + selfie submit karein — admin review ke baad publish ho sakega.",
         );
-        nav({ to: "/verifications" });
+        nav({ to: "/myr/landlord/verify" });
       } else {
         alert(msg);
       }

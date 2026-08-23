@@ -11,7 +11,9 @@ const CreateVerificationInput = z.object({
   property_id: z.string().uuid().nullable().optional(),
   notes: z.string().max(2000).optional(),
   documents: z
-    .array(z.object({ doc_type: z.string().min(1).max(50), storage_path: z.string().min(1).max(500) }))
+    .array(
+      z.object({ doc_type: z.string().min(1).max(50), storage_path: z.string().min(1).max(500) }),
+    )
     .max(10)
     .default([]),
 });
@@ -65,16 +67,33 @@ const ReviewInput = z.object({
   rejection_reason: z.string().max(500).optional(),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertAdmin(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Forbidden — admin only.");
+}
+
 export const reviewVerification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => ReviewInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // SECURITY FIX: this function previously had no admin check at all —
+    // any authenticated user (including the landlord/tenant the
+    // verification is about) could call it and mark their own row
+    // "verified" with themselves as reviewer. Only admins may decide.
+    await assertAdmin(supabase, userId);
     const { error } = await supabase
       .from("verifications")
       .update({
         status: data.status,
-        rejection_reason: data.status === "rejected" ? data.rejection_reason ?? null : null,
+        rejection_reason: data.status === "rejected" ? (data.rejection_reason ?? null) : null,
         reviewed_by: userId,
         reviewed_at: new Date().toISOString(),
       })
@@ -141,9 +160,12 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
   .inputValidator((d) => UpdateTicketInput.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: { status: typeof data.status; resolution_notes?: string; resolved_at?: string } = { status: data.status };
+    const patch: { status: typeof data.status; resolution_notes?: string; resolved_at?: string } = {
+      status: data.status,
+    };
     if (data.resolution_notes) patch.resolution_notes = data.resolution_notes;
-    if (data.status === "resolved" || data.status === "closed") patch.resolved_at = new Date().toISOString();
+    if (data.status === "resolved" || data.status === "closed")
+      patch.resolved_at = new Date().toISOString();
     const { error } = await supabase.from("maintenance_tickets").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -231,7 +253,12 @@ export const settleDeposit = createServerFn({ method: "POST" })
       .single();
     if (eg) throw new Error(eg.message);
     const refund = Math.max(0, Number(d0.amount_held) - data.amount_deducted);
-    const status = data.amount_deducted >= Number(d0.amount_held) ? "forfeited" : refund > 0 && data.amount_deducted > 0 ? "partial_refunded" : "refunded";
+    const status =
+      data.amount_deducted >= Number(d0.amount_held)
+        ? "forfeited"
+        : refund > 0 && data.amount_deducted > 0
+          ? "partial_refunded"
+          : "refunded";
     const { error } = await supabase
       .from("deposits")
       .update({
