@@ -22,7 +22,7 @@ export const publishProperty = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: p } = await supabase
       .from("properties")
-      .select("id, owner_id")
+      .select("id, owner_id, partner_org_id")
       .eq("id", data.property_id)
       .maybeSingle();
     if (!p || p.owner_id !== userId) throw new Error("Forbidden");
@@ -30,7 +30,11 @@ export const publishProperty = createServerFn({ method: "POST" })
     // #8 — a landlord must have an admin-verified KYC record before they
     // can publish a property to the public MYR marketplace. This is what
     // makes the "Verified owner" trust claim actually mean something.
-    if (data.publish) {
+    // Exception: a property imported by a partner organization (society /
+    // property manager) is vetted once at the org level by an admin when
+    // the org is created — an individual staff member's personal ID/selfie
+    // isn't the right check for a society's own listing.
+    if (data.publish && !p.partner_org_id) {
       const { data: kyc } = await supabase
         .from("myr_verifications")
         .select("id")
@@ -76,12 +80,12 @@ export const publishRoom = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: r } = await supabase
       .from("rooms")
-      .select("id, owner_id, property_id")
+      .select("id, owner_id, property_id, partner_org_id")
       .eq("id", data.room_id)
       .maybeSingle();
     if (!r || r.owner_id !== userId) throw new Error("Forbidden");
 
-    if (data.publish) {
+    if (data.publish && !r.partner_org_id) {
       const { data: kyc } = await supabase
         .from("myr_verifications")
         .select("id")

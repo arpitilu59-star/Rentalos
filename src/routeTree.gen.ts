@@ -35,6 +35,7 @@ import { Route as MyrBookingsRouteImport } from './routes/myr/bookings'
 import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
+import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
 import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
 import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
 import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
@@ -42,6 +43,7 @@ import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics
 import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
 import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
 import { Route as AdminActivityRouteImport } from './routes/admin/activity'
+import { Route as AuthenticatedVerifyIdentityRouteImport } from './routes/_authenticated/verify-identity'
 import { Route as AuthenticatedVerificationsRouteImport } from './routes/_authenticated/verifications'
 import { Route as AuthenticatedTenantsRouteImport } from './routes/_authenticated/tenants'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -50,6 +52,7 @@ import { Route as AuthenticatedRentdeskRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedPaymentVerifyRouteImport } from './routes/_authenticated/payment-verify'
+import { Route as AuthenticatedPartnerImportRouteImport } from './routes/_authenticated/partner-import'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedMovesRouteImport } from './routes/_authenticated/moves'
@@ -208,6 +211,11 @@ const AdminSecurityRoute = AdminSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPartnersRoute = AdminPartnersRouteImport.update({
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMyrVerificationsRoute = AdminMyrVerificationsRouteImport.update({
   id: '/myr-verifications',
   path: '/myr-verifications',
@@ -243,6 +251,12 @@ const AdminActivityRoute = AdminActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthenticatedVerifyIdentityRoute =
+  AuthenticatedVerifyIdentityRouteImport.update({
+    id: '/verify-identity',
+    path: '/verify-identity',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedVerificationsRoute =
   AuthenticatedVerificationsRouteImport.update({
     id: '/verifications',
@@ -283,6 +297,12 @@ const AuthenticatedPaymentVerifyRoute =
   AuthenticatedPaymentVerifyRouteImport.update({
     id: '/payment-verify',
     path: '/payment-verify',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPartnerImportRoute =
+  AuthenticatedPartnerImportRouteImport.update({
+    id: '/partner-import',
+    path: '/partner-import',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
@@ -449,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/moves': typeof AuthenticatedMovesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/partner-import': typeof AuthenticatedPartnerImportRoute
   '/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/properties': typeof AuthenticatedPropertiesRoute
@@ -457,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/tenants': typeof AuthenticatedTenantsRoute
   '/verifications': typeof AuthenticatedVerificationsRoute
+  '/verify-identity': typeof AuthenticatedVerifyIdentityRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
@@ -464,6 +486,7 @@ export interface FileRoutesByFullPath {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -516,6 +539,7 @@ export interface FileRoutesByTo {
   '/moves': typeof AuthenticatedMovesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/partner-import': typeof AuthenticatedPartnerImportRoute
   '/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/properties': typeof AuthenticatedPropertiesRoute
@@ -524,6 +548,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/tenants': typeof AuthenticatedTenantsRoute
   '/verifications': typeof AuthenticatedVerificationsRoute
+  '/verify-identity': typeof AuthenticatedVerifyIdentityRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
@@ -531,6 +556,7 @@ export interface FileRoutesByTo {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -586,6 +612,7 @@ export interface FileRoutesById {
   '/_authenticated/moves': typeof AuthenticatedMovesRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/partner-import': typeof AuthenticatedPartnerImportRoute
   '/_authenticated/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
@@ -594,6 +621,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/tenants': typeof AuthenticatedTenantsRoute
   '/_authenticated/verifications': typeof AuthenticatedVerificationsRoute
+  '/_authenticated/verify-identity': typeof AuthenticatedVerifyIdentityRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
@@ -601,6 +629,7 @@ export interface FileRoutesById {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -658,6 +687,7 @@ export interface FileRouteTypes {
     | '/moves'
     | '/notifications'
     | '/onboarding'
+    | '/partner-import'
     | '/payment-verify'
     | '/profile'
     | '/properties'
@@ -666,6 +696,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tenants'
     | '/verifications'
+    | '/verify-identity'
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
@@ -673,6 +704,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
     | '/landlord/login'
@@ -725,6 +757,7 @@ export interface FileRouteTypes {
     | '/moves'
     | '/notifications'
     | '/onboarding'
+    | '/partner-import'
     | '/payment-verify'
     | '/profile'
     | '/properties'
@@ -733,6 +766,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tenants'
     | '/verifications'
+    | '/verify-identity'
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
@@ -740,6 +774,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
     | '/landlord/login'
@@ -794,6 +829,7 @@ export interface FileRouteTypes {
     | '/_authenticated/moves'
     | '/_authenticated/notifications'
     | '/_authenticated/onboarding'
+    | '/_authenticated/partner-import'
     | '/_authenticated/payment-verify'
     | '/_authenticated/profile'
     | '/_authenticated/properties'
@@ -802,6 +838,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/tenants'
     | '/_authenticated/verifications'
+    | '/_authenticated/verify-identity'
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
@@ -809,6 +846,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
     | '/landlord/login'
@@ -1045,6 +1083,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSecurityRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/partners': {
+      id: '/admin/partners'
+      path: '/partners'
+      fullPath: '/admin/partners'
+      preLoaderRoute: typeof AdminPartnersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/myr-verifications': {
       id: '/admin/myr-verifications'
       path: '/myr-verifications'
@@ -1093,6 +1138,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/activity'
       preLoaderRoute: typeof AdminActivityRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/_authenticated/verify-identity': {
+      id: '/_authenticated/verify-identity'
+      path: '/verify-identity'
+      fullPath: '/verify-identity'
+      preLoaderRoute: typeof AuthenticatedVerifyIdentityRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/verifications': {
       id: '/_authenticated/verifications'
@@ -1148,6 +1200,13 @@ declare module '@tanstack/react-router' {
       path: '/payment-verify'
       fullPath: '/payment-verify'
       preLoaderRoute: typeof AuthenticatedPaymentVerifyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/partner-import': {
+      id: '/_authenticated/partner-import'
+      path: '/partner-import'
+      fullPath: '/partner-import'
+      preLoaderRoute: typeof AuthenticatedPartnerImportRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/onboarding': {
@@ -1358,6 +1417,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMovesRoute: typeof AuthenticatedMovesRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedPartnerImportRoute: typeof AuthenticatedPartnerImportRoute
   AuthenticatedPaymentVerifyRoute: typeof AuthenticatedPaymentVerifyRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
@@ -1366,6 +1426,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTenantsRoute: typeof AuthenticatedTenantsRoute
   AuthenticatedVerificationsRoute: typeof AuthenticatedVerificationsRoute
+  AuthenticatedVerifyIdentityRoute: typeof AuthenticatedVerifyIdentityRoute
   AuthenticatedRoomsRoomIdAnalysisRoute: typeof AuthenticatedRoomsRoomIdAnalysisRoute
 }
 
@@ -1378,6 +1439,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMovesRoute: AuthenticatedMovesRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedPartnerImportRoute: AuthenticatedPartnerImportRoute,
   AuthenticatedPaymentVerifyRoute: AuthenticatedPaymentVerifyRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
@@ -1386,6 +1448,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTenantsRoute: AuthenticatedTenantsRoute,
   AuthenticatedVerificationsRoute: AuthenticatedVerificationsRoute,
+  AuthenticatedVerifyIdentityRoute: AuthenticatedVerifyIdentityRoute,
   AuthenticatedRoomsRoomIdAnalysisRoute: AuthenticatedRoomsRoomIdAnalysisRoute,
 }
 
@@ -1401,6 +1464,7 @@ interface AdminRouteChildren {
   AdminFraudRoute: typeof AdminFraudRoute
   AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
+  AdminPartnersRoute: typeof AdminPartnersRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1414,6 +1478,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminFraudRoute: AdminFraudRoute,
   AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,
+  AdminPartnersRoute: AdminPartnersRoute,
   AdminSecurityRoute: AdminSecurityRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
