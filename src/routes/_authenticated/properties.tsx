@@ -2,6 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getOwnerId, type Property } from "@/lib/db";
 import { getCurrentAddress } from "@/lib/geolocate";
@@ -63,7 +66,7 @@ function PropertiesPage() {
         alert(
           "Publish karne se pehle apni landlord identity verify karni hogi. ID + selfie submit karein — admin review ke baad publish ho sakega.",
         );
-        nav({ to: "/myr/landlord/verify" });
+        nav({ to: "/verify-identity" });
       } else {
         alert("Failed: " + msg);
       }
@@ -74,21 +77,20 @@ function PropertiesPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Properties</h1>
-          <p className="text-muted-foreground mt-1">Apke saare PGs / buildings ek jagah.</p>
-        </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setShow(true);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-        >
-          <Plus className="size-4" /> Add property
-        </button>
-      </div>
+      <PageHeader
+        title="Properties"
+        subtitle="Apke saare PGs / buildings ek jagah."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setShow(true);
+            }}
+          >
+            <Plus className="size-4" /> Add property
+          </Button>
+        }
+      />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((p) => (
@@ -144,8 +146,8 @@ function PropertiesPage() {
           </div>
         ))}
         {items.length === 0 && (
-          <div className="col-span-full rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-            No properties. Add your first one.
+          <div className="col-span-full">
+            <EmptyState icon={Building2} title="No properties. Add your first one." />
           </div>
         )}
       </div>

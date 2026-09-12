@@ -2,6 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, getOwnerId, type Property, type Room, type Tenant } from "@/lib/db";
 import { publishRoom } from "@/lib/bookings.functions";
@@ -56,7 +59,7 @@ function RoomsPage() {
         alert(
           "Publish karne se pehle apni landlord identity verify karni hogi. ID + selfie submit karein — admin review ke baad publish ho sakega.",
         );
-        nav({ to: "/myr/landlord/verify" });
+        nav({ to: "/verify-identity" });
       } else {
         alert(msg);
       }
@@ -73,31 +76,31 @@ function RoomsPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Rooms</h1>
-          <p className="text-muted-foreground mt-1">Add and manage rooms with their rent.</p>
-        </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-          disabled={properties.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          <Plus className="size-4" /> Add room
-        </button>
-      </div>
+      <PageHeader
+        title="Rooms"
+        subtitle="Add and manage rooms with their rent."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+            disabled={properties.length === 0}
+          >
+            <Plus className="size-4" /> Add room
+          </Button>
+        }
+      />
 
       {properties.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-          Pehle ek{" "}
-          <Link to="/properties" className="text-primary font-medium">
-            property add karein
-          </Link>
-          .
-        </div>
+        <EmptyState
+          title="Pehle ek property add karein."
+          action={
+            <Link to="/properties" className="text-primary font-medium text-sm hover:underline">
+              Property add karein →
+            </Link>
+          }
+        />
       ) : (
         <>
           <div className="mb-4">
@@ -200,8 +203,8 @@ function RoomsPage() {
               );
             })}
             {filtered.length === 0 && (
-              <div className="col-span-full rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-                No rooms yet. Click <span className="font-medium text-foreground">Add room</span>.
+              <div className="col-span-full">
+                <EmptyState title="No rooms yet. Click Add room." />
               </div>
             )}
           </div>
