@@ -36,6 +36,7 @@ import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
 import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
+import { Route as AdminOpsRouteImport } from './routes/admin/ops'
 import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
 import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
 import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
@@ -214,6 +215,11 @@ const AdminSecurityRoute = AdminSecurityRouteImport.update({
 const AdminPartnersRoute = AdminPartnersRouteImport.update({
   id: '/partners',
   path: '/partners',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOpsRoute = AdminOpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMyrVerificationsRoute = AdminMyrVerificationsRouteImport.update({
@@ -486,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -556,6 +563,7 @@ export interface FileRoutesByTo {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -629,6 +637,7 @@ export interface FileRoutesById {
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+  '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
@@ -704,6 +713,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/ops'
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
@@ -774,6 +784,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/ops'
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
@@ -846,6 +857,7 @@ export interface FileRouteTypes {
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
+    | '/admin/ops'
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
@@ -1088,6 +1100,13 @@ declare module '@tanstack/react-router' {
       path: '/partners'
       fullPath: '/admin/partners'
       preLoaderRoute: typeof AdminPartnersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ops': {
+      id: '/admin/ops'
+      path: '/ops'
+      fullPath: '/admin/ops'
+      preLoaderRoute: typeof AdminOpsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/myr-verifications': {
@@ -1464,6 +1483,7 @@ interface AdminRouteChildren {
   AdminFraudRoute: typeof AdminFraudRoute
   AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
+  AdminOpsRoute: typeof AdminOpsRoute
   AdminPartnersRoute: typeof AdminPartnersRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1478,6 +1498,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminFraudRoute: AdminFraudRoute,
   AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,
+  AdminOpsRoute: AdminOpsRoute,
   AdminPartnersRoute: AdminPartnersRoute,
   AdminSecurityRoute: AdminSecurityRoute,
   AdminUsersRoute: AdminUsersRoute,

@@ -84,6 +84,7 @@ function AdminLayout() {
   const items = [
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { to: "/admin/users", label: "Users", icon: Users },
+    { to: "/admin/ops", label: "Operations", icon: Activity },
     { to: "/admin/fraud", label: "Fraud", icon: ShieldAlert },
     { to: "/admin/myr-verifications", label: "MYR Verify", icon: BadgeCheck },
     { to: "/admin/live-feed-review", label: "Live Feed", icon: Video },
