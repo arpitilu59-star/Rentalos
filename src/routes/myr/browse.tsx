@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
+import { seo } from "@/lib/seo";
 
 type BrowseSearch = { city?: string; minRent?: number; maxRent?: number };
 
@@ -36,6 +37,16 @@ export const Route = createFileRoute("/myr/browse")({
           ? s.maxRent
           : undefined,
   }),
+  head: ({ match }) => {
+    const city = (match.search as { city?: string })?.city;
+    return seo({
+      title: city ? `Rooms & PGs for rent in ${city}` : "Browse rooms & rental properties",
+      description: city
+        ? `Find verified rooms, PGs and rental properties in ${city}. Compare rent, deposit and amenities, and connect directly with owners — no brokerage on Rentalos.`
+        : "Browse verified rooms, PGs and rental properties across India. Filter by city and budget, and connect directly with property owners — no brokerage.",
+      path: city ? `/myr/browse?city=${encodeURIComponent(city)}` : "/myr/browse",
+    });
+  },
 });
 
 type PublicRoom = {

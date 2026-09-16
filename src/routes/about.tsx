@@ -1,32 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { SiteNavbar } from "@/components/SiteNavbar";
-import { Home, Building2, Users2, Plug, ShieldCheck, Compass, IndianRupee } from "lucide-react";
+import { seo } from "@/lib/seo";
+import {
+  Home,
+  Building2,
+  Compass,
+  Plug,
+  ShieldCheck,
+  Users2,
+  IndianRupee,
+  Linkedin,
+} from "lucide-react";
 
 export const Route = createFileRoute("/about")({
   component: AboutPage,
-  head: () => ({
-    meta: [
-      { title: "About — Rentalos" },
-      {
-        name: "description",
-        content:
-          "Rentalos is building the infrastructure that makes renting simpler — not another broker.",
-      },
-    ],
-  }),
+  head: () =>
+    seo({
+      title: "About Rentalos",
+      description:
+        "Why Rentalos exists: making renting transparent and connected for tenants, landlords, societies and property managers — without becoming another broker.",
+      path: "/about",
+    }),
 });
 
 function Section({
   eyebrow,
   title,
   children,
-  className = "",
 }: {
   eyebrow?: string;
   title: string;
   children: React.ReactNode;
-  className?: string;
 }) {
   const reduce = useReducedMotion();
   return (
@@ -35,7 +40,7 @@ function Section({
       whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5 }}
-      className={`max-w-3xl mx-auto px-4 py-14 ${className}`}
+      className="max-w-3xl mx-auto px-4 py-14"
     >
       {eyebrow && (
         <div className="text-xs font-medium uppercase tracking-wider text-primary mb-3">
@@ -55,7 +60,6 @@ function AboutPage() {
     <div className="min-h-screen bg-background text-foreground">
       <SiteNavbar />
 
-      {/* Hero */}
       <section className="max-w-3xl mx-auto px-4 pt-16 pb-10 text-center">
         <motion.h1
           initial={reduce ? undefined : { opacity: 0, y: 16 }}
@@ -77,7 +81,6 @@ function AboutPage() {
         </motion.p>
       </section>
 
-      {/* Why we started */}
       <Section eyebrow="Why we started" title="A rental market that stopped talking to itself.">
         <p>
           Finding a room today means jumping between listings, brokers, phone calls, and messages —
@@ -92,7 +95,6 @@ function AboutPage() {
         </p>
       </Section>
 
-      {/* Zero-commission philosophy */}
       <Section
         eyebrow="A different kind of rental platform"
         title="We don't take a cut of your rent."
@@ -110,7 +112,6 @@ function AboutPage() {
         </div>
       </Section>
 
-      {/* Built for everyone */}
       <section className="max-w-5xl mx-auto px-4 py-14">
         <motion.div
           initial={reduce ? undefined : { opacity: 0, y: 24 }}
@@ -137,7 +138,7 @@ function AboutPage() {
             {
               icon: Home,
               title: "Landlords",
-              body: "RentDesk gives smaller property owners simple tools to manage properties, rooms, availability, and tenants — without complicated enterprise software.",
+              body: "RentDesk gives smaller property owners simple tools to manage properties, rooms, rent, bills, deposits, meters and tenants.",
             },
             {
               icon: Building2,
@@ -163,7 +164,6 @@ function AboutPage() {
         </div>
       </section>
 
-      {/* Integration concept */}
       <Section
         eyebrow="Works with the software you already use"
         title="Your management system stays yours."
@@ -186,16 +186,11 @@ function AboutPage() {
             The wider rental market
           </div>
         </div>
-        <p className="mt-6 text-center text-sm">
-          Their software remains their management system. Rentalos becomes their connection to the
-          market.
-        </p>
       </Section>
 
-      {/* Trust */}
       <Section eyebrow="Built around trust" title="Information you can actually rely on.">
         <p>
-          Property information, landlord identity verification, room details, and availability are
+          Property information, landlord identity verification, room details and availability are
           designed to make renting more reliable and transparent — not just another set of listings
           you have to double-check yourself.
         </p>
@@ -213,18 +208,42 @@ function AboutPage() {
         </div>
       </Section>
 
-      {/* Vision */}
+      {/* Founder — factual only. No awards, funding, user counts or
+          experience claims, because none are established anywhere in the
+          project. Photo intentionally omitted: no image asset exists. */}
+      <Section eyebrow="Founder" title="Who's building Rentalos.">
+        <div className="rounded-2xl bg-card border border-border p-6">
+          <div className="flex items-start gap-4">
+            <div className="size-14 rounded-2xl bg-primary/15 text-primary grid place-items-center text-xl font-semibold shrink-0">
+              AA
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold text-foreground text-lg">Arpit Agrawal</div>
+              <div className="text-sm text-primary">Founder</div>
+              <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+                Rentalos is designed and built independently — the marketplace, RentDesk, the
+                verification system and the property-management tooling. The goal has stayed the
+                same since the first version: make renting less dependent on brokers, and give
+                landlords software that doesn't require an enterprise budget to use.
+              </p>
+              <a
+                href="https://www.linkedin.com/company/smartpg/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
+              >
+                <Linkedin className="size-4" /> Rentalos on LinkedIn
+              </a>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       <Section eyebrow="Where we're going" title="One connected rental ecosystem.">
         <p>
           Rentalos is not just about today's rental market. We're building toward an ecosystem where
-          property owners, societies, property-management systems, and tenants can work through one
+          property owners, societies, property-management systems and tenants can work through one
           connected network — without forcing anyone to abandon the tools they already use.
-        </p>
-        <p>
-          A society keeps using its existing software and still reaches new tenants. A landlord
-          manages their rooms without complicated enterprise software. A tenant discovers properties
-          without depending entirely on brokers. And the technology works in the background, instead
-          of becoming another problem to manage.
         </p>
         <p className="text-foreground font-medium">
           Renting shouldn't be complicated just because the systems around it are disconnected.
@@ -232,7 +251,6 @@ function AboutPage() {
         </p>
       </Section>
 
-      {/* Final CTA — meaningful, not generic */}
       <motion.section
         initial={reduce ? undefined : { opacity: 0, y: 24 }}
         whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
@@ -253,13 +271,13 @@ function AboutPage() {
               to="/myr/browse"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
             >
-              See what's already live
+              Browse rentals
             </Link>
             <Link
-              to="/landlord/login"
+              to="/pricing"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-accent"
             >
-              List a property
+              See pricing
             </Link>
           </div>
         </div>

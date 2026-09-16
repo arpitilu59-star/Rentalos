@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Mail, Phone, MapPin, Linkedin } from "lucide-react";
 import { SiteNavbar } from "@/components/SiteNavbar";
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/contact")({
   component: ContactPage,
-  head: () => ({ meta: [{ title: "Contact — ManageYourRoom" }] }),
+  head: () =>
+    seo({
+      title: "Contact Rentalos",
+      description:
+        "Get in touch with the Rentalos team about listings, landlord accounts or support.",
+      path: "/contact",
+    }),
 });
 
 function ContactPage() {

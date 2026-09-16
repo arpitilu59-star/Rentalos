@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { seo, organizationSchema, websiteSchema } from "@/lib/seo";
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,24 @@ import {
 import { SiteNavbar } from "@/components/SiteNavbar";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 
-export const Route = createFileRoute("/")({ component: MyrLanding });
+export const Route = createFileRoute("/")({
+  component: MyrLanding,
+  head: () => {
+    const base = seo({
+      title: "Rentalos — Find a rental. Manage your property.",
+      description:
+        "Discover verified rooms and rental properties across India with no brokerage. Landlords get RentDesk to manage rent, tenants, bills, deposits and maintenance in one place.",
+      path: "/",
+    });
+    return {
+      ...base,
+      scripts: [
+        { type: "application/ld+json", children: JSON.stringify(organizationSchema()) },
+        { type: "application/ld+json", children: JSON.stringify(websiteSchema()) },
+      ],
+    };
+  },
+});
 
 type PublicRoom = {
   id: string;

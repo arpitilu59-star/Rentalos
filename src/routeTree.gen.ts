@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TenantRouteImport } from './routes/tenant'
 import { Route as SystemAdminControlRouteImport } from './routes/system-admin-control'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as MyrRouteImport } from './routes/myr'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -96,6 +97,11 @@ const SystemAdminControlRoute = SystemAdminControlRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyrRoute = MyrRouteImport.update({
@@ -464,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
+  '/pricing': typeof PricingRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/tenant': typeof TenantRouteWithChildren
@@ -536,6 +543,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/bills': typeof AuthenticatedBillsRoute
@@ -609,6 +617,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
+  '/pricing': typeof PricingRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/tenant': typeof TenantRouteWithChildren
@@ -685,6 +694,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/myr'
+    | '/pricing'
     | '/signup'
     | '/system-admin-control'
     | '/tenant'
@@ -757,6 +767,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/login'
+    | '/pricing'
     | '/signup'
     | '/system-admin-control'
     | '/bills'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/myr'
+    | '/pricing'
     | '/signup'
     | '/system-admin-control'
     | '/tenant'
@@ -905,6 +917,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
   MyrRoute: typeof MyrRouteWithChildren
+  PricingRoute: typeof PricingRoute
   SignupRoute: typeof SignupRoute
   SystemAdminControlRoute: typeof SystemAdminControlRoute
   TenantRoute: typeof TenantRouteWithChildren
@@ -932,6 +945,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/myr': {
@@ -1614,6 +1634,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
   MyrRoute: MyrRouteWithChildren,
+  PricingRoute: PricingRoute,
   SignupRoute: SignupRoute,
   SystemAdminControlRoute: SystemAdminControlRoute,
   TenantRoute: TenantRouteWithChildren,

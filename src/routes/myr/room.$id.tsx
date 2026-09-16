@@ -18,8 +18,97 @@ import {
   Wallet,
 } from "lucide-react";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
+import { getPublicRoom } from "@/lib/public-listing.functions";
+import { seo, SITE_URL, breadcrumbSchema } from "@/lib/seo";
 
-export const Route = createFileRoute("/myr/room/$id")({ component: RoomDetail });
+export const Route = createFileRoute("/myr/room/$id")({
+  component: RoomDetail,
+  // Server-side load so listing metadata is real and unique per room,
+  // visible to crawlers rather than only appearing after hydration.
+  loader: ({ params }) => getPublicRoom({ data: { id: params.id } }),
+  head: ({ loaderData, params }) => {
+    const r = loaderData?.room;
+    if (!r) {
+      return seo({
+        title: "Room not available",
+        description: "This listing is no longer available on Rentalos.",
+        path: `/myr/room/${params.id}`,
+        noindex: true,
+      });
+    }
+
+    const where = [r.locality, r.city].filter(Boolean).join(", ");
+    const kind = r.propertyType ? r.propertyType.toUpperCase() : "Room";
+    const rent = `₹${r.rent_amount.toLocaleString("en-IN")}/month`;
+
+    const title = where ? `${kind} for rent in ${where} — ${rent}` : `${kind} for rent — ${rent}`;
+
+    const parts = [
+      `${r.propertyName}, Room ${r.room_number}`,
+      where ? `in ${where}` : null,
+      `Rent ${rent}`,
+      r.deposit != null ? `deposit ₹${r.deposit.toLocaleString("en-IN")}` : null,
+      r.amenities.length ? `Amenities: ${r.amenities.slice(0, 5).join(", ")}` : null,
+      r.verified ? "Owner-verified listing" : null,
+      "No brokerage on Rentalos.",
+    ].filter(Boolean);
+
+    const base = seo({
+      title,
+      description: parts.join(" · ").slice(0, 300),
+      path: `/myr/room/${params.id}`,
+    });
+
+    return {
+      ...base,
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(
+            breadcrumbSchema([
+              { name: "Home", path: "/" },
+              { name: "Browse rentals", path: "/myr/browse" },
+              ...(r.city
+                ? [{ name: r.city, path: `/myr/browse?city=${encodeURIComponent(r.city)}` }]
+                : []),
+            ]),
+          ),
+        },
+        {
+          // Accommodation describes exactly what's visible on the page.
+          // No ratings/reviews/availability are asserted — none exist.
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Accommodation",
+            name: `${r.propertyName} · Room ${r.room_number}`,
+            url: `${SITE_URL}/myr/room/${params.id}`,
+            ...(r.description ? { description: r.description } : {}),
+            ...(where
+              ? {
+                  address: {
+                    "@type": "PostalAddress",
+                    ...(r.locality ? { streetAddress: r.locality } : {}),
+                    ...(r.city ? { addressLocality: r.city } : {}),
+                    addressCountry: "IN",
+                  },
+                }
+              : {}),
+            ...(r.amenities.length
+              ? {
+                  amenityFeature: r.amenities.map((a: string) => ({
+                    "@type": "LocationFeatureSpecification",
+                    name: a,
+                    value: true,
+                  })),
+                }
+              : {}),
+          }),
+        },
+      ],
+    };
+  },
+});
 
 type RoomDetailData = {
   id: string;

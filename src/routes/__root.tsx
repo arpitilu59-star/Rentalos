@@ -72,20 +72,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RentDesk – AI Rent Manager for PG & Landlords" },
-      { name: "description", content: "Manage rooms, tenants, electricity meters, and WhatsApp rent reminders in one place." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "RentDesk – AI Rent Manager for PG & Landlords" },
-      { property: "og:description", content: "Manage rooms, tenants, electricity meters, and WhatsApp rent reminders in one place." },
+      // Site-wide defaults. Individual routes override these via seo().
+      { title: "Rentalos — Find a rental. Manage your property." },
+      {
+        name: "description",
+        content:
+          "Rentalos helps tenants discover rooms and rental properties, and gives landlords tools to manage rent, tenants, bills and property operations.",
+      },
+      { property: "og:site_name", content: "Rentalos" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "RentDesk – AI Rent Manager for PG & Landlords" },
-      { name: "twitter:description", content: "Manage rooms, tenants, electricity meters, and WhatsApp rent reminders in one place." },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#10b981" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "RentDesk" },
+      { name: "apple-mobile-web-app-title", content: "Rentalos" },
       { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [

@@ -1,3 +1,4 @@
+import { seo } from "@/lib/seo";
 import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -22,7 +23,15 @@ import {
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
-export const Route = createFileRoute("/admin")({ component: AdminLayout });
+export const Route = createFileRoute("/admin")({
+  component: AdminLayout,
+  head: () =>
+    seo({
+      title: "Admin",
+      description: "",
+      noindex: true,
+    }),
+});
 
 function AdminLayout() {
   const nav = useNavigate();
