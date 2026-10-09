@@ -7,7 +7,7 @@ import { Loader2, Building2, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/landlord/login")({
   component: LandlordLogin,
-  head: () => ({ meta: [{ title: "Landlord sign in — ManageYourRoom" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Landlord sign in — RentalOS" }, { name: "robots", content: "noindex" }] }),
 });
 
 function LandlordLogin() {

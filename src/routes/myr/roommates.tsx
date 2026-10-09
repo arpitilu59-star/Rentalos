@@ -21,7 +21,7 @@ import {
 
 export const Route = createFileRoute("/myr/roommates")({
   component: RoommatesPage,
-  head: () => ({ meta: [{ title: "Find a roommate — ManageYourRoom" }] }),
+  head: () => ({ meta: [{ title: "Find a roommate — RentalOS" }] }),
 });
 
 type Match = {

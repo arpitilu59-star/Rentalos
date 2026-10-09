@@ -77,7 +77,7 @@ export function MyrShell({
             M
           </div>
           <div>
-            <div className="font-semibold leading-tight">ManageYourRoom</div>
+            <div className="font-semibold leading-tight">RentalOS</div>
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {variant}
             </div>

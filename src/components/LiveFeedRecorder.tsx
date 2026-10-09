@@ -4,6 +4,7 @@ import { Camera, Loader2, Square, Video, X, MapPin, ShieldCheck } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { currentPosition, pickRandomPrompt, uploadRecordedBlob } from "@/lib/live-feed";
 import { submitLiveVideo, type LiveFeedTarget } from "@/lib/live-feed.functions";
+import { friendlyVideoError } from "@/lib/video";
 
 const MIN_SEC = 15;
 const MAX_SEC = 30;
@@ -125,7 +126,7 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
       setPhase("done");
       onSuccess?.(res);
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyVideoError(e));
       setPhase("ready");
     }
   };

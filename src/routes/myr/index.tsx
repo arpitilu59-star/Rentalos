@@ -21,7 +21,7 @@ function MyrHome() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/myr" className="flex items-center gap-2">
             <div className="size-8 rounded-xl bg-primary text-primary-foreground grid place-items-center font-bold">M</div>
-            <div className="font-semibold tracking-tight">ManageYourRoom</div>
+            <div className="font-semibold tracking-tight">RentalOS</div>
           </Link>
           <nav className="flex items-center gap-1 text-sm">
             <Link to="/myr/browse" className="px-3 py-1.5 rounded-md hover:bg-accent">Browse</Link>
@@ -137,7 +137,7 @@ function MyrHome() {
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="rounded-3xl bg-gradient-to-br from-primary/15 via-accent to-background border border-border p-8 md:p-12 text-center">
           <h3 className="text-2xl md:text-3xl font-semibold tracking-tight">Aapke paas property hai?</h3>
-          <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-lg mx-auto">List karein ManageYourRoom par — verified tenants se direct inquiries paayein, free plan ke saath shuru karein.</p>
+          <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-lg mx-auto">List karein RentalOS par — verified tenants se direct inquiries paayein, free plan ke saath shuru karein.</p>
           <Link to="/myr/onboard" search={{ role: "landlord" } as never} className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90">
             <LayoutDashboard className="size-4" /> List your property
           </Link>
@@ -145,7 +145,7 @@ function MyrHome() {
       </section>
 
       <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} ManageYourRoom · MYR
+        © {new Date().getFullYear()} RentalOS · MYR
       </footer>
     </div>
   );

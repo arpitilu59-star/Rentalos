@@ -291,7 +291,7 @@ function BrowsePage() {
             <div className="size-8 rounded-xl bg-primary text-primary-foreground grid place-items-center font-bold">
               M
             </div>
-            <div className="font-semibold">ManageYourRoom</div>
+            <div className="font-semibold">RentalOS</div>
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <Link to="/tenant" className="px-3 py-1.5 rounded-md hover:bg-accent">
@@ -392,6 +392,7 @@ function BrowsePage() {
                     alt={r.properties?.name || undefined}
                     aspectClass="aspect-[4/5]"
                     showPendingState
+                    expandOnClick={false}
                   />
                   <div className="relative">
                     {r.properties?.property_type && (

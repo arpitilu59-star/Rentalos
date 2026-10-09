@@ -40,7 +40,7 @@ function OnboardPage() {
       <div className="w-full max-w-2xl">
         <div className="text-center mb-6">
           <div className="size-12 mx-auto rounded-2xl bg-primary text-primary-foreground grid place-items-center font-bold text-xl">M</div>
-          <h1 className="mt-3 text-2xl md:text-3xl font-semibold tracking-tight">Welcome to ManageYourRoom</h1>
+          <h1 className="mt-3 text-2xl md:text-3xl font-semibold tracking-tight">Welcome to RentalOS</h1>
           <p className="text-sm text-muted-foreground mt-1">Aap kya karna chahte hain?</p>
         </div>
         {needLogin && (

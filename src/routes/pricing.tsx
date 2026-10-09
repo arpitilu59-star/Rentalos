@@ -10,7 +10,7 @@ export const Route = createFileRoute("/pricing")({
     seo({
       title: "Pricing — Rentalos for landlords",
       description:
-        "Rentalos charges for the software you use, never a percentage of your rent. Compare Free, Pro and Business plans for landlords, societies and property managers.",
+        "Rentalos charges for the software you use, never a percentage of your rent. Compare the Free, RentDesk and RentalOS Management plans for landlords, societies and property managers.",
       path: "/pricing",
     }),
 });

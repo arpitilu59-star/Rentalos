@@ -234,6 +234,7 @@ function RoomDetail() {
               fallback={photos[0] || null}
               alt={r.properties?.name || undefined}
               aspectClass="aspect-[4/5]"
+              mode="full"
               showPendingState
             />
           </div>
@@ -271,7 +272,8 @@ function RoomDetail() {
             {verifiedAt ? (
               <>
                 <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent text-xs">
-                  <ShieldCheck className="size-3 text-primary" /> Verified — tap photo to watch
+                  <ShieldCheck className="size-3 text-primary" /> Verified — watch the full room
+                  video above
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-1">
                   Last verified on {formatDate(verifiedAt)}
@@ -328,6 +330,76 @@ function RoomDetail() {
             <Flag className="size-3.5" /> Visit karke lagta hai kuch match nahi karta? Report karein
           </button>
         </div>
+
+        {/* Location — uses only the address already shown publicly on this listing */}
+        {location && (
+          <section aria-labelledby="find-us">
+            <h2 id="find-us" className="font-semibold mb-1">
+              Find us easily
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              See where the property is and get directions before you visit.
+            </p>
+            <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm min-w-0">
+                <MapPin className="size-4 inline -mt-0.5 text-primary" aria-hidden /> {location}
+              </div>
+              <div className="flex gap-2 text-xs">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent"
+                >
+                  Open in Maps
+                </a>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium"
+                >
+                  Get Directions
+                </a>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section aria-labelledby="room-faq">
+          <h2 id="room-faq" className="font-semibold mb-2">
+            Frequently asked questions
+          </h2>
+          <div className="rounded-xl border border-border divide-y divide-border bg-card">
+            {[
+              [
+                "How do I book this room?",
+                "Tap “Book this room”. You'll sign in as a tenant and your request goes straight to the landlord — no broker.",
+              ],
+              [
+                "Is the video real?",
+                "Videos marked verified were recorded live at the property and checked by RentalOS.",
+              ],
+              [
+                "What happens after I book?",
+                "Your rent bills, due dates, rental terms and maintenance requests all live in your RentalOS tenant account.",
+              ],
+            ].map(([q, a]) => (
+              <details key={q} className="group px-4 py-3 text-sm">
+                <summary className="cursor-pointer font-medium list-none flex justify-between gap-2">
+                  {q}
+                  <span
+                    aria-hidden
+                    className="text-muted-foreground group-open:rotate-45 transition-transform"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="mt-2 text-muted-foreground">{a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
         {/* #7 — reviews, including "did it match what you saw online" */}
         <ReviewsSection roomId={r.id} doListReviews={doListReviews} doReview={doReview} />

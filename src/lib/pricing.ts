@@ -57,9 +57,9 @@ export const PLANS: Plan[] = [
   },
   {
     id: "pro",
-    name: "Pro",
+    name: "RentDesk",
     tagline: "For landlords running multiple properties.",
-    priceMonthly: null,
+    priceMonthly: 69,
     limits: { properties: 10, rooms: 100 },
     features: [
       "Everything in Free",
@@ -68,18 +68,19 @@ export const PLANS: Plan[] = [
       "Payment verification workflow",
       "Move-in / move-out records",
       "Document storage & verification",
+      "AI meter reading (OCR) with mistake checks",
     ],
-    comingSoon: ["WhatsApp rent reminders", "AI meter reading (OCR)", "Advanced analytics"],
+    comingSoon: ["WhatsApp rent reminders", "Advanced analytics"],
     highlighted: true,
   },
   {
     id: "business",
-    name: "Business",
+    name: "RentalOS Management",
     tagline: "For societies and property managers.",
-    priceMonthly: null,
+    priceMonthly: 169,
     limits: { properties: null, rooms: null },
     features: [
-      "Everything in Pro",
+      "Everything in RentDesk",
       "Unlimited properties and rooms",
       "Partner organization account",
       "Bulk CSV inventory import",
@@ -95,6 +96,6 @@ export function getPlan(id: string | null | undefined): Plan {
 
 export function formatPlanPrice(plan: Plan): string {
   if (plan.priceMonthly === null) return "Coming soon";
-  if (plan.priceMonthly === 0) return "Free";
+  if (plan.priceMonthly === 0) return "₹0";
   return `₹${plan.priceMonthly.toLocaleString("en-IN")}/mo`;
 }
