@@ -1,0 +1,57 @@
+[33mcommit 0bfc88369c6c2668d429c3cf577cdd8e4a8c8080[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: arpitilu59-star <arpitilu59@gmail.com>
+Date:   Fri Oct 9 18:02:58 2026 +0530
+
+    Upgrade @tanstack/react-start to patched version (start-server-core >= 1.169.39)
+
+ package-lock.json | 1196 [32m+++++++++++++++++++++++++[m[31m----------------------------[m
+ package.json      |    2 [32m+[m[31m-[m
+ 2 files changed, 559 insertions(+), 639 deletions(-)
+
+[33mcommit ee656f8d9bf165a151cca5b1576f5126c8257875[m
+Author: arpitilu59-star <arpitilu59@gmail.com>
+Date:   Fri Oct 9 17:41:15 2026 +0530
+
+    RentalOS: video-first previews, new homepage, navbar, pricing, meter validation
+
+ src/components/LiveFeedCover.tsx                   | 221 [32m++++++[m[31m--[m
+ src/components/LiveFeedRecorder.tsx                |   3 [32m+[m[31m-[m
+ src/components/MyrShell.tsx                        |   2 [32m+[m[31m-[m
+ src/components/SiteNavbar.tsx                      | 159 [32m+++++[m[31m-[m
+ src/lib/pricing.ts                                 |  15 [32m+[m[31m-[m
+ src/lib/video.ts                                   |  66 [32m+++[m
+ src/routes/_authenticated/meters.tsx               | 363 [32m++++++++++[m[31m--[m
+ src/routes/index.tsx                               | 627 [32m++++++++++++++[m[31m-------[m
+ src/routes/landlord.login.tsx                      |   2 [32m+[m[31m-[m
+ src/routes/myr/browse.tsx                          |   3 [32m+[m[31m-[m
+ src/routes/myr/index.tsx                           |   6 [32m+[m[31m-[m
+ src/routes/myr/onboard.tsx                         |   2 [32m+[m[31m-[m
+ src/routes/myr/room.$id.tsx                        |  74 [32m++[m[31m-[m
+ src/routes/myr/roommates.tsx                       |   2 [32m+[m[31m-[m
+ src/routes/pricing.tsx                             |   2 [32m+[m[31m-[m
+ src/routes/tenant.login.tsx                        |   2 [32m+[m[31m-[m
+ .../20260916000000_parking_intelligence.sql        |  74 [32m+++[m
+ .../migrations/20260916000001_lease_expiry.sql     | 105 [32m++++[m
+ 18 files changed, 1393 insertions(+), 335 deletions(-)
+
+[33mcommit f164ef850aa254de475298c5443da1408edbb62b[m
+Author: arpitilu59-star <arpitilu59@gmail.com>
+Date:   Wed Sep 16 20:01:30 2026 +0530
+
+    Fix sitemap robots and missing papaparse dependency
+
+ src/lib/pricing.ts                  | 100 [32m++++++++++++++++++++++++++++++++[m
+ src/lib/public-listing.functions.ts |  63 [32m++++++++++++++++++++[m
+ src/lib/seo.ts                      | 111 [32m++++++++++++++++++++++++++++++++++++[m
+ src/routeTree.gen.ts                |  21 [32m+++++++[m
+ src/routes/__root.tsx               |  20 [32m+++[m[31m----[m
+ src/routes/_authenticated.tsx       |  46 [32m++++++++++++[m[31m---[m
+ src/routes/about.tsx                |  94 [32m++++++++++++++++++[m[31m------------[m
+ src/routes/admin.tsx                |  11 [32m+++[m[31m-[m
+ src/routes/contact.tsx              |   9 [32m++[m[31m-[m
+ src/routes/index.tsx                |  20 [32m++++++[m[31m-[m
+ src/routes/myr/browse.tsx           |  11 [32m++++[m
+ src/routes/myr/room.$id.tsx         |  91 [32m++++++++++++++++++++++++++++[m[31m-[m
+ src/routes/pricing.tsx              | 102 [32m+++++++++++++++++++++++++++++++++[m
+ src/routes/tenant.tsx               |   8 [32m++[m[31m-[m
+ 14 files changed, 646 insertions(+), 61 deletions(-)

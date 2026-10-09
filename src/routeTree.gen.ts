@@ -9,119 +9,88 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TenantRouteImport } from './routes/tenant'
-import { Route as SystemAdminControlRouteImport } from './routes/system-admin-control'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as MyrRouteImport } from './routes/myr'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TenantIndexRouteImport } from './routes/tenant/index'
-import { Route as MyrIndexRouteImport } from './routes/myr/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as TenantLoginRouteImport } from './routes/tenant.login'
-import { Route as TenantTenantIdRouteImport } from './routes/tenant/$tenantId'
-import { Route as MyrSavedRouteImport } from './routes/myr/saved'
-import { Route as MyrRoommatesRouteImport } from './routes/myr/roommates'
-import { Route as MyrProfileRouteImport } from './routes/myr/profile'
-import { Route as MyrOnboardRouteImport } from './routes/myr/onboard'
-import { Route as MyrMessagesRouteImport } from './routes/myr/messages'
-import { Route as MyrLandlordRouteImport } from './routes/myr/landlord'
-import { Route as MyrBrowseRouteImport } from './routes/myr/browse'
-import { Route as MyrBookingsRouteImport } from './routes/myr/bookings'
-import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
-import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminSecurityRouteImport } from './routes/admin/security'
-import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
-import { Route as AdminOpsRouteImport } from './routes/admin/ops'
-import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
-import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
-import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
-import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
-import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
-import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
-import { Route as AdminActivityRouteImport } from './routes/admin/activity'
-import { Route as AuthenticatedVerifyIdentityRouteImport } from './routes/_authenticated/verify-identity'
-import { Route as AuthenticatedVerificationsRouteImport } from './routes/_authenticated/verifications'
-import { Route as AuthenticatedTenantsRouteImport } from './routes/_authenticated/tenants'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
-import { Route as AuthenticatedRentdeskRouteImport } from './routes/_authenticated/rentdesk'
-import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
-import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
-import { Route as AuthenticatedPaymentVerifyRouteImport } from './routes/_authenticated/payment-verify'
-import { Route as AuthenticatedPartnerImportRouteImport } from './routes/_authenticated/partner-import'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
-import { Route as AuthenticatedMovesRouteImport } from './routes/_authenticated/moves'
-import { Route as AuthenticatedMetersRouteImport } from './routes/_authenticated/meters'
-import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
-import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated/deposits'
-import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MyrRouteImport } from './routes/myr'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SystemAdminControlRouteImport } from './routes/system-admin-control'
+import { Route as TenantRouteImport } from './routes/tenant'
 import { Route as AuthenticatedBillsRouteImport } from './routes/_authenticated/bills'
-import { Route as TenantTenantIdIndexRouteImport } from './routes/tenant/$tenantId.index'
+import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated/deposits'
+import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
+import { Route as AuthenticatedMetersRouteImport } from './routes/_authenticated/meters'
+import { Route as AuthenticatedMovesRouteImport } from './routes/_authenticated/moves'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedPartnerImportRouteImport } from './routes/_authenticated/partner-import'
+import { Route as AuthenticatedPaymentVerifyRouteImport } from './routes/_authenticated/payment-verify'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
+import { Route as AuthenticatedRentdeskRouteImport } from './routes/_authenticated/rentdesk'
+import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedTenantsRouteImport } from './routes/_authenticated/tenants'
+import { Route as AuthenticatedVerificationsRouteImport } from './routes/_authenticated/verifications'
+import { Route as AuthenticatedVerifyIdentityRouteImport } from './routes/_authenticated/verify-identity'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminActivityRouteImport } from './routes/admin/activity'
+import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
+import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
+import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
+import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
+import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
+import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
+import { Route as AdminOpsRouteImport } from './routes/admin/ops'
+import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
+import { Route as AdminSecurityRouteImport } from './routes/admin/security'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
+import { Route as MyrIndexRouteImport } from './routes/myr/index'
+import { Route as MyrBookingsRouteImport } from './routes/myr/bookings'
+import { Route as MyrBrowseRouteImport } from './routes/myr/browse'
+import { Route as MyrLandlordRouteImport } from './routes/myr/landlord'
+import { Route as MyrMessagesRouteImport } from './routes/myr/messages'
+import { Route as MyrOnboardRouteImport } from './routes/myr/onboard'
+import { Route as MyrProfileRouteImport } from './routes/myr/profile'
+import { Route as MyrRoommatesRouteImport } from './routes/myr/roommates'
+import { Route as MyrSavedRouteImport } from './routes/myr/saved'
+import { Route as TenantIndexRouteImport } from './routes/tenant/index'
+import { Route as TenantTenantIdRouteImport } from './routes/tenant/$tenantId'
+import { Route as TenantLoginRouteImport } from './routes/tenant.login'
 import { Route as MyrLandlordIndexRouteImport } from './routes/myr/landlord/index'
-import { Route as TenantTenantIdRoomRouteImport } from './routes/tenant/$tenantId.room'
-import { Route as TenantTenantIdRentRouteImport } from './routes/tenant/$tenantId.rent'
-import { Route as TenantTenantIdProfileRouteImport } from './routes/tenant/$tenantId.profile'
-import { Route as TenantTenantIdNotificationsRouteImport } from './routes/tenant/$tenantId.notifications'
-import { Route as TenantTenantIdMeterRouteImport } from './routes/tenant/$tenantId.meter'
-import { Route as TenantTenantIdMaintenanceRouteImport } from './routes/tenant/$tenantId.maintenance'
-import { Route as TenantTenantIdHistoryRouteImport } from './routes/tenant/$tenantId.history'
-import { Route as TenantTenantIdDocumentsRouteImport } from './routes/tenant/$tenantId.documents'
-import { Route as TenantTenantIdDepositRouteImport } from './routes/tenant/$tenantId.deposit'
-import { Route as MyrRoomIdRouteImport } from './routes/myr/room.$id'
-import { Route as MyrListingIdRouteImport } from './routes/myr/listing.$id'
-import { Route as MyrLandlordVerifyRouteImport } from './routes/myr/landlord/verify'
-import { Route as MyrLandlordNewRouteImport } from './routes/myr/landlord/new'
-import { Route as MyrLandlordListingsRouteImport } from './routes/myr/landlord/listings'
-import { Route as MyrLandlordInquiriesRouteImport } from './routes/myr/landlord/inquiries'
-import { Route as MyrLandlordBookingsRouteImport } from './routes/myr/landlord/bookings'
 import { Route as MyrLandlordIdRouteImport } from './routes/myr/landlord/$id'
+import { Route as MyrLandlordBookingsRouteImport } from './routes/myr/landlord/bookings'
+import { Route as MyrLandlordInquiriesRouteImport } from './routes/myr/landlord/inquiries'
+import { Route as MyrLandlordListingsRouteImport } from './routes/myr/landlord/listings'
+import { Route as MyrLandlordNewRouteImport } from './routes/myr/landlord/new'
+import { Route as MyrLandlordVerifyRouteImport } from './routes/myr/landlord/verify'
+import { Route as MyrListingIdRouteImport } from './routes/myr/listing.$id'
+import { Route as MyrRoomIdRouteImport } from './routes/myr/room.$id'
+import { Route as TenantTenantIdIndexRouteImport } from './routes/tenant/$tenantId.index'
+import { Route as TenantTenantIdDepositRouteImport } from './routes/tenant/$tenantId.deposit'
+import { Route as TenantTenantIdDocumentsRouteImport } from './routes/tenant/$tenantId.documents'
+import { Route as TenantTenantIdHistoryRouteImport } from './routes/tenant/$tenantId.history'
+import { Route as TenantTenantIdMaintenanceRouteImport } from './routes/tenant/$tenantId.maintenance'
+import { Route as TenantTenantIdMeterRouteImport } from './routes/tenant/$tenantId.meter'
+import { Route as TenantTenantIdNotificationsRouteImport } from './routes/tenant/$tenantId.notifications'
+import { Route as TenantTenantIdProfileRouteImport } from './routes/tenant/$tenantId.profile'
+import { Route as TenantTenantIdRentRouteImport } from './routes/tenant/$tenantId.rent'
+import { Route as TenantTenantIdRoomRouteImport } from './routes/tenant/$tenantId.room'
 import { Route as AuthenticatedRoomsRoomIdAnalysisRouteImport } from './routes/_authenticated/rooms_.$roomId.analysis'
 
-const TenantRoute = TenantRouteImport.update({
-  id: '/tenant',
-  path: '/tenant',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SystemAdminControlRoute = SystemAdminControlRouteImport.update({
-  id: '/system-admin-control',
-  path: '/system-admin-control',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyrRoute = MyrRouteImport.update({
-  id: '/myr',
-  path: '/myr',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -129,213 +98,59 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TenantIndexRoute = TenantIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TenantRoute,
-} as any)
-const MyrIndexRoute = MyrIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MyrRoute,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
-} as any)
-const TenantLoginRoute = TenantLoginRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => TenantRoute,
-} as any)
-const TenantTenantIdRoute = TenantTenantIdRouteImport.update({
-  id: '/$tenantId',
-  path: '/$tenantId',
-  getParentRoute: () => TenantRoute,
-} as any)
-const MyrSavedRoute = MyrSavedRouteImport.update({
-  id: '/saved',
-  path: '/saved',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrRoommatesRoute = MyrRoommatesRouteImport.update({
-  id: '/roommates',
-  path: '/roommates',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrProfileRoute = MyrProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrOnboardRoute = MyrOnboardRouteImport.update({
-  id: '/onboard',
-  path: '/onboard',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrMessagesRoute = MyrMessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrLandlordRoute = MyrLandlordRouteImport.update({
-  id: '/landlord',
-  path: '/landlord',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrBrowseRoute = MyrBrowseRouteImport.update({
-  id: '/browse',
-  path: '/browse',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrBookingsRoute = MyrBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
-  getParentRoute: () => MyrRoute,
-} as any)
-const LandlordLoginRoute = LandlordLoginRouteImport.update({
-  id: '/landlord/login',
-  path: '/landlord/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
+const MyrRoute = MyrRouteImport.update({
+  id: '/myr',
+  path: '/myr',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSecurityRoute = AdminSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => AdminRoute,
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPartnersRoute = AdminPartnersRouteImport.update({
-  id: '/partners',
-  path: '/partners',
-  getParentRoute: () => AdminRoute,
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminOpsRoute = AdminOpsRouteImport.update({
-  id: '/ops',
-  path: '/ops',
-  getParentRoute: () => AdminRoute,
+const SystemAdminControlRoute = SystemAdminControlRouteImport.update({
+  id: '/system-admin-control',
+  path: '/system-admin-control',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMyrVerificationsRoute = AdminMyrVerificationsRouteImport.update({
-  id: '/myr-verifications',
-  path: '/myr-verifications',
-  getParentRoute: () => AdminRoute,
+const TenantRoute = TenantRouteImport.update({
+  id: '/tenant',
+  path: '/tenant',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLiveFeedReviewRoute = AdminLiveFeedReviewRouteImport.update({
-  id: '/live-feed-review',
-  path: '/live-feed-review',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminFraudRoute = AdminFraudRouteImport.update({
-  id: '/fraud',
-  path: '/fraud',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDiagnosticsRoute = AdminDiagnosticsRouteImport.update({
-  id: '/diagnostics',
-  path: '/diagnostics',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminAuditsRoute = AdminAuditsRouteImport.update({
-  id: '/audits',
-  path: '/audits',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminAdminsRoute = AdminAdminsRouteImport.update({
-  id: '/admins',
-  path: '/admins',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminActivityRoute = AdminActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AuthenticatedVerifyIdentityRoute =
-  AuthenticatedVerifyIdentityRouteImport.update({
-    id: '/verify-identity',
-    path: '/verify-identity',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedVerificationsRoute =
-  AuthenticatedVerificationsRouteImport.update({
-    id: '/verifications',
-    path: '/verifications',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedTenantsRoute = AuthenticatedTenantsRouteImport.update({
-  id: '/tenants',
-  path: '/tenants',
+const AuthenticatedBillsRoute = AuthenticatedBillsRouteImport.update({
+  id: '/bills',
+  path: '/bills',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
-  id: '/rooms',
-  path: '/rooms',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedRentdeskRoute = AuthenticatedRentdeskRouteImport.update({
-  id: '/rentdesk',
-  path: '/rentdesk',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
-  id: '/properties',
-  path: '/properties',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedPaymentVerifyRoute =
-  AuthenticatedPaymentVerifyRouteImport.update({
-    id: '/payment-verify',
-    path: '/payment-verify',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedPartnerImportRoute =
-  AuthenticatedPartnerImportRouteImport.update({
-    id: '/partner-import',
-    path: '/partner-import',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedNotificationsRoute =
-  AuthenticatedNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedMovesRoute = AuthenticatedMovesRouteImport.update({
-  id: '/moves',
-  path: '/moves',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedMetersRoute = AuthenticatedMetersRouteImport.update({
-  id: '/meters',
-  path: '/meters',
+const AuthenticatedDepositsRoute = AuthenticatedDepositsRouteImport.update({
+  id: '/deposits',
+  path: '/deposits',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMaintenanceRoute =
@@ -344,55 +159,269 @@ const AuthenticatedMaintenanceRoute =
     path: '/maintenance',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedDepositsRoute = AuthenticatedDepositsRouteImport.update({
-  id: '/deposits',
-  path: '/deposits',
+const AuthenticatedMetersRoute = AuthenticatedMetersRouteImport.update({
+  id: '/meters',
+  path: '/meters',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
+const AuthenticatedMovesRoute = AuthenticatedMovesRouteImport.update({
+  id: '/moves',
+  path: '/moves',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedBillsRoute = AuthenticatedBillsRouteImport.update({
-  id: '/bills',
-  path: '/bills',
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const TenantTenantIdIndexRoute = TenantTenantIdIndexRouteImport.update({
+const AuthenticatedPartnerImportRoute =
+  AuthenticatedPartnerImportRouteImport.update({
+    id: '/partner-import',
+    path: '/partner-import',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPaymentVerifyRoute =
+  AuthenticatedPaymentVerifyRouteImport.update({
+    id: '/payment-verify',
+    path: '/payment-verify',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRentdeskRoute = AuthenticatedRentdeskRouteImport.update({
+  id: '/rentdesk',
+  path: '/rentdesk',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedTenantsRoute = AuthenticatedTenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedVerificationsRoute =
+  AuthenticatedVerificationsRouteImport.update({
+    id: '/verifications',
+    path: '/verifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedVerifyIdentityRoute =
+  AuthenticatedVerifyIdentityRouteImport.update({
+    id: '/verify-identity',
+    path: '/verify-identity',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => TenantTenantIdRoute,
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminsRoute = AdminAdminsRouteImport.update({
+  id: '/admins',
+  path: '/admins',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditsRoute = AdminAuditsRouteImport.update({
+  id: '/audits',
+  path: '/audits',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDiagnosticsRoute = AdminDiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFraudRoute = AdminFraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLiveFeedReviewRoute = AdminLiveFeedReviewRouteImport.update({
+  id: '/live-feed-review',
+  path: '/live-feed-review',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMyrVerificationsRoute = AdminMyrVerificationsRouteImport.update({
+  id: '/myr-verifications',
+  path: '/myr-verifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOpsRoute = AdminOpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPartnersRoute = AdminPartnersRouteImport.update({
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSecurityRoute = AdminSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const LandlordLoginRoute = LandlordLoginRouteImport.update({
+  id: '/landlord/login',
+  path: '/landlord/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyrIndexRoute = MyrIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrBookingsRoute = MyrBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrBrowseRoute = MyrBrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrLandlordRoute = MyrLandlordRouteImport.update({
+  id: '/landlord',
+  path: '/landlord',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrMessagesRoute = MyrMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrOnboardRoute = MyrOnboardRouteImport.update({
+  id: '/onboard',
+  path: '/onboard',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrProfileRoute = MyrProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrRoommatesRoute = MyrRoommatesRouteImport.update({
+  id: '/roommates',
+  path: '/roommates',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrSavedRoute = MyrSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => MyrRoute,
+} as any)
+const TenantIndexRoute = TenantIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TenantRoute,
+} as any)
+const TenantTenantIdRoute = TenantTenantIdRouteImport.update({
+  id: '/$tenantId',
+  path: '/$tenantId',
+  getParentRoute: () => TenantRoute,
+} as any)
+const TenantLoginRoute = TenantLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => TenantRoute,
 } as any)
 const MyrLandlordIndexRoute = MyrLandlordIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MyrLandlordRoute,
 } as any)
-const TenantTenantIdRoomRoute = TenantTenantIdRoomRouteImport.update({
-  id: '/room',
-  path: '/room',
+const MyrLandlordIdRoute = MyrLandlordIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrLandlordBookingsRoute = MyrLandlordBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrLandlordInquiriesRoute = MyrLandlordInquiriesRouteImport.update({
+  id: '/inquiries',
+  path: '/inquiries',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrLandlordListingsRoute = MyrLandlordListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrLandlordNewRoute = MyrLandlordNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrLandlordVerifyRoute = MyrLandlordVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => MyrLandlordRoute,
+} as any)
+const MyrListingIdRoute = MyrListingIdRouteImport.update({
+  id: '/listing/$id',
+  path: '/listing/$id',
+  getParentRoute: () => MyrRoute,
+} as any)
+const MyrRoomIdRoute = MyrRoomIdRouteImport.update({
+  id: '/room/$id',
+  path: '/room/$id',
+  getParentRoute: () => MyrRoute,
+} as any)
+const TenantTenantIdIndexRoute = TenantTenantIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdRentRoute = TenantTenantIdRentRouteImport.update({
-  id: '/rent',
-  path: '/rent',
+const TenantTenantIdDepositRoute = TenantTenantIdDepositRouteImport.update({
+  id: '/deposit',
+  path: '/deposit',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdProfileRoute = TenantTenantIdProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+const TenantTenantIdDocumentsRoute = TenantTenantIdDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdNotificationsRoute =
-  TenantTenantIdNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => TenantTenantIdRoute,
-  } as any)
-const TenantTenantIdMeterRoute = TenantTenantIdMeterRouteImport.update({
-  id: '/meter',
-  path: '/meter',
+const TenantTenantIdHistoryRoute = TenantTenantIdHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
 const TenantTenantIdMaintenanceRoute =
@@ -401,60 +430,31 @@ const TenantTenantIdMaintenanceRoute =
     path: '/maintenance',
     getParentRoute: () => TenantTenantIdRoute,
   } as any)
-const TenantTenantIdHistoryRoute = TenantTenantIdHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const TenantTenantIdMeterRoute = TenantTenantIdMeterRouteImport.update({
+  id: '/meter',
+  path: '/meter',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdDocumentsRoute = TenantTenantIdDocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
+const TenantTenantIdNotificationsRoute =
+  TenantTenantIdNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => TenantTenantIdRoute,
+  } as any)
+const TenantTenantIdProfileRoute = TenantTenantIdProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdDepositRoute = TenantTenantIdDepositRouteImport.update({
-  id: '/deposit',
-  path: '/deposit',
+const TenantTenantIdRentRoute = TenantTenantIdRentRouteImport.update({
+  id: '/rent',
+  path: '/rent',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const MyrRoomIdRoute = MyrRoomIdRouteImport.update({
-  id: '/room/$id',
-  path: '/room/$id',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrListingIdRoute = MyrListingIdRouteImport.update({
-  id: '/listing/$id',
-  path: '/listing/$id',
-  getParentRoute: () => MyrRoute,
-} as any)
-const MyrLandlordVerifyRoute = MyrLandlordVerifyRouteImport.update({
-  id: '/verify',
-  path: '/verify',
-  getParentRoute: () => MyrLandlordRoute,
-} as any)
-const MyrLandlordNewRoute = MyrLandlordNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => MyrLandlordRoute,
-} as any)
-const MyrLandlordListingsRoute = MyrLandlordListingsRouteImport.update({
-  id: '/listings',
-  path: '/listings',
-  getParentRoute: () => MyrLandlordRoute,
-} as any)
-const MyrLandlordInquiriesRoute = MyrLandlordInquiriesRouteImport.update({
-  id: '/inquiries',
-  path: '/inquiries',
-  getParentRoute: () => MyrLandlordRoute,
-} as any)
-const MyrLandlordBookingsRoute = MyrLandlordBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
-  getParentRoute: () => MyrLandlordRoute,
-} as any)
-const MyrLandlordIdRoute = MyrLandlordIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => MyrLandlordRoute,
+const TenantTenantIdRoomRoute = TenantTenantIdRoomRouteImport.update({
+  id: '/room',
+  path: '/room',
+  getParentRoute: () => TenantTenantIdRoute,
 } as any)
 const AuthenticatedRoomsRoomIdAnalysisRoute =
   AuthenticatedRoomsRoomIdAnalysisRouteImport.update({
@@ -926,67 +926,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tenant': {
-      id: '/tenant'
-      path: '/tenant'
-      fullPath: '/tenant'
-      preLoaderRoute: typeof TenantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system-admin-control': {
-      id: '/system-admin-control'
-      path: '/system-admin-control'
-      fullPath: '/system-admin-control'
-      preLoaderRoute: typeof SystemAdminControlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/myr': {
-      id: '/myr'
-      path: '/myr'
-      fullPath: '/myr'
-      preLoaderRoute: typeof MyrRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -996,298 +940,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tenant/': {
-      id: '/tenant/'
-      path: '/'
-      fullPath: '/tenant/'
-      preLoaderRoute: typeof TenantIndexRouteImport
-      parentRoute: typeof TenantRoute
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/myr/': {
-      id: '/myr/'
-      path: '/'
-      fullPath: '/myr/'
-      preLoaderRoute: typeof MyrIndexRouteImport
-      parentRoute: typeof MyrRoute
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/tenant/login': {
-      id: '/tenant/login'
+    '/login': {
+      id: '/login'
       path: '/login'
-      fullPath: '/tenant/login'
-      preLoaderRoute: typeof TenantLoginRouteImport
-      parentRoute: typeof TenantRoute
-    }
-    '/tenant/$tenantId': {
-      id: '/tenant/$tenantId'
-      path: '/$tenantId'
-      fullPath: '/tenant/$tenantId'
-      preLoaderRoute: typeof TenantTenantIdRouteImport
-      parentRoute: typeof TenantRoute
-    }
-    '/myr/saved': {
-      id: '/myr/saved'
-      path: '/saved'
-      fullPath: '/myr/saved'
-      preLoaderRoute: typeof MyrSavedRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/roommates': {
-      id: '/myr/roommates'
-      path: '/roommates'
-      fullPath: '/myr/roommates'
-      preLoaderRoute: typeof MyrRoommatesRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/profile': {
-      id: '/myr/profile'
-      path: '/profile'
-      fullPath: '/myr/profile'
-      preLoaderRoute: typeof MyrProfileRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/onboard': {
-      id: '/myr/onboard'
-      path: '/onboard'
-      fullPath: '/myr/onboard'
-      preLoaderRoute: typeof MyrOnboardRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/messages': {
-      id: '/myr/messages'
-      path: '/messages'
-      fullPath: '/myr/messages'
-      preLoaderRoute: typeof MyrMessagesRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/landlord': {
-      id: '/myr/landlord'
-      path: '/landlord'
-      fullPath: '/myr/landlord'
-      preLoaderRoute: typeof MyrLandlordRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/browse': {
-      id: '/myr/browse'
-      path: '/browse'
-      fullPath: '/myr/browse'
-      preLoaderRoute: typeof MyrBrowseRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/bookings': {
-      id: '/myr/bookings'
-      path: '/bookings'
-      fullPath: '/myr/bookings'
-      preLoaderRoute: typeof MyrBookingsRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/landlord/login': {
-      id: '/landlord/login'
-      path: '/landlord/login'
-      fullPath: '/landlord/login'
-      preLoaderRoute: typeof LandlordLoginRouteImport
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
+    '/myr': {
+      id: '/myr'
+      path: '/myr'
+      fullPath: '/myr'
+      preLoaderRoute: typeof MyrRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/security': {
-      id: '/admin/security'
-      path: '/security'
-      fullPath: '/admin/security'
-      preLoaderRoute: typeof AdminSecurityRouteImport
-      parentRoute: typeof AdminRoute
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/partners': {
-      id: '/admin/partners'
-      path: '/partners'
-      fullPath: '/admin/partners'
-      preLoaderRoute: typeof AdminPartnersRouteImport
-      parentRoute: typeof AdminRoute
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/ops': {
-      id: '/admin/ops'
-      path: '/ops'
-      fullPath: '/admin/ops'
-      preLoaderRoute: typeof AdminOpsRouteImport
-      parentRoute: typeof AdminRoute
+    '/system-admin-control': {
+      id: '/system-admin-control'
+      path: '/system-admin-control'
+      fullPath: '/system-admin-control'
+      preLoaderRoute: typeof SystemAdminControlRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/myr-verifications': {
-      id: '/admin/myr-verifications'
-      path: '/myr-verifications'
-      fullPath: '/admin/myr-verifications'
-      preLoaderRoute: typeof AdminMyrVerificationsRouteImport
-      parentRoute: typeof AdminRoute
+    '/tenant': {
+      id: '/tenant'
+      path: '/tenant'
+      fullPath: '/tenant'
+      preLoaderRoute: typeof TenantRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/live-feed-review': {
-      id: '/admin/live-feed-review'
-      path: '/live-feed-review'
-      fullPath: '/admin/live-feed-review'
-      preLoaderRoute: typeof AdminLiveFeedReviewRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/fraud': {
-      id: '/admin/fraud'
-      path: '/fraud'
-      fullPath: '/admin/fraud'
-      preLoaderRoute: typeof AdminFraudRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/diagnostics': {
-      id: '/admin/diagnostics'
-      path: '/diagnostics'
-      fullPath: '/admin/diagnostics'
-      preLoaderRoute: typeof AdminDiagnosticsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/audits': {
-      id: '/admin/audits'
-      path: '/audits'
-      fullPath: '/admin/audits'
-      preLoaderRoute: typeof AdminAuditsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/admins': {
-      id: '/admin/admins'
-      path: '/admins'
-      fullPath: '/admin/admins'
-      preLoaderRoute: typeof AdminAdminsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/activity': {
-      id: '/admin/activity'
-      path: '/activity'
-      fullPath: '/admin/activity'
-      preLoaderRoute: typeof AdminActivityRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_authenticated/verify-identity': {
-      id: '/_authenticated/verify-identity'
-      path: '/verify-identity'
-      fullPath: '/verify-identity'
-      preLoaderRoute: typeof AuthenticatedVerifyIdentityRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/verifications': {
-      id: '/_authenticated/verifications'
-      path: '/verifications'
-      fullPath: '/verifications'
-      preLoaderRoute: typeof AuthenticatedVerificationsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/tenants': {
-      id: '/_authenticated/tenants'
-      path: '/tenants'
-      fullPath: '/tenants'
-      preLoaderRoute: typeof AuthenticatedTenantsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/rooms': {
-      id: '/_authenticated/rooms'
-      path: '/rooms'
-      fullPath: '/rooms'
-      preLoaderRoute: typeof AuthenticatedRoomsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/rentdesk': {
-      id: '/_authenticated/rentdesk'
-      path: '/rentdesk'
-      fullPath: '/rentdesk'
-      preLoaderRoute: typeof AuthenticatedRentdeskRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/properties': {
-      id: '/_authenticated/properties'
-      path: '/properties'
-      fullPath: '/properties'
-      preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/payment-verify': {
-      id: '/_authenticated/payment-verify'
-      path: '/payment-verify'
-      fullPath: '/payment-verify'
-      preLoaderRoute: typeof AuthenticatedPaymentVerifyRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/partner-import': {
-      id: '/_authenticated/partner-import'
-      path: '/partner-import'
-      fullPath: '/partner-import'
-      preLoaderRoute: typeof AuthenticatedPartnerImportRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/notifications': {
-      id: '/_authenticated/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/moves': {
-      id: '/_authenticated/moves'
-      path: '/moves'
-      fullPath: '/moves'
-      preLoaderRoute: typeof AuthenticatedMovesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/meters': {
-      id: '/_authenticated/meters'
-      path: '/meters'
-      fullPath: '/meters'
-      preLoaderRoute: typeof AuthenticatedMetersRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/maintenance': {
-      id: '/_authenticated/maintenance'
-      path: '/maintenance'
-      fullPath: '/maintenance'
-      preLoaderRoute: typeof AuthenticatedMaintenanceRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/deposits': {
-      id: '/_authenticated/deposits'
-      path: '/deposits'
-      fullPath: '/deposits'
-      preLoaderRoute: typeof AuthenticatedDepositsRouteImport
+    '/_authenticated/bills': {
+      id: '/_authenticated/bills'
+      path: '/bills'
+      fullPath: '/bills'
+      preLoaderRoute: typeof AuthenticatedBillsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/bookings': {
@@ -1297,19 +1017,292 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/bills': {
-      id: '/_authenticated/bills'
-      path: '/bills'
-      fullPath: '/bills'
-      preLoaderRoute: typeof AuthenticatedBillsRouteImport
+    '/_authenticated/deposits': {
+      id: '/_authenticated/deposits'
+      path: '/deposits'
+      fullPath: '/deposits'
+      preLoaderRoute: typeof AuthenticatedDepositsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/tenant/$tenantId/': {
-      id: '/tenant/$tenantId/'
+    '/_authenticated/maintenance': {
+      id: '/_authenticated/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof AuthenticatedMaintenanceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/meters': {
+      id: '/_authenticated/meters'
+      path: '/meters'
+      fullPath: '/meters'
+      preLoaderRoute: typeof AuthenticatedMetersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/moves': {
+      id: '/_authenticated/moves'
+      path: '/moves'
+      fullPath: '/moves'
+      preLoaderRoute: typeof AuthenticatedMovesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/partner-import': {
+      id: '/_authenticated/partner-import'
+      path: '/partner-import'
+      fullPath: '/partner-import'
+      preLoaderRoute: typeof AuthenticatedPartnerImportRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/payment-verify': {
+      id: '/_authenticated/payment-verify'
+      path: '/payment-verify'
+      fullPath: '/payment-verify'
+      preLoaderRoute: typeof AuthenticatedPaymentVerifyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/properties': {
+      id: '/_authenticated/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rentdesk': {
+      id: '/_authenticated/rentdesk'
+      path: '/rentdesk'
+      fullPath: '/rentdesk'
+      preLoaderRoute: typeof AuthenticatedRentdeskRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rooms': {
+      id: '/_authenticated/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof AuthenticatedRoomsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tenants': {
+      id: '/_authenticated/tenants'
+      path: '/tenants'
+      fullPath: '/tenants'
+      preLoaderRoute: typeof AuthenticatedTenantsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/verifications': {
+      id: '/_authenticated/verifications'
+      path: '/verifications'
+      fullPath: '/verifications'
+      preLoaderRoute: typeof AuthenticatedVerificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/verify-identity': {
+      id: '/_authenticated/verify-identity'
+      path: '/verify-identity'
+      fullPath: '/verify-identity'
+      preLoaderRoute: typeof AuthenticatedVerifyIdentityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/admin/': {
+      id: '/admin/'
       path: '/'
-      fullPath: '/tenant/$tenantId/'
-      preLoaderRoute: typeof TenantTenantIdIndexRouteImport
-      parentRoute: typeof TenantTenantIdRoute
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/admins': {
+      id: '/admin/admins'
+      path: '/admins'
+      fullPath: '/admin/admins'
+      preLoaderRoute: typeof AdminAdminsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audits': {
+      id: '/admin/audits'
+      path: '/audits'
+      fullPath: '/admin/audits'
+      preLoaderRoute: typeof AdminAuditsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/diagnostics': {
+      id: '/admin/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/admin/diagnostics'
+      preLoaderRoute: typeof AdminDiagnosticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/fraud': {
+      id: '/admin/fraud'
+      path: '/fraud'
+      fullPath: '/admin/fraud'
+      preLoaderRoute: typeof AdminFraudRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/live-feed-review': {
+      id: '/admin/live-feed-review'
+      path: '/live-feed-review'
+      fullPath: '/admin/live-feed-review'
+      preLoaderRoute: typeof AdminLiveFeedReviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/myr-verifications': {
+      id: '/admin/myr-verifications'
+      path: '/myr-verifications'
+      fullPath: '/admin/myr-verifications'
+      preLoaderRoute: typeof AdminMyrVerificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ops': {
+      id: '/admin/ops'
+      path: '/ops'
+      fullPath: '/admin/ops'
+      preLoaderRoute: typeof AdminOpsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/partners': {
+      id: '/admin/partners'
+      path: '/partners'
+      fullPath: '/admin/partners'
+      preLoaderRoute: typeof AdminPartnersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/security': {
+      id: '/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AdminSecurityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/landlord/login': {
+      id: '/landlord/login'
+      path: '/landlord/login'
+      fullPath: '/landlord/login'
+      preLoaderRoute: typeof LandlordLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/myr/': {
+      id: '/myr/'
+      path: '/'
+      fullPath: '/myr/'
+      preLoaderRoute: typeof MyrIndexRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/bookings': {
+      id: '/myr/bookings'
+      path: '/bookings'
+      fullPath: '/myr/bookings'
+      preLoaderRoute: typeof MyrBookingsRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/browse': {
+      id: '/myr/browse'
+      path: '/browse'
+      fullPath: '/myr/browse'
+      preLoaderRoute: typeof MyrBrowseRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/landlord': {
+      id: '/myr/landlord'
+      path: '/landlord'
+      fullPath: '/myr/landlord'
+      preLoaderRoute: typeof MyrLandlordRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/messages': {
+      id: '/myr/messages'
+      path: '/messages'
+      fullPath: '/myr/messages'
+      preLoaderRoute: typeof MyrMessagesRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/onboard': {
+      id: '/myr/onboard'
+      path: '/onboard'
+      fullPath: '/myr/onboard'
+      preLoaderRoute: typeof MyrOnboardRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/profile': {
+      id: '/myr/profile'
+      path: '/profile'
+      fullPath: '/myr/profile'
+      preLoaderRoute: typeof MyrProfileRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/roommates': {
+      id: '/myr/roommates'
+      path: '/roommates'
+      fullPath: '/myr/roommates'
+      preLoaderRoute: typeof MyrRoommatesRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/saved': {
+      id: '/myr/saved'
+      path: '/saved'
+      fullPath: '/myr/saved'
+      preLoaderRoute: typeof MyrSavedRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/tenant/': {
+      id: '/tenant/'
+      path: '/'
+      fullPath: '/tenant/'
+      preLoaderRoute: typeof TenantIndexRouteImport
+      parentRoute: typeof TenantRoute
+    }
+    '/tenant/$tenantId': {
+      id: '/tenant/$tenantId'
+      path: '/$tenantId'
+      fullPath: '/tenant/$tenantId'
+      preLoaderRoute: typeof TenantTenantIdRouteImport
+      parentRoute: typeof TenantRoute
+    }
+    '/tenant/login': {
+      id: '/tenant/login'
+      path: '/login'
+      fullPath: '/tenant/login'
+      preLoaderRoute: typeof TenantLoginRouteImport
+      parentRoute: typeof TenantRoute
     }
     '/myr/landlord/': {
       id: '/myr/landlord/'
@@ -1318,109 +1311,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyrLandlordIndexRouteImport
       parentRoute: typeof MyrLandlordRoute
     }
-    '/tenant/$tenantId/room': {
-      id: '/tenant/$tenantId/room'
-      path: '/room'
-      fullPath: '/tenant/$tenantId/room'
-      preLoaderRoute: typeof TenantTenantIdRoomRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/rent': {
-      id: '/tenant/$tenantId/rent'
-      path: '/rent'
-      fullPath: '/tenant/$tenantId/rent'
-      preLoaderRoute: typeof TenantTenantIdRentRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/profile': {
-      id: '/tenant/$tenantId/profile'
-      path: '/profile'
-      fullPath: '/tenant/$tenantId/profile'
-      preLoaderRoute: typeof TenantTenantIdProfileRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/notifications': {
-      id: '/tenant/$tenantId/notifications'
-      path: '/notifications'
-      fullPath: '/tenant/$tenantId/notifications'
-      preLoaderRoute: typeof TenantTenantIdNotificationsRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/meter': {
-      id: '/tenant/$tenantId/meter'
-      path: '/meter'
-      fullPath: '/tenant/$tenantId/meter'
-      preLoaderRoute: typeof TenantTenantIdMeterRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/maintenance': {
-      id: '/tenant/$tenantId/maintenance'
-      path: '/maintenance'
-      fullPath: '/tenant/$tenantId/maintenance'
-      preLoaderRoute: typeof TenantTenantIdMaintenanceRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/history': {
-      id: '/tenant/$tenantId/history'
-      path: '/history'
-      fullPath: '/tenant/$tenantId/history'
-      preLoaderRoute: typeof TenantTenantIdHistoryRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/documents': {
-      id: '/tenant/$tenantId/documents'
-      path: '/documents'
-      fullPath: '/tenant/$tenantId/documents'
-      preLoaderRoute: typeof TenantTenantIdDocumentsRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/deposit': {
-      id: '/tenant/$tenantId/deposit'
-      path: '/deposit'
-      fullPath: '/tenant/$tenantId/deposit'
-      preLoaderRoute: typeof TenantTenantIdDepositRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/myr/room/$id': {
-      id: '/myr/room/$id'
-      path: '/room/$id'
-      fullPath: '/myr/room/$id'
-      preLoaderRoute: typeof MyrRoomIdRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/listing/$id': {
-      id: '/myr/listing/$id'
-      path: '/listing/$id'
-      fullPath: '/myr/listing/$id'
-      preLoaderRoute: typeof MyrListingIdRouteImport
-      parentRoute: typeof MyrRoute
-    }
-    '/myr/landlord/verify': {
-      id: '/myr/landlord/verify'
-      path: '/verify'
-      fullPath: '/myr/landlord/verify'
-      preLoaderRoute: typeof MyrLandlordVerifyRouteImport
-      parentRoute: typeof MyrLandlordRoute
-    }
-    '/myr/landlord/new': {
-      id: '/myr/landlord/new'
-      path: '/new'
-      fullPath: '/myr/landlord/new'
-      preLoaderRoute: typeof MyrLandlordNewRouteImport
-      parentRoute: typeof MyrLandlordRoute
-    }
-    '/myr/landlord/listings': {
-      id: '/myr/landlord/listings'
-      path: '/listings'
-      fullPath: '/myr/landlord/listings'
-      preLoaderRoute: typeof MyrLandlordListingsRouteImport
-      parentRoute: typeof MyrLandlordRoute
-    }
-    '/myr/landlord/inquiries': {
-      id: '/myr/landlord/inquiries'
-      path: '/inquiries'
-      fullPath: '/myr/landlord/inquiries'
-      preLoaderRoute: typeof MyrLandlordInquiriesRouteImport
+    '/myr/landlord/$id': {
+      id: '/myr/landlord/$id'
+      path: '/$id'
+      fullPath: '/myr/landlord/$id'
+      preLoaderRoute: typeof MyrLandlordIdRouteImport
       parentRoute: typeof MyrLandlordRoute
     }
     '/myr/landlord/bookings': {
@@ -1430,12 +1325,117 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyrLandlordBookingsRouteImport
       parentRoute: typeof MyrLandlordRoute
     }
-    '/myr/landlord/$id': {
-      id: '/myr/landlord/$id'
-      path: '/$id'
-      fullPath: '/myr/landlord/$id'
-      preLoaderRoute: typeof MyrLandlordIdRouteImport
+    '/myr/landlord/inquiries': {
+      id: '/myr/landlord/inquiries'
+      path: '/inquiries'
+      fullPath: '/myr/landlord/inquiries'
+      preLoaderRoute: typeof MyrLandlordInquiriesRouteImport
       parentRoute: typeof MyrLandlordRoute
+    }
+    '/myr/landlord/listings': {
+      id: '/myr/landlord/listings'
+      path: '/listings'
+      fullPath: '/myr/landlord/listings'
+      preLoaderRoute: typeof MyrLandlordListingsRouteImport
+      parentRoute: typeof MyrLandlordRoute
+    }
+    '/myr/landlord/new': {
+      id: '/myr/landlord/new'
+      path: '/new'
+      fullPath: '/myr/landlord/new'
+      preLoaderRoute: typeof MyrLandlordNewRouteImport
+      parentRoute: typeof MyrLandlordRoute
+    }
+    '/myr/landlord/verify': {
+      id: '/myr/landlord/verify'
+      path: '/verify'
+      fullPath: '/myr/landlord/verify'
+      preLoaderRoute: typeof MyrLandlordVerifyRouteImport
+      parentRoute: typeof MyrLandlordRoute
+    }
+    '/myr/listing/$id': {
+      id: '/myr/listing/$id'
+      path: '/listing/$id'
+      fullPath: '/myr/listing/$id'
+      preLoaderRoute: typeof MyrListingIdRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/myr/room/$id': {
+      id: '/myr/room/$id'
+      path: '/room/$id'
+      fullPath: '/myr/room/$id'
+      preLoaderRoute: typeof MyrRoomIdRouteImport
+      parentRoute: typeof MyrRoute
+    }
+    '/tenant/$tenantId/': {
+      id: '/tenant/$tenantId/'
+      path: '/'
+      fullPath: '/tenant/$tenantId/'
+      preLoaderRoute: typeof TenantTenantIdIndexRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/deposit': {
+      id: '/tenant/$tenantId/deposit'
+      path: '/deposit'
+      fullPath: '/tenant/$tenantId/deposit'
+      preLoaderRoute: typeof TenantTenantIdDepositRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/documents': {
+      id: '/tenant/$tenantId/documents'
+      path: '/documents'
+      fullPath: '/tenant/$tenantId/documents'
+      preLoaderRoute: typeof TenantTenantIdDocumentsRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/history': {
+      id: '/tenant/$tenantId/history'
+      path: '/history'
+      fullPath: '/tenant/$tenantId/history'
+      preLoaderRoute: typeof TenantTenantIdHistoryRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/maintenance': {
+      id: '/tenant/$tenantId/maintenance'
+      path: '/maintenance'
+      fullPath: '/tenant/$tenantId/maintenance'
+      preLoaderRoute: typeof TenantTenantIdMaintenanceRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/meter': {
+      id: '/tenant/$tenantId/meter'
+      path: '/meter'
+      fullPath: '/tenant/$tenantId/meter'
+      preLoaderRoute: typeof TenantTenantIdMeterRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/notifications': {
+      id: '/tenant/$tenantId/notifications'
+      path: '/notifications'
+      fullPath: '/tenant/$tenantId/notifications'
+      preLoaderRoute: typeof TenantTenantIdNotificationsRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/profile': {
+      id: '/tenant/$tenantId/profile'
+      path: '/profile'
+      fullPath: '/tenant/$tenantId/profile'
+      preLoaderRoute: typeof TenantTenantIdProfileRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/rent': {
+      id: '/tenant/$tenantId/rent'
+      path: '/rent'
+      fullPath: '/tenant/$tenantId/rent'
+      preLoaderRoute: typeof TenantTenantIdRentRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/room': {
+      id: '/tenant/$tenantId/room'
+      path: '/room'
+      fullPath: '/tenant/$tenantId/room'
+      preLoaderRoute: typeof TenantTenantIdRoomRouteImport
+      parentRoute: typeof TenantTenantIdRoute
     }
     '/_authenticated/rooms_/$roomId/analysis': {
       id: '/_authenticated/rooms_/$roomId/analysis'
