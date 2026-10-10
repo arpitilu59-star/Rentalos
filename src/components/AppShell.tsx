@@ -27,7 +27,7 @@ const NAV = [
   { to: "/properties", label: "Properties", icon: Building2 },
   { to: "/rooms", label: "Rooms", icon: DoorOpen },
   { to: "/tenants", label: "Tenants", icon: Users },
-  { to: "/bookings", label: "MYR Bookings", icon: Inbox },
+  { to: "/bookings", label: "Rentalos Bookings", icon: Inbox },
   { to: "/payment-verify", label: "Verify Payments", icon: BadgeCheck },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/verifications", label: "Verify", icon: ShieldCheck },

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { WhatsAppLinkCard } from "@/components/WhatsAppLinkCard";
 import { getSettings, updateSettings, type Settings } from "@/lib/db";
 
 export const Route = createFileRoute("/_authenticated/settings")({ component: SettingsPage });
@@ -41,6 +42,7 @@ function SettingsPage() {
             <button disabled={saving} className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-60">{saving ? "Saving…" : "Save settings"}</button>
           </div>
         </form>
+        <div className="mt-6"><WhatsAppLinkCard /></div>
       </div>
     </AppShell>
   );

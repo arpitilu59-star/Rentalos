@@ -50,6 +50,7 @@ import { Route as AdminOpsRouteImport } from './routes/admin/ops'
 import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminWhatsappRouteImport } from './routes/admin/whatsapp'
 import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
 import { Route as MyrIndexRouteImport } from './routes/myr/index'
 import { Route as MyrBookingsRouteImport } from './routes/myr/bookings'
@@ -294,6 +295,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminWhatsappRoute = AdminWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => AdminRoute,
+} as any)
 const LandlordLoginRoute = LandlordLoginRouteImport.update({
   id: '/landlord/login',
   path: '/landlord/login',
@@ -503,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
   '/myr/bookings': typeof MyrBookingsRoute
   '/myr/browse': typeof MyrBrowseRoute
@@ -575,6 +582,7 @@ export interface FileRoutesByTo {
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
   '/myr/bookings': typeof MyrBookingsRoute
   '/myr/browse': typeof MyrBrowseRoute
@@ -650,6 +658,7 @@ export interface FileRoutesById {
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
   '/myr/bookings': typeof MyrBookingsRoute
   '/myr/browse': typeof MyrBrowseRoute
@@ -727,6 +736,7 @@ export interface FileRouteTypes {
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/landlord/login'
     | '/myr/bookings'
     | '/myr/browse'
@@ -799,6 +809,7 @@ export interface FileRouteTypes {
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/landlord/login'
     | '/myr/bookings'
     | '/myr/browse'
@@ -873,6 +884,7 @@ export interface FileRouteTypes {
     | '/admin/partners'
     | '/admin/security'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/landlord/login'
     | '/myr/bookings'
     | '/myr/browse'
@@ -1213,6 +1225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/whatsapp': {
+      id: '/admin/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/admin/whatsapp'
+      preLoaderRoute: typeof AdminWhatsappRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/landlord/login': {
       id: '/landlord/login'
       path: '/landlord/login'
@@ -1507,6 +1526,7 @@ interface AdminRouteChildren {
   AdminPartnersRoute: typeof AdminPartnersRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWhatsappRoute: typeof AdminWhatsappRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -1522,6 +1542,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPartnersRoute: AdminPartnersRoute,
   AdminSecurityRoute: AdminSecurityRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWhatsappRoute: AdminWhatsappRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

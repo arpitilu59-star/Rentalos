@@ -19,6 +19,7 @@ import {
   BadgeCheck,
   Video,
   Building2,
+  MessageCircle,
 } from "lucide-react";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -94,8 +95,9 @@ function AdminLayout() {
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/ops", label: "Operations", icon: Activity },
+    { to: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
     { to: "/admin/fraud", label: "Fraud", icon: ShieldAlert },
-    { to: "/admin/myr-verifications", label: "MYR Verify", icon: BadgeCheck },
+    { to: "/admin/myr-verifications", label: "Rentalos Verify", icon: BadgeCheck },
     { to: "/admin/live-feed-review", label: "Live Feed", icon: Video },
     { to: "/admin/partners", label: "Partners", icon: Building2 },
     { to: "/admin/activity", label: "Activity", icon: Activity },

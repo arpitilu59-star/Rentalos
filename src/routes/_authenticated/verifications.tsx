@@ -104,7 +104,7 @@ function VerificationsPage() {
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Tenant & property verification with documents. (Your own landlord identity verification
-            for the MYR marketplace is at Verify Identity, under Landlord.)
+            for the Rentalos marketplace is at Verify Identity, under Landlord.)
           </p>
         </header>
 

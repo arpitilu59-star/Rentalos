@@ -66,9 +66,42 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+// Official Meta WhatsApp Cloud API endpoints. Handled here (raw fetch) because
+// the installed TanStack Start has no raw-HTTP route API. Never throws:
+// webhook errors answer 200 so Meta doesn't retry-storm; dispatch errors 500.
+async function handleWhatsAppRoute(request: Request, path: string): Promise<Response> {
+  try {
+    if (path === "/api/whatsapp/webhook") {
+      const { handleWebhookVerify, handleWebhookEvent } = await import("./lib/whatsapp/webhook");
+      if (request.method === "GET") return handleWebhookVerify(new URL(request.url));
+      if (request.method === "POST") return await handleWebhookEvent(request);
+      return new Response("Method not allowed", { status: 405 });
+    }
+    // /api/whatsapp/dispatch — called by a scheduler with a shared secret.
+    const secret = process.env.WHATSAPP_DISPATCH_SECRET;
+    if (!secret) return new Response("Dispatch not configured", { status: 500 });
+    if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+    if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const { dispatchPendingNotifications } = await import("./lib/whatsapp/dispatch");
+    const summary = await dispatchPendingNotifications();
+    return new Response(JSON.stringify(summary), { status: 200, headers: { "content-type": "application/json" } });
+  } catch (error) {
+    console.error("[whatsapp] route error:", error);
+    return path === "/api/whatsapp/webhook"
+      ? new Response("ok", { status: 200 })
+      : new Response("Internal error", { status: 500 });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const path = new URL(request.url).pathname;
+      if (path === "/api/whatsapp/webhook" || path === "/api/whatsapp/dispatch") {
+        return await handleWhatsAppRoute(request, path);
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

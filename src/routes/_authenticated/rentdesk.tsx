@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, type Bill, type Room, type Tenant } from "@/lib/db";
+import { WhatsAppAutomationPanel } from "@/components/WhatsAppAutomationPanel";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -84,6 +85,8 @@ function Dashboard() {
     <AppShell>
       <div className="space-y-6">
         <PageHeader title="Namaste 👋" subtitle="Aapke property ka quick overview." />
+
+        <WhatsAppAutomationPanel />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Total rooms" value={String(stats?.totalRooms ?? "—")} icon={DoorOpen} />

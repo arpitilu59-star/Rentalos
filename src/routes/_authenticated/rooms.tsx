@@ -54,15 +54,7 @@ function RoomsPage() {
       await doPublishRoom({ data: { room_id: r.id, publish: !r.is_public } });
       await load();
     } catch (e) {
-      const msg = (e as Error).message;
-      if (msg === "KYC_REQUIRED") {
-        alert(
-          "Publish karne se pehle apni landlord identity verify karni hogi. ID + selfie submit karein — admin review ke baad publish ho sakega.",
-        );
-        nav({ to: "/verify-identity" });
-      } else {
-        alert(msg);
-      }
+      alert(e instanceof Error ? e.message : "Couldn't update this room. Please try again.");
     }
     setBusyRoom(null);
   };
@@ -182,7 +174,7 @@ function RoomsPage() {
                       onClick={() => togglePublish(r)}
                       disabled={busyRoom === r.id}
                       className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-60 ${r.is_public ? "border border-border" : "bg-primary text-primary-foreground"}`}
-                      title={r.is_public ? "Remove from MYR" : "Show on MYR"}
+                      title={r.is_public ? "Remove from Rentalos" : "Show on Rentalos"}
                     >
                       {busyRoom === r.id ? (
                         <Loader2 className="size-3 animate-spin" />

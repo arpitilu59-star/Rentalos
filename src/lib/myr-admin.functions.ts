@@ -2,26 +2,57 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function assertPropertyAdmin(supabase: any, userId: string) {
-  const { data } = await supabase
+/**
+ * Any ACTIVE admin (root_owner, full_admin, support_admin, property_admin, …)
+ * may review verification requests. Authorization is decided here, on the
+ * server, from the user id in the validated JWT — never from frontend state.
+ * The lookup uses the service role so it can't be silently emptied by RLS.
+ */
+export type AdminLookupClient = {
+  from: (t: string) => {
+    select: (c: string) => {
+      eq: (
+        c: string,
+        v: unknown,
+      ) => {
+        eq: (
+          c: string,
+          v: unknown,
+        ) => {
+          maybeSingle: () => PromiseLike<{
+            data: { role: string } | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+};
+
+export async function assertActiveAdmin(client: AdminLookupClient, userId: string | undefined) {
+  if (!userId) throw new Error("Not signed in. Please log in again.");
+  const { data, error } = await client
     .from("admin_users")
-    .select("role, active")
+    .select("role")
     .eq("user_id", userId)
     .eq("active", true)
     .maybeSingle();
-  if (!data) throw new Error("Forbidden");
-  const allowed = ["root_owner", "full_admin", "property_admin", "support_admin"];
-  if (!allowed.includes(data.role)) throw new Error("Forbidden");
+  if (error) throw new Error("Couldn't verify your admin access. Please try again.");
+  if (!data) throw new Error("Admin access required. Your account is not an active admin.");
+  return data.role;
+}
+
+async function requireAdmin(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await assertActiveAdmin(supabaseAdmin as unknown as AdminLookupClient, userId);
+  return supabaseAdmin;
 }
 
 export const listMyrVerifications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { status?: "pending" | "verified" | "rejected" }) => input)
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    await assertPropertyAdmin(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await requireAdmin(context.userId);
     let q = supabaseAdmin
       .from("myr_verifications")
       .select("*")
@@ -59,9 +90,7 @@ export const signMyrDocUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => SignDocSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    await assertPropertyAdmin(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await requireAdmin(context.userId);
 
     const col = { id_doc: "id_doc_path", selfie: "selfie_path", property_doc: "property_doc_path" }[
       data.field
@@ -95,18 +124,48 @@ export const decideMyrVerification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => DecideSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    await assertPropertyAdmin(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { userId } = context;
+    const supabaseAdmin = await requireAdmin(userId);
+
+    const { data: existing, error: findErr } = await supabaseAdmin
+      .from("myr_verifications")
+      .select("id, user_id, kind, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (findErr) throw new Error("Couldn't load that verification. Please try again.");
+    if (!existing) throw new Error("This verification request no longer exists.");
+
+    const { data: updated, error } = await supabaseAdmin
       .from("myr_verifications")
       .update({
         status: data.decision,
         reviewed_by: userId,
         reviewed_at: new Date().toISOString(),
-        rejection_reason: data.decision === "rejected" ? (data.reason ?? null) : null,
+        rejection_reason: data.decision === "rejected" ? data.reason?.trim() || null : null,
       })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+      .eq("id", data.id)
+      .select("id, status")
+      .maybeSingle();
+    if (error) {
+      console.error("[myr-verification] decide failed:", error.message);
+      throw new Error("Couldn't save the decision: " + error.message);
+    }
+    if (!updated) throw new Error("The decision was not saved. Please refresh and try again.");
+
+    // Let the landlord know (best-effort; never blocks the decision).
+    try {
+      await supabaseAdmin.rpc("notify_user", {
+        _user: existing.user_id,
+        _kind: "verification_update",
+        _title: data.decision === "verified" ? "Verification approved" : "Verification rejected",
+        _body:
+          data.decision === "verified"
+            ? "Your documents were approved."
+            : data.reason?.trim() || "Please upload clearer documents and try again.",
+        _link: "/verify-identity",
+      });
+    } catch {
+      /* notification is optional */
+    }
+    return { ok: true, id: updated.id, status: updated.status as "verified" | "rejected" };
   });

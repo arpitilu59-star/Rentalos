@@ -154,7 +154,7 @@ export function MyrShell({
           <div className="size-8 rounded-lg bg-primary text-primary-foreground grid place-items-center font-bold text-sm">
             M
           </div>
-          <div className="font-semibold">MYR</div>
+          <div className="font-semibold">Rentalos</div>
         </Link>
         <div className="text-xs text-muted-foreground capitalize">{variant}</div>
       </header>

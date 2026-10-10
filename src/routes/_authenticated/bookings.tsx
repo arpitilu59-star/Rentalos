@@ -27,13 +27,13 @@ function BookingsPage() {
   return (
     <AppShell>
       <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Booking requests</h1>
-      <p className="text-muted-foreground mt-1">MYR se aayi hui tenant requests — accept karein to tenant automatically add ho jayega.</p>
+      <p className="text-muted-foreground mt-1">Rentalos se aayi hui tenant requests — accept karein to tenant automatically add ho jayega.</p>
 
       {isLoading ? (
         <div className="mt-10 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
       ) : !data?.bookings?.length ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Koi booking request nahi. Property ko MYR par publish karein to visible ho jayegi.
+          Koi booking request nahi. Property ko Rentalos par publish karein to visible ho jayegi.
         </div>
       ) : (
         <div className="mt-6 space-y-3">

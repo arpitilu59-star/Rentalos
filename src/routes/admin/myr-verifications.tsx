@@ -9,6 +9,19 @@ import {
 } from "@/lib/myr-admin.functions";
 import { ShieldCheck, Check, X, Eye, Loader2 } from "lucide-react";
 
+type VerificationRow = {
+  id: string;
+  user_id: string;
+  kind: string;
+  status: string;
+  created_at: string;
+  id_doc_path: string | null;
+  selfie_path: string | null;
+  property_doc_path: string | null;
+  rejection_reason: string | null;
+  profile: { full_name: string | null; email: string | null } | null;
+};
+
 export const Route = createFileRoute("/admin/myr-verifications")({ component: MyrVerifications });
 
 function MyrVerifications() {
@@ -18,30 +31,53 @@ function MyrVerifications() {
   const sign = useServerFn(signMyrDocUrl);
   const [status, setStatus] = useState<"pending" | "verified" | "rejected">("pending");
   const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    error: listError,
+    refetch,
+  } = useQuery({
     queryKey: ["myr-verifications", status],
     queryFn: () => list({ data: { status } }),
+    retry: false,
   });
 
   const open = async (verification_id: string, field: "id_doc" | "selfie" | "property_doc") => {
     try {
       const { url } = await sign({ data: { verification_id, field } });
-      window.open(url, "_blank");
+      window.open(url, "_blank", "noopener");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed");
+      setNotice({
+        kind: "err",
+        text: e instanceof Error ? e.message : "Couldn't open the document.",
+      });
     }
   };
 
   const act = async (id: string, decision: "verified" | "rejected") => {
-    const reason =
-      decision === "rejected" ? (prompt("Reason for rejection?") ?? undefined) : undefined;
+    let reason: string | undefined;
+    if (decision === "rejected") {
+      const answer = prompt("Reason for rejection? (shown to the landlord)");
+      if (answer === null) return; // cancelled — do NOT reject
+      reason = answer.trim() || undefined;
+    }
     setBusy(id);
+    setNotice(null);
     try {
-      await decide({ data: { id, decision, reason } });
+      const res = await decide({ data: { id, decision, reason } });
+      // Only claim success once the server confirms what was saved.
+      setNotice({
+        kind: "ok",
+        text: res.status === "verified" ? "Approved and saved." : "Rejected and saved.",
+      });
       await qc.invalidateQueries({ queryKey: ["myr-verifications"] });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed");
+      setNotice({
+        kind: "err",
+        text: e instanceof Error ? e.message : "Couldn't save the decision.",
+      });
     } finally {
       setBusy(null);
     }
@@ -52,7 +88,7 @@ function MyrVerifications() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck className="size-5 text-primary" />
-          <h1 className="text-xl font-semibold tracking-tight">MYR Verifications</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Rentalos Verifications</h1>
         </div>
         <div className="flex gap-1 text-xs">
           {(["pending", "verified", "rejected"] as const).map((s) => (
@@ -67,7 +103,26 @@ function MyrVerifications() {
         </div>
       </div>
 
-      {isLoading ? (
+      {notice && (
+        <div
+          role={notice.kind === "err" ? "alert" : "status"}
+          className={`rounded-xl border p-3 text-sm ${notice.kind === "err" ? "border-destructive/40 text-destructive" : "border-success/40 text-success"}`}
+        >
+          {notice.text}
+        </div>
+      )}
+
+      {listError ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive"
+        >
+          {listError instanceof Error ? listError.message : "Couldn't load verifications."}{" "}
+          <button className="underline" onClick={() => void refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="py-20 grid place-items-center">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -77,89 +132,76 @@ function MyrVerifications() {
         </div>
       ) : (
         <div className="space-y-2">
-          {data.rows.map(
-            (r: {
-              id: string;
-              user_id: string;
-              kind: string;
-              status: string;
-              created_at: string;
-              id_doc_path: string | null;
-              selfie_path: string | null;
-              property_doc_path: string | null;
-              rejection_reason: string | null;
-              profile: { full_name: string | null; email: string | null } | null;
-            }) => (
-              <div key={r.id} className="rounded-2xl bg-card border border-border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">
-                      {r.profile?.full_name || r.profile?.email || r.user_id.slice(0, 8)}
-                      <span className="ml-2 text-[10px] uppercase px-1.5 py-0.5 rounded bg-accent text-accent-foreground">
-                        {r.kind}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{r.profile?.email}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {new Date(r.created_at).toLocaleString("en-IN")}
-                    </div>
+          {(data.rows as unknown as VerificationRow[]).map((r) => (
+            <div key={r.id} className="rounded-2xl bg-card border border-border p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {r.profile?.full_name || r.profile?.email || r.user_id.slice(0, 8)}
+                    <span className="ml-2 text-[10px] uppercase px-1.5 py-0.5 rounded bg-accent text-accent-foreground">
+                      {r.kind}
+                    </span>
                   </div>
-                  <div
-                    className={`text-[10px] uppercase px-2 py-0.5 rounded-full ${r.status === "verified" ? "bg-success text-success-foreground" : r.status === "rejected" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}`}
-                  >
-                    {r.status}
+                  <div className="text-xs text-muted-foreground">{r.profile?.email}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {new Date(r.created_at).toLocaleString("en-IN")}
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(
-                    [
-                      ["ID", "id_doc" as const, r.id_doc_path],
-                      ["Selfie", "selfie" as const, r.selfie_path],
-                      ["Property", "property_doc" as const, r.property_doc_path],
-                    ] as const
-                  ).map(([label, field, path]) =>
-                    path ? (
-                      <button
-                        key={label}
-                        onClick={() => open(r.id, field)}
-                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border hover:bg-accent"
-                      >
-                        <Eye className="size-3" /> {label}
-                      </button>
-                    ) : (
-                      <span
-                        key={label}
-                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-dashed border-border text-muted-foreground"
-                      >
-                        {label}: Not uploaded
-                      </span>
-                    ),
-                  )}
+                <div
+                  className={`text-[10px] uppercase px-2 py-0.5 rounded-full ${r.status === "verified" ? "bg-success text-success-foreground" : r.status === "rejected" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}`}
+                >
+                  {r.status}
                 </div>
-                {r.rejection_reason && (
-                  <div className="mt-2 text-xs text-destructive">Reason: {r.rejection_reason}</div>
-                )}
-                {r.status === "pending" && (
-                  <div className="mt-3 flex gap-2">
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["ID", "id_doc" as const, r.id_doc_path],
+                    ["Selfie", "selfie" as const, r.selfie_path],
+                    ["Property", "property_doc" as const, r.property_doc_path],
+                  ] as const
+                ).map(([label, field, path]) =>
+                  path ? (
                     <button
-                      disabled={busy === r.id}
-                      onClick={() => act(r.id, "verified")}
-                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-success text-success-foreground disabled:opacity-50"
+                      key={label}
+                      onClick={() => open(r.id, field)}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border hover:bg-accent"
                     >
-                      <Check className="size-3.5" /> Approve
+                      <Eye className="size-3" /> {label}
                     </button>
-                    <button
-                      disabled={busy === r.id}
-                      onClick={() => act(r.id, "rejected")}
-                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground disabled:opacity-50"
+                  ) : (
+                    <span
+                      key={label}
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-dashed border-border text-muted-foreground"
                     >
-                      <X className="size-3.5" /> Reject
-                    </button>
-                  </div>
+                      {label}: Not uploaded
+                    </span>
+                  ),
                 )}
               </div>
-            ),
-          )}
+              {r.rejection_reason && (
+                <div className="mt-2 text-xs text-destructive">Reason: {r.rejection_reason}</div>
+              )}
+              {r.status === "pending" && (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    disabled={busy === r.id}
+                    onClick={() => act(r.id, "verified")}
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-success text-success-foreground disabled:opacity-50"
+                  >
+                    <Check className="size-3.5" /> Approve
+                  </button>
+                  <button
+                    disabled={busy === r.id}
+                    onClick={() => act(r.id, "rejected")}
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground disabled:opacity-50"
+                  >
+                    <X className="size-3.5" /> Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

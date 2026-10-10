@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { buildPropertyPublishPatch, buildRoomPublishPatch } from "./publish-patch";
 
 // ============================================================
 // Publish / unpublish RentDesk property + rooms to MYR
@@ -22,39 +23,12 @@ export const publishProperty = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: p } = await supabase
       .from("properties")
-      .select("id, owner_id, partner_org_id")
+      .select("id, owner_id")
       .eq("id", data.property_id)
       .maybeSingle();
     if (!p || p.owner_id !== userId) throw new Error("Forbidden");
 
-    // #8 — a landlord must have an admin-verified KYC record before they
-    // can publish a property to the public MYR marketplace. This is what
-    // makes the "Verified owner" trust claim actually mean something.
-    // Exception: a property imported by a partner organization (society /
-    // property manager) is vetted once at the org level by an admin when
-    // the org is created — an individual staff member's personal ID/selfie
-    // isn't the right check for a society's own listing.
-    if (data.publish && !p.partner_org_id) {
-      const { data: kyc } = await supabase
-        .from("myr_verifications")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("kind", "landlord")
-        .eq("status", "verified")
-        .maybeSingle();
-      if (!kyc) throw new Error("KYC_REQUIRED");
-    }
-
-    const patch = {
-      is_public_listing: data.publish,
-      ...(data.publish
-        ? { verification_status: "verified", verified_at: new Date().toISOString() }
-        : {}),
-      ...(data.city !== undefined ? { myr_city: data.city } : {}),
-      ...(data.address !== undefined ? { myr_address: data.address } : {}),
-      ...(data.description !== undefined ? { myr_description: data.description } : {}),
-      ...(data.property_type !== undefined ? { property_type: data.property_type } : {}),
-    };
+    const patch = buildPropertyPublishPatch(data);
 
     const { error } = await supabase
       .from("properties")
@@ -80,29 +54,12 @@ export const publishRoom = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: r } = await supabase
       .from("rooms")
-      .select("id, owner_id, property_id, partner_org_id")
+      .select("id, owner_id, property_id")
       .eq("id", data.room_id)
       .maybeSingle();
     if (!r || r.owner_id !== userId) throw new Error("Forbidden");
 
-    if (data.publish && !r.partner_org_id) {
-      const { data: kyc } = await supabase
-        .from("myr_verifications")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("kind", "landlord")
-        .eq("status", "verified")
-        .maybeSingle();
-      if (!kyc) throw new Error("KYC_REQUIRED");
-    }
-
-    const patch = {
-      is_public: data.publish,
-      ...(data.amenities ? { myr_amenities: data.amenities } : {}),
-      ...(data.description !== undefined ? { myr_description: data.description } : {}),
-      ...(data.deposit !== undefined ? { myr_deposit: data.deposit } : {}),
-      ...(data.available !== undefined ? { myr_available: data.available } : {}),
-    };
+    const patch = buildRoomPublishPatch(data);
 
     const { error } = await supabase
       .from("rooms")

@@ -126,7 +126,7 @@ function PartnerImportPage() {
           <Building2 className="size-8 mx-auto text-muted-foreground mb-3" />
           <div className="font-medium">Ye account kisi partner organization se linked nahi hai</div>
           <p className="text-sm text-muted-foreground mt-2">
-            Agar aap ek society/property manager ki taraf se apna existing inventory MYR marketplace
+            Agar aap ek society/property manager ki taraf se apna existing inventory Rentalos marketplace
             par connect karna chahte hain, admin se apna account link karwayein.
           </p>
         </div>
@@ -141,7 +141,7 @@ function PartnerImportPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{org.name} — bulk import</h1>
       </div>
       <p className="text-sm text-muted-foreground mb-6 max-w-xl">
-        Apna inventory CSV format mein upload karein — properties aur rooms turant MYR par publish
+        Apna inventory CSV format mein upload karein — properties aur rooms turant Rentalos par publish
         ho jaayenge. Dobara upload karne par same rows update ho jaayengi (duplicate nahi banegi),
         external ID ke basis par.
       </p>

@@ -72,7 +72,7 @@ function LandlordLogin() {
           <div className="size-10 rounded-xl bg-primary text-primary-foreground grid place-items-center"><Building2 className="size-5" /></div>
           <div>
             <div className="font-semibold">Landlord portal</div>
-            <div className="text-xs text-muted-foreground">RentDesk & MYR listings</div>
+            <div className="text-xs text-muted-foreground">RentDesk & Rentalos listings</div>
           </div>
         </div>
 
