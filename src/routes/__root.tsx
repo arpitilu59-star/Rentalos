@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { RECOVERY_REDIRECT_SCRIPT } from "@/lib/password-reset";
 
 function NotFoundComponent() {
   return (
@@ -88,6 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-title", content: "Rentalos" },
       { name: "mobile-web-app-capable", content: "yes" },
     ],
+    scripts: [{ children: RECOVERY_REDIRECT_SCRIPT }],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },

@@ -38,3 +38,11 @@ export function friendlyResetError(message: string | undefined): string {
     return "Network problem. Check your connection and try again.";
   return "Something went wrong. Please try again.";
 }
+
+/**
+ * Inline script run before hydration. If Supabase delivers a recovery (or failed-recovery) link
+ * to any page other than /reset-password — which happens when the redirect URL is not on the
+ * project's allow-list and Supabase falls back to the Site URL — forward the visitor, hash
+ * included, to /reset-password before the auth client consumes and strips the token.
+ */
+export const RECOVERY_REDIRECT_SCRIPT = `(function(){try{var l=window.location;var h=l.hash||"";if(l.pathname!=="/reset-password"&&(/[#&]type=recovery(&|$)/.test(h)||/error_code=otp_expired/.test(h)&&/error=access_denied/.test(h))){l.replace("/reset-password"+h);}}catch(e){}})();`;
