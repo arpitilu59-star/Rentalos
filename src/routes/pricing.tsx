@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SiteNavbar } from "@/components/SiteNavbar";
 import { seo } from "@/lib/seo";
-import { PLANS, formatPlanPrice } from "@/lib/pricing";
-import { Check, Clock, Info } from "lucide-react";
+import { PublicPlans } from "@/components/subscription/PublicPlans";
+import { Info } from "lucide-react";
 
 export const Route = createFileRoute("/pricing")({
   component: PricingPage,
@@ -30,66 +30,17 @@ function PricingPage() {
         </p>
       </section>
 
-      <section className="max-w-5xl mx-auto px-4 pb-8 grid md:grid-cols-3 gap-4 items-start">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`rounded-2xl border p-6 ${
-              plan.highlighted ? "border-primary bg-primary/5" : "border-border bg-card"
-            }`}
-          >
-            <div className="font-semibold text-lg">{plan.name}</div>
-            <p className="text-xs text-muted-foreground mt-1">{plan.tagline}</p>
-
-            <div className="mt-4 text-2xl font-semibold tracking-tight">
-              {formatPlanPrice(plan)}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {plan.limits.properties === null
-                ? "Unlimited properties"
-                : `Up to ${plan.limits.properties} ${plan.limits.properties === 1 ? "property" : "properties"}`}
-            </div>
-
-            <ul className="mt-5 space-y-2 text-sm">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2">
-                  <Check className="size-4 text-primary shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">{f}</span>
-                </li>
-              ))}
-              {plan.comingSoon?.map((f) => (
-                <li key={f} className="flex items-start gap-2">
-                  <Clock className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground/70">
-                    {f} <span className="text-[10px] uppercase tracking-wide">· coming soon</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <Link
-              to="/landlord/login"
-              className={`mt-6 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium ${
-                plan.highlighted
-                  ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border border-border hover:bg-accent"
-              }`}
-            >
-              {plan.id === "free" ? "Start free" : "Talk to us"}
-            </Link>
-          </div>
-        ))}
+      <section className="max-w-5xl mx-auto px-4 pb-8">
+        <PublicPlans />
       </section>
 
-      {/* Honest status note — no checkout exists yet, so we say so
-          rather than rendering a fake "Subscribe" button. */}
       <section className="max-w-3xl mx-auto px-4 pb-16">
         <div className="rounded-xl border border-border bg-card p-4 flex items-start gap-3 text-sm">
           <Info className="size-4 text-primary shrink-0 mt-0.5" />
           <p className="text-muted-foreground">
-            Paid plans are being finalised. There's no automated checkout yet — paid upgrades are
-            arranged directly with us and activated by our team. The Free plan is fully available
-            today.
+            Pay by UPI QR from your Subscription page, upload the screenshot, and our team activates
+            your plan after checking the payment. There is no automatic checkout. If a plan ends,
+            your data stays safe and read-only.
           </p>
         </div>
       </section>

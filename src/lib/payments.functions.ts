@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireEntitlement } from "@/lib/subscription/entitlements";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -73,6 +74,16 @@ export const submitPaymentProof = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!t || t.tenant_user_id !== userId) throw new Error("Forbidden");
 
+    // Pre-payment terms gate: a tenant who came through a booking must have accepted the terms.
+    // Old tenants (no booking trail) and listings without terms are never blocked.
+    const { data: gate } = await (supabaseAdmin as unknown as { rpc: (n: string, a: object) => PromiseLike<{ data: string | null }> }).rpc(
+      "terms_gate_status",
+      { _tenant_id: t.id },
+    );
+    if (gate === "REQUIRED") {
+      throw new Error("TERMS_REQUIRED: please accept the rental terms for your booking before paying.");
+    }
+
     let screenshot_path: string | null = null;
     if (data.screenshot_base64) {
       const bin = Uint8Array.from(atob(data.screenshot_base64), (c) => c.charCodeAt(0));
@@ -129,6 +140,7 @@ export const listPendingPayments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
+    await requireEntitlement(userId, "payment_verification");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Fetch payments WITHOUT PostgREST embed (no FK on payments.bill_id → bills.id,
@@ -234,6 +246,7 @@ export const verifyPayment = createServerFn({ method: "POST" })
   .inputValidator((i) => VerifySchema.parse(i))
   .handler(async ({ data, context }) => {
     const { userId } = context;
+    await requireEntitlement(userId, "payment_verification");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: p } = await supabaseAdmin

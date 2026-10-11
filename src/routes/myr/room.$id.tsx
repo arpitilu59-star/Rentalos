@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/lib/bookings.functions";
+import { getPublicTerms } from "@/lib/terms.functions";
+import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
+import { PublicTermsSection } from "@/components/terms/PublicTermsSection";
+import type { Terms } from "@/lib/terms/schema";
 import { getCoverVideoId } from "@/lib/live-feed.functions";
 import { reportMismatch, submitRoomReview, listRoomReviews } from "@/lib/trust.functions";
 import {
@@ -401,6 +405,12 @@ function RoomDetail() {
           </div>
         </section>
 
+        <PublicTermsSection
+          propertyId={r.properties?.id ?? null}
+          rent={Number(r.rent_amount)}
+          deposit={r.myr_deposit != null ? Number(r.myr_deposit) : null}
+        />
+
         {/* #7 — reviews, including "did it match what you saw online" */}
         <ReviewsSection roomId={r.id} doListReviews={doListReviews} doReview={doReview} />
 
@@ -417,6 +427,9 @@ function RoomDetail() {
       {showBook && (
         <BookModal
           roomId={id}
+          propertyId={r.properties?.id ?? null}
+          rent={Number(r.rent_amount)}
+          deposit={r.myr_deposit != null ? Number(r.myr_deposit) : null}
           onClose={() => setShowBook(false)}
           onDone={() => nav({ to: "/tenant" })}
         />
@@ -678,20 +691,46 @@ function ReviewsSection({
 
 function BookModal({
   roomId,
+  propertyId,
+  rent,
+  deposit,
   onClose,
   onDone,
 }: {
   roomId: string;
+  propertyId: string | null;
+  rent: number;
+  deposit: number | null;
   onClose: () => void;
   onDone: () => void;
 }) {
   const create = useServerFn(createBooking);
+  const fetchTerms = useServerFn(getPublicTerms);
+  const [termsInfo, setTermsInfo] = useState<{
+    terms: Terms | null;
+    version: number | null;
+  } | null>(null);
+  const [gate, setGate] = useState<GateValue>({
+    acknowledgements: {},
+    listened: false,
+    complete: false,
+  });
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!propertyId) {
+      setTermsInfo({ terms: null, version: null });
+      return;
+    }
+    fetchTerms({ data: { propertyId } })
+      .then((t) => setTermsInfo({ terms: t.terms, version: t.version }))
+      .catch(() => setTermsInfo({ terms: null, version: null }));
+  }, [propertyId, fetchTerms]);
 
   useEffect(() => {
     (async () => {
@@ -711,11 +750,19 @@ function BookModal({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (termsInfo?.terms && !gate.complete) {
+      setErr("Please read the terms and tick every box to continue.");
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
       await create({
         data: {
+          acknowledgements: termsInfo?.terms
+            ? (gate.acknowledgements as Record<string, boolean>)
+            : undefined,
+          listened: gate.listened,
           room_id: roomId,
           tenant_name: name,
           tenant_mobile: mobile,
@@ -734,7 +781,7 @@ function BookModal({
     <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4">
       <form
         onSubmit={submit}
-        className="bg-card border border-border rounded-2xl w-full max-w-md shadow-elevated p-6 space-y-3"
+        className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-elevated p-6 space-y-3"
       >
         <div>
           <div className="font-semibold">Booking request</div>
@@ -780,7 +827,29 @@ function BookModal({
             className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input"
           />
         </label>
-        {err && <div className="text-xs text-destructive">{err}</div>}
+        {termsInfo === null && (
+          <div className="text-xs text-muted-foreground">Loading rental terms…</div>
+        )}
+        {termsInfo?.terms && termsInfo.version != null && (
+          <TermsGate
+            terms={termsInfo.terms}
+            version={termsInfo.version}
+            rent={rent}
+            deposit={deposit}
+            onChange={setGate}
+          />
+        )}
+        {termsInfo && !termsInfo.terms && (
+          <div className="text-xs text-muted-foreground rounded-lg bg-muted/50 p-2">
+            This landlord hasn't published structured rental terms yet. Ask them about rent
+            increases, notice period and house rules before paying.
+          </div>
+        )}
+        {err && (
+          <div role="alert" className="text-xs text-destructive">
+            {err}
+          </div>
+        )}
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
@@ -790,10 +859,10 @@ function BookModal({
             Cancel
           </button>
           <button
-            disabled={busy}
+            disabled={busy || termsInfo === null || (!!termsInfo.terms && !gate.complete)}
             className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-60"
           >
-            {busy ? "Sending…" : "Send request"}
+            {busy ? "Sending…" : "Accept terms & send request"}
           </button>
         </div>
       </form>

@@ -62,7 +62,7 @@ export function MyrShell({
   const landlordExtras = [
     { to: "/myr/profile", label: "Reviews", icon: Star },
     { to: "/myr/landlord", label: "Analytics", icon: BarChart3 },
-    { to: "/myr/landlord", label: "Subscription", icon: Crown },
+    { to: "/subscription", label: "Subscription", icon: Crown },
     { to: "/myr/profile", label: "Settings", icon: Settings },
   ] as const;
 

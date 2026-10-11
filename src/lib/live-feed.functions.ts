@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireEntitlement } from "@/lib/subscription/entitlements";
 import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
@@ -37,6 +38,7 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await requireEntitlement(userId, "live_feed_video");
     const {
       target,
       storage_path,

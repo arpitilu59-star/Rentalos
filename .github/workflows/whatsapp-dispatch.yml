@@ -1,0 +1,16 @@
+name: WhatsApp dispatch
+on:
+  schedule:
+    - cron: "*/10 * * * *" # runs only from the default branch; GitHub may delay it
+  workflow_dispatch: {}
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call dispatcher
+        env:
+          SECRET: ${{ secrets.WHATSAPP_DISPATCH_SECRET }}
+        run: |
+          code=$(curl -s -o out.txt -w "%{http_code}" -X POST "https://rentalos.in/api/whatsapp/dispatch" -H "Authorization: Bearer $SECRET")
+          cat out.txt; echo
+          test "$code" = "200"

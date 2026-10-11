@@ -76,6 +76,20 @@ async function post(payload: Record<string, unknown>, label: string): Promise<Se
   }
 }
 
+/**
+ * Meta rejects template variables that contain newlines/tabs, 4+ consecutive
+ * spaces, or are empty. Normalise so a multi-line notification body can't
+ * make the whole send fail.
+ */
+export function cleanParam(v: unknown): string {
+  const t = String(v ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim()
+    .slice(0, 1000);
+  return t || "-";
+}
+
 export async function sendTemplateMessage(
   toE164: string,
   template: string,
@@ -95,7 +109,7 @@ export async function sendTemplateMessage(
           ? [
               {
                 type: "body",
-                parameters: params.map((p) => ({ type: "text", text: String(p).slice(0, 1000) })),
+                parameters: params.map((p) => ({ type: "text", text: cleanParam(p) })),
               },
             ]
           : [],

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireEntitlement } from "@/lib/subscription/entitlements";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -40,6 +41,7 @@ export const bulkImportPartnerListings = createServerFn({ method: "POST" })
   .inputValidator((input) => ImportSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await requireEntitlement(userId, "partner_import");
 
     const { data: membership } = await supabase
       .from("partner_org_members")

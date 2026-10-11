@@ -17,6 +17,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyrRouteImport } from './routes/myr'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SystemAdminControlRouteImport } from './routes/system-admin-control'
 import { Route as TenantRouteImport } from './routes/tenant'
@@ -32,9 +33,11 @@ import { Route as AuthenticatedPartnerImportRouteImport } from './routes/_authen
 import { Route as AuthenticatedPaymentVerifyRouteImport } from './routes/_authenticated/payment-verify'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
+import { Route as AuthenticatedRentalTermsRouteImport } from './routes/_authenticated/rental-terms'
 import { Route as AuthenticatedRentdeskRouteImport } from './routes/_authenticated/rentdesk'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSubscriptionRouteImport } from './routes/_authenticated/subscription'
 import { Route as AuthenticatedTenantsRouteImport } from './routes/_authenticated/tenants'
 import { Route as AuthenticatedVerificationsRouteImport } from './routes/_authenticated/verifications'
 import { Route as AuthenticatedVerifyIdentityRouteImport } from './routes/_authenticated/verify-identity'
@@ -48,7 +51,9 @@ import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-fee
 import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
 import { Route as AdminOpsRouteImport } from './routes/admin/ops'
 import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
+import { Route as AdminRentalTermsRouteImport } from './routes/admin/rental-terms'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
+import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminWhatsappRouteImport } from './routes/admin/whatsapp'
 import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
@@ -122,6 +127,11 @@ const MyrRoute = MyrRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -203,6 +213,12 @@ const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
   path: '/properties',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRentalTermsRoute =
+  AuthenticatedRentalTermsRouteImport.update({
+    id: '/rental-terms',
+    path: '/rental-terms',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedRentdeskRoute = AuthenticatedRentdeskRouteImport.update({
   id: '/rentdesk',
   path: '/rentdesk',
@@ -218,6 +234,12 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSubscriptionRoute =
+  AuthenticatedSubscriptionRouteImport.update({
+    id: '/subscription',
+    path: '/subscription',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTenantsRoute = AuthenticatedTenantsRouteImport.update({
   id: '/tenants',
   path: '/tenants',
@@ -285,9 +307,19 @@ const AdminPartnersRoute = AdminPartnersRouteImport.update({
   path: '/partners',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRentalTermsRoute = AdminRentalTermsRouteImport.update({
+  id: '/rental-terms',
+  path: '/rental-terms',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSecurityRoute = AdminSecurityRouteImport.update({
   id: '/security',
   path: '/security',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -477,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/tenant': typeof TenantRouteWithChildren
@@ -492,9 +525,11 @@ export interface FileRoutesByFullPath {
   '/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/rental-terms': typeof AuthenticatedRentalTermsRoute
   '/rentdesk': typeof AuthenticatedRentdeskRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/subscription': typeof AuthenticatedSubscriptionRoute
   '/tenants': typeof AuthenticatedTenantsRoute
   '/verifications': typeof AuthenticatedVerificationsRoute
   '/verify-identity': typeof AuthenticatedVerifyIdentityRoute
@@ -507,7 +542,9 @@ export interface FileRoutesByFullPath {
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -551,6 +588,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/bills': typeof AuthenticatedBillsRoute
@@ -565,9 +603,11 @@ export interface FileRoutesByTo {
   '/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/rental-terms': typeof AuthenticatedRentalTermsRoute
   '/rentdesk': typeof AuthenticatedRentdeskRoute
   '/rooms': typeof AuthenticatedRoomsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/subscription': typeof AuthenticatedSubscriptionRoute
   '/tenants': typeof AuthenticatedTenantsRoute
   '/verifications': typeof AuthenticatedVerificationsRoute
   '/verify-identity': typeof AuthenticatedVerifyIdentityRoute
@@ -580,7 +620,9 @@ export interface FileRoutesByTo {
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -626,6 +668,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
   '/tenant': typeof TenantRouteWithChildren
@@ -641,9 +684,11 @@ export interface FileRoutesById {
   '/_authenticated/payment-verify': typeof AuthenticatedPaymentVerifyRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/rental-terms': typeof AuthenticatedRentalTermsRoute
   '/_authenticated/rentdesk': typeof AuthenticatedRentdeskRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/subscription': typeof AuthenticatedSubscriptionRoute
   '/_authenticated/tenants': typeof AuthenticatedTenantsRoute
   '/_authenticated/verifications': typeof AuthenticatedVerificationsRoute
   '/_authenticated/verify-identity': typeof AuthenticatedVerifyIdentityRoute
@@ -656,7 +701,9 @@ export interface FileRoutesById {
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
   '/admin/ops': typeof AdminOpsRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -704,6 +751,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/myr'
     | '/pricing'
+    | '/reset-password'
     | '/signup'
     | '/system-admin-control'
     | '/tenant'
@@ -719,9 +767,11 @@ export interface FileRouteTypes {
     | '/payment-verify'
     | '/profile'
     | '/properties'
+    | '/rental-terms'
     | '/rentdesk'
     | '/rooms'
     | '/settings'
+    | '/subscription'
     | '/tenants'
     | '/verifications'
     | '/verify-identity'
@@ -734,7 +784,9 @@ export interface FileRouteTypes {
     | '/admin/myr-verifications'
     | '/admin/ops'
     | '/admin/partners'
+    | '/admin/rental-terms'
     | '/admin/security'
+    | '/admin/subscriptions'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -778,6 +830,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/pricing'
+    | '/reset-password'
     | '/signup'
     | '/system-admin-control'
     | '/bills'
@@ -792,9 +845,11 @@ export interface FileRouteTypes {
     | '/payment-verify'
     | '/profile'
     | '/properties'
+    | '/rental-terms'
     | '/rentdesk'
     | '/rooms'
     | '/settings'
+    | '/subscription'
     | '/tenants'
     | '/verifications'
     | '/verify-identity'
@@ -807,7 +862,9 @@ export interface FileRouteTypes {
     | '/admin/myr-verifications'
     | '/admin/ops'
     | '/admin/partners'
+    | '/admin/rental-terms'
     | '/admin/security'
+    | '/admin/subscriptions'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -852,6 +909,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/myr'
     | '/pricing'
+    | '/reset-password'
     | '/signup'
     | '/system-admin-control'
     | '/tenant'
@@ -867,9 +925,11 @@ export interface FileRouteTypes {
     | '/_authenticated/payment-verify'
     | '/_authenticated/profile'
     | '/_authenticated/properties'
+    | '/_authenticated/rental-terms'
     | '/_authenticated/rentdesk'
     | '/_authenticated/rooms'
     | '/_authenticated/settings'
+    | '/_authenticated/subscription'
     | '/_authenticated/tenants'
     | '/_authenticated/verifications'
     | '/_authenticated/verify-identity'
@@ -882,7 +942,9 @@ export interface FileRouteTypes {
     | '/admin/myr-verifications'
     | '/admin/ops'
     | '/admin/partners'
+    | '/admin/rental-terms'
     | '/admin/security'
+    | '/admin/subscriptions'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -930,6 +992,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyrRoute: typeof MyrRouteWithChildren
   PricingRoute: typeof PricingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SystemAdminControlRoute: typeof SystemAdminControlRoute
   TenantRoute: typeof TenantRouteWithChildren
@@ -992,6 +1055,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -1099,6 +1169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/rental-terms': {
+      id: '/_authenticated/rental-terms'
+      path: '/rental-terms'
+      fullPath: '/rental-terms'
+      preLoaderRoute: typeof AuthenticatedRentalTermsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/rentdesk': {
       id: '/_authenticated/rentdesk'
       path: '/rentdesk'
@@ -1118,6 +1195,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/subscription': {
+      id: '/_authenticated/subscription'
+      path: '/subscription'
+      fullPath: '/subscription'
+      preLoaderRoute: typeof AuthenticatedSubscriptionRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/tenants': {
@@ -1211,11 +1295,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartnersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/rental-terms': {
+      id: '/admin/rental-terms'
+      path: '/rental-terms'
+      fullPath: '/admin/rental-terms'
+      preLoaderRoute: typeof AdminRentalTermsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/security': {
       id: '/admin/security'
       path: '/security'
       fullPath: '/admin/security'
       preLoaderRoute: typeof AdminSecurityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/subscriptions': {
+      id: '/admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/admin/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/users': {
@@ -1479,9 +1577,11 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPaymentVerifyRoute: typeof AuthenticatedPaymentVerifyRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedRentalTermsRoute: typeof AuthenticatedRentalTermsRoute
   AuthenticatedRentdeskRoute: typeof AuthenticatedRentdeskRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedSubscriptionRoute: typeof AuthenticatedSubscriptionRoute
   AuthenticatedTenantsRoute: typeof AuthenticatedTenantsRoute
   AuthenticatedVerificationsRoute: typeof AuthenticatedVerificationsRoute
   AuthenticatedVerifyIdentityRoute: typeof AuthenticatedVerifyIdentityRoute
@@ -1501,9 +1601,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPaymentVerifyRoute: AuthenticatedPaymentVerifyRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedRentalTermsRoute: AuthenticatedRentalTermsRoute,
   AuthenticatedRentdeskRoute: AuthenticatedRentdeskRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedSubscriptionRoute: AuthenticatedSubscriptionRoute,
   AuthenticatedTenantsRoute: AuthenticatedTenantsRoute,
   AuthenticatedVerificationsRoute: AuthenticatedVerificationsRoute,
   AuthenticatedVerifyIdentityRoute: AuthenticatedVerifyIdentityRoute,
@@ -1524,7 +1626,9 @@ interface AdminRouteChildren {
   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
   AdminOpsRoute: typeof AdminOpsRoute
   AdminPartnersRoute: typeof AdminPartnersRoute
+  AdminRentalTermsRoute: typeof AdminRentalTermsRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminWhatsappRoute: typeof AdminWhatsappRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1540,7 +1644,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,
   AdminOpsRoute: AdminOpsRoute,
   AdminPartnersRoute: AdminPartnersRoute,
+  AdminRentalTermsRoute: AdminRentalTermsRoute,
   AdminSecurityRoute: AdminSecurityRoute,
+  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminWhatsappRoute: AdminWhatsappRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -1656,6 +1762,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyrRoute: MyrRouteWithChildren,
   PricingRoute: PricingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SystemAdminControlRoute: SystemAdminControlRoute,
   TenantRoute: TenantRouteWithChildren,

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { missingAcks } from "./terms/schema";
 import { buildPropertyPublishPatch, buildRoomPublishPatch } from "./publish-patch";
 
 // ============================================================
@@ -79,6 +80,8 @@ const CreateBookingSchema = z.object({
   tenant_mobile: z.string().min(6).max(20),
   tenant_email: z.string().email().optional().nullable(),
   message: z.string().max(1000).optional(),
+  acknowledgements: z.record(z.string(), z.boolean()).optional(),
+  listened: z.boolean().optional(),
 });
 
 export const createBooking = createServerFn({ method: "POST" })
@@ -92,6 +95,24 @@ export const createBooking = createServerFn({ method: "POST" })
       .eq("id", data.room_id)
       .maybeSingle();
     if (!r || !r.is_public || !r.myr_available) throw new Error("Room not available");
+
+    // Terms gate: if the landlord published terms, every acknowledgement is required BEFORE
+    // anything is created. The snapshot itself is built in the database, never from the client.
+    const { supabaseAdmin: adminForTerms } = await import("@/integrations/supabase/client.server");
+    const { data: prop } = await adminForTerms
+      .from("properties")
+      .select("current_terms_version")
+      .eq("id", r.property_id)
+      .maybeSingle();
+    const termsPublished =
+      (prop as { current_terms_version: number | null } | null)?.current_terms_version != null;
+    if (termsPublished) {
+      const missing = missingAcks(data.acknowledgements);
+      if (missing.length)
+        throw new Error(
+          "TERMS_REQUIRED: please read and tick every acknowledgement before sending the request.",
+        );
+    }
 
     // Store mobile on tenant profile for future landlord auto-link
     await supabase
@@ -115,6 +136,25 @@ export const createBooking = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
+    const { error: accErr } = await (
+      adminForTerms as unknown as {
+        rpc: (n: string, a: object) => PromiseLike<{ error: { message: string } | null }>;
+      }
+    ).rpc("record_terms_acceptance", {
+      _user: userId,
+      _booking: ins.id,
+      _acks: data.acknowledgements ?? {},
+      _listened: data.listened ?? false,
+    });
+    if (accErr) {
+      // No acceptance, no booking: undo so a request never exists without its terms record.
+      await adminForTerms.from("bookings").delete().eq("id", ins.id);
+      throw new Error(
+        accErr.message.replace(/^.*?ERROR:\s*/, "").slice(0, 200) ||
+          "Couldn't record the terms. Please try again.",
+      );
+    }
     return { booking_id: ins.id };
   });
 

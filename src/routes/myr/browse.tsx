@@ -1,5 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TermsSchema } from "@/lib/terms/schema";
+import { evaluate, activeFilterCount, type TermsFilters } from "@/lib/terms/match";
+import { TermsFilterDrawer } from "@/components/terms/TermsFilterDrawer";
+import { CompletenessBadge } from "@/components/terms/TermsView";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search,
@@ -65,6 +69,7 @@ type PublicRoom = {
     address: string | null;
     property_type: string | null;
     myr_cover_photos: unknown;
+    terms_summary?: unknown;
   } | null;
 };
 
@@ -246,7 +251,7 @@ function BrowsePage() {
       let q = supabase
         .from("rooms")
         .select(
-          "id, room_number, rent_amount, myr_amenities, myr_description, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, property_type, myr_cover_photos, is_public_listing, verification_status)",
+          "id, room_number, rent_amount, myr_amenities, myr_description, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, property_type, myr_cover_photos, is_public_listing, verification_status, terms_summary)",
         )
         .eq("is_public", true)
         .eq("myr_available", true)
@@ -276,12 +281,45 @@ function BrowsePage() {
     });
   };
 
-  const activeFilterCount = useMemo(() => {
+  const [termsFilters, setTermsFilters] = useState<TermsFilters>(() => {
+    try {
+      const raw =
+        typeof window !== "undefined" ? window.localStorage.getItem("browse-terms-filters") : null;
+      return raw ? (JSON.parse(raw) as TermsFilters) : { includeUnknown: true };
+    } catch {
+      return { includeUnknown: true };
+    }
+  });
+  const updateTermsFilters = (f: TermsFilters) => {
+    setTermsFilters(f);
+    try {
+      window.localStorage.setItem("browse-terms-filters", JSON.stringify(f));
+    } catch {
+      /* storage unavailable: filters just won't persist */
+    }
+  };
+
+  // Deterministic filtering on the landlord's stated terms. Each card gets the reasons it matched.
+  const evaluated = useMemo(
+    () =>
+      items.map((r) => {
+        const parsed = r.properties?.terms_summary
+          ? TermsSchema.safeParse(r.properties.terms_summary)
+          : null;
+        const terms = parsed?.success ? parsed.data : null;
+        return { room: r, terms, ev: evaluate(terms, termsFilters) };
+      }),
+    [items, termsFilters],
+  );
+  const visible = evaluated.filter((x) => x.ev.include);
+  const termsActive = activeFilterCount(termsFilters);
+
+  const activeFilterCount_ = useMemo(() => {
     let n = 0;
     if (city) n++;
     if (minRent > RENT_MIN || maxRent < RENT_MAX) n++;
-    return n;
-  }, [city, minRent, maxRent]);
+    return n + termsActive;
+  }, [city, minRent, maxRent, termsActive]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -334,18 +372,22 @@ function BrowsePage() {
               <Search className="size-4" /> Search
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <TermsFilterDrawer value={termsFilters} onChange={updateTermsFilters} />
+          </div>
         </form>
 
-        {activeFilterCount > 0 && (
+        {activeFilterCount_ > 0 && (
           <div className="flex items-center gap-2 mb-6 text-xs text-muted-foreground">
-            <SlidersHorizontal className="size-3.5" /> {activeFilterCount} filter
-            {activeFilterCount > 1 ? "s" : ""} active
+            <SlidersHorizontal className="size-3.5" /> {activeFilterCount_} filter
+            {activeFilterCount_ > 1 ? "s" : ""} active
             <button
               type="button"
               onClick={() => {
                 setCity("");
                 setMinRent(RENT_MIN);
                 setMaxRent(RENT_MAX);
+                updateTermsFilters({ includeUnknown: termsFilters.includeUnknown });
                 nav({ search: {} });
               }}
               className="underline hover:text-foreground"
@@ -359,14 +401,14 @@ function BrowsePage() {
           <div className="py-20 grid place-items-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="py-20 text-center text-sm text-muted-foreground">
             <SlidersHorizontal className="size-8 mx-auto mb-2 opacity-50" />
             Koi room nahi mila. Filter badal ke try karein.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((r) => {
+            {visible.map(({ room: r, terms, ev }) => {
               const photos = Array.isArray(r.myr_photos)
                 ? (r.myr_photos as string[])
                 : Array.isArray(r.properties?.myr_cover_photos)
@@ -419,6 +461,32 @@ function BrowsePage() {
                         <div className="text-[10px] text-muted-foreground">/ month</div>
                       </div>
                     </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <CompletenessBadge terms={terms} />
+                      {ev.score !== null && (
+                        <span className="text-[11px] rounded-full bg-primary/10 text-primary px-2 py-0.5">
+                          {ev.score}% match to your filters
+                        </span>
+                      )}
+                    </div>
+                    {ev.reasons.length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-[11px]">
+                        {ev.reasons.slice(0, 5).map((x) => (
+                          <li
+                            key={x.text}
+                            className={
+                              x.ok === true
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : x.ok === false
+                                  ? "text-destructive"
+                                  : "text-muted-foreground italic"
+                            }
+                          >
+                            {x.ok === true ? "✓" : x.ok === false ? "✕" : "?"} {x.text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </Link>
               );

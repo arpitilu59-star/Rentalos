@@ -3,6 +3,11 @@ import { createFileRoute, Outlet, useNavigate, useLocation } from "@tanstack/rea
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import { useEntitlements } from "@/lib/subscription/use-entitlements";
+import { featureForPath } from "@/lib/subscription/keys";
+import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
+import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -83,5 +88,37 @@ function AuthLayout() {
       </div>
     );
   }
-  return <Outlet />;
+  return <EntitlementGate pathname={pathname} />;
+}
+
+/**
+ * UX gate only. Real enforcement is in server functions and database triggers,
+ * so bypassing this component never grants access.
+ * - feature missing + landlord has RentDesk data -> still open, READ-ONLY (DB blocks writes)
+ * - feature missing + no data                     -> upgrade prompt
+ */
+function EntitlementGate({ pathname }: { pathname: string }) {
+  const { ent, isLoading } = useEntitlements();
+  const feature = featureForPath(pathname);
+  if (isLoading && feature) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  const allowed = !feature || !ent || ent.features[feature] === true;
+  const readOnly = !allowed && feature === "rentdesk_core" && ent?.has_rentdesk_data === true;
+  return (
+    <>
+      {ent && <SubscriptionBanner ent={ent} />}
+      {allowed || readOnly ? (
+        <Outlet />
+      ) : (
+        <AppShell>
+          <UpgradePrompt feature={feature!} />
+        </AppShell>
+      )}
+    </>
+  );
 }

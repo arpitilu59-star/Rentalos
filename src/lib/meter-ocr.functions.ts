@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "./ai-gateway";
+import { requireEntitlement } from "@/lib/subscription/entitlements";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const RATE_LIMIT = 10;
@@ -17,6 +18,7 @@ export const detectMeterReading = createServerFn({ method: "POST" })
   .inputValidator((data) => Input.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await requireEntitlement(userId, "ai_meter_ocr");
 
     // Durable rate limit (per-user, per-minute) via Postgres
     const since = new Date(Date.now() - WINDOW_MS).toISOString();
@@ -45,8 +47,7 @@ export const detectMeterReading = createServerFn({ method: "POST" })
           content: [
             {
               type: "text",
-              text:
-                "You are reading an electricity meter. Look at the meter display and return ONLY the numeric reading shown (the units consumed total). Ignore decimal places after a red digit. Respond with just the integer number, nothing else. If unreadable, respond with 0.",
+              text: "You are reading an electricity meter. Look at the meter display and return ONLY the numeric reading shown (the units consumed total). Ignore decimal places after a red digit. Respond with just the integer number, nothing else. If unreadable, respond with 0.",
             },
             { type: "image", image: `data:${data.mimeType};base64,${data.imageBase64}` },
           ],

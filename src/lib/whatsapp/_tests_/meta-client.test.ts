@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  cleanParam,
   sendTemplateMessage,
   sendTextMessage,
   toMetaPhone,
@@ -57,5 +58,13 @@ describe("meta-client", () => {
       retryable: true,
       error: "boom",
     });
+  });
+});
+
+describe("cleanParam", () => {
+  it("strips newlines/tabs/extra spaces and never returns empty", () => {
+    expect(cleanParam("a\nb\t\tc    d")).toBe("a b c d");
+    expect(cleanParam("   ")).toBe("-");
+    expect(cleanParam(null)).toBe("-");
   });
 });

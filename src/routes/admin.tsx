@@ -20,6 +20,7 @@ import {
   Video,
   Building2,
   MessageCircle,
+  CreditCard,
 } from "lucide-react";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -95,6 +96,8 @@ function AdminLayout() {
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/ops", label: "Operations", icon: Activity },
+    { to: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
+    { to: "/admin/rental-terms", label: "Rental terms", icon: ClipboardList },
     { to: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
     { to: "/admin/fraud", label: "Fraud", icon: ShieldAlert },
     { to: "/admin/myr-verifications", label: "Rentalos Verify", icon: BadgeCheck },

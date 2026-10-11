@@ -18,7 +18,12 @@ import {
   Inbox,
   BadgeCheck,
   Bell,
+  CreditCard,
+  ScrollText,
+  Lock,
 } from "lucide-react";
+import { useEntitlements } from "@/lib/subscription/use-entitlements";
+import { featureForPath } from "@/lib/subscription/keys";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,6 +43,8 @@ const NAV = [
   { to: "/deposits", label: "Deposits", icon: Wallet },
   { to: "/meters", label: "Meters", icon: Zap },
   { to: "/bills", label: "Bills", icon: Receipt },
+  { to: "/rental-terms", label: "Rental terms", icon: ScrollText },
+  { to: "/subscription", label: "Subscription", icon: CreditCard },
   { to: "/settings", label: "Pricing", icon: Settings },
 ] as const;
 
@@ -47,6 +54,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [dark, setDark] = useState(false);
   const [name, setName] = useState<string>("");
   const [menu, setMenu] = useState(false);
+  const { ent } = useEntitlements();
+  const locked = (to: string) => {
+    const f = featureForPath(to);
+    return !!ent && !!f && ent.features[f] !== true;
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -100,6 +112,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Icon className="size-4" /> {item.label}
+                {locked(item.to) && (
+                  <Lock
+                    className="size-3 ml-auto text-muted-foreground"
+                    aria-label="Not in your plan"
+                  />
+                )}
               </Link>
             );
           })}

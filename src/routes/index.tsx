@@ -19,7 +19,7 @@ import {
   Wrench,
   FileText,
 } from "lucide-react";
-import { PLANS, formatPlanPrice } from "@/lib/pricing";
+import { PublicPlans } from "@/components/subscription/PublicPlans";
 import { SiteNavbar } from "@/components/SiteNavbar";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 
@@ -475,25 +475,8 @@ function MyrLanding() {
         <p className="mt-2 text-sm text-muted-foreground">
           Tenants use RentalOS free. Plans are for landlords, societies and property managers.
         </p>
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
-          {PLANS.map((p) => (
-            <div
-              key={p.id}
-              className={`rounded-2xl border p-5 ${p.highlighted ? "border-primary bg-primary/5" : "border-border bg-card"}`}
-            >
-              <div className="font-semibold">{p.name}</div>
-              <div className="mt-2 text-2xl font-semibold tracking-tight">{formatPlanPrice(p)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{p.tagline}</p>
-              <ul className="mt-3 space-y-1.5 text-sm">
-                {p.features.slice(0, 3).map((f) => (
-                  <li key={f} className="flex gap-2">
-                    <Check className="size-4 text-primary shrink-0 mt-0.5" aria-hidden />
-                    <span className="text-muted-foreground">{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="mt-6">
+          <PublicPlans />
         </div>
         <div className="mt-4">
           <Link to="/pricing" className="text-sm font-medium text-primary hover:underline">

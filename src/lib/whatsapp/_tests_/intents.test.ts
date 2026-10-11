@@ -14,3 +14,15 @@ describe("detectIntent", () => {
     ["blah blah", "UNKNOWN"],
   ])("%s -> %s", (t, i) => expect(detectIntent(t)).toBe(i));
 });
+
+import { eventForNotificationKind } from "../templates";
+describe("eventForNotificationKind", () => {
+  it("maps uppercase cron kinds and subscription kinds", () => {
+    expect(eventForNotificationKind("RENT_DUE")).toBe("rent_due_soon");
+    expect(eventForNotificationKind("RENT_OVERDUE")).toBe("rent_overdue");
+    expect(eventForNotificationKind("LEASE_EXPIRING")).toBe("lease_expiring");
+    expect(eventForNotificationKind("subscription_payment_approved")).toBe("subscription_update");
+    expect(eventForNotificationKind("subscription_discount_applied")).toBeNull();
+    expect(eventForNotificationKind("something_else")).toBeNull();
+  });
+});

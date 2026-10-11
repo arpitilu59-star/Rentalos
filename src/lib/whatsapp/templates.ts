@@ -14,6 +14,7 @@ export type WhatsAppEventType =
   | "booking_update"
   | "lease_expiring"
   | "verification_update"
+  | "subscription_update"
   | "generic_update";
 
 const DEFAULTS: Record<WhatsAppEventType, string> = {
@@ -26,6 +27,7 @@ const DEFAULTS: Record<WhatsAppEventType, string> = {
   booking_update: "rentalos_booking_update",
   lease_expiring: "rentalos_lease_expiring",
   verification_update: "rentalos_verification_update",
+  subscription_update: "rentalos_subscription_update",
   generic_update: "rentalos_generic_update",
 };
 
@@ -34,7 +36,12 @@ export function templateFor(event: WhatsAppEventType): string {
 }
 
 /** Map an in-app notification `kind` to a WhatsApp event. */
-export function eventForNotificationKind(kind: string): WhatsAppEventType | null {
+export function eventForNotificationKind(rawKind: string): WhatsAppEventType | null {
+  // The cron jobs emit UPPERCASE kinds (RENT_DUE, RENT_OVERDUE, LEASE_EXPIRING);
+  // normalise so both styles map.
+  const kind = (rawKind || "").toLowerCase();
+  if (kind === "rent_due") return "rent_due_soon";
+  if (kind === "rent_overdue") return "rent_overdue";
   if (kind === "bill_due_soon") return "rent_due_soon";
   if (kind === "bill_landlord_reminder") return "rent_overdue";
   if (kind === "bill_new") return "rent_new_bill";
@@ -44,6 +51,14 @@ export function eventForNotificationKind(kind: string): WhatsAppEventType | null
   if (kind.startsWith("booking")) return "booking_update";
   if (kind.startsWith("lease")) return "lease_expiring";
   if (kind.startsWith("verification") || kind.startsWith("kyc")) return "verification_update";
+  // Payment decisions, activation, expiry. Discount/access-changed notices stay in-app.
+  if (
+    kind.startsWith("subscription_") &&
+    kind !== "subscription_discount_applied" &&
+    kind !== "subscription_access_changed"
+  ) {
+    return "subscription_update";
+  }
   // Everything else (live feed, meter OCR…) stays in-app only.
   return null;
 }
