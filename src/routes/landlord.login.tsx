@@ -102,6 +102,7 @@ function LandlordLogin() {
               type="button"
               onClick={() => {
                 setMode("signin");
+                setForgot(false);
                 setError(null);
               }}
               className={`py-1.5 rounded-md transition ${mode === "signin" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
@@ -112,6 +113,7 @@ function LandlordLogin() {
               type="button"
               onClick={() => {
                 setMode("signup");
+                setForgot(false);
                 setError(null);
               }}
               className={`py-1.5 rounded-md transition ${mode === "signup" ? "bg-card shadow-sm" : "text-muted-foreground"}`}

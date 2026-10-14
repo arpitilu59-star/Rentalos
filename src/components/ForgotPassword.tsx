@@ -36,8 +36,9 @@ export function ForgotPassword({
       const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      // Only rate-limit/network errors are shown. "No such user" is never revealed.
-      if (err && /rate|seconds|too many|network|fetch/i.test(err.message)) {
+      // Supabase answers success for unknown emails, so any error here is a real failure
+      // (rate limit, mail server down, network) and must be shown, never a fake "sent".
+      if (err) {
         setError(friendlyResetError(err.message));
       } else {
         setSent(true);

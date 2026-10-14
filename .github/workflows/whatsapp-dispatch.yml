@@ -6,11 +6,25 @@ on:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - name: Call dispatcher
         env:
           SECRET: ${{ secrets.WHATSAPP_DISPATCH_SECRET }}
+          URL: https://rentalos.in/api/whatsapp/dispatch
         run: |
-          code=$(curl -s -o out.txt -w "%{http_code}" -X POST "https://rentalos.in/api/whatsapp/dispatch" -H "Authorization: Bearer $SECRET")
-          cat out.txt; echo
-          test "$code" = "200"
+          if [ -z "$SECRET" ]; then
+            echo "::error::GitHub secret WHATSAPP_DISPATCH_SECRET is not set (repo Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          code=$(curl -sS --max-time 60 --retry 2 --retry-delay 5 -o out.txt -w "%{http_code}" -X POST "$URL" -H "Authorization: Bearer $SECRET" || echo "000")
+          echo "HTTP $code"; cat out.txt; echo
+          case "$code" in
+            200) exit 0 ;;
+            401) echo "::error::401 Unauthorized - the GitHub secret differs from WHATSAPP_DISPATCH_SECRET in Vercel." ;;
+            500) echo "::error::500 - WHATSAPP_DISPATCH_SECRET missing in Vercel env, or the dispatcher crashed (see Vercel function logs)." ;;
+            404|405) echo "::error::$code - /api/whatsapp/dispatch is not deployed yet. Push the latest code and let Vercel redeploy." ;;
+            000) echo "::error::Could not reach $URL (DNS/network/timeout)." ;;
+            *) echo "::error::Unexpected HTTP $code" ;;
+          esac
+          exit 1

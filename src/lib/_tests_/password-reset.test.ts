@@ -55,3 +55,10 @@ describe("RECOVERY_REDIRECT_SCRIPT", () => {
     expect(run("/reset-password", "#access_token=a&type=recovery")).toBeUndefined();
   });
 });
+
+describe("friendlyResetError mail failures", () => {
+  it("maps Supabase SMTP failures to a retry message", () => {
+    expect(friendlyResetError("Error sending recovery email")).toMatch(/couldn't send the email/);
+    expect(friendlyResetError("535 smtp auth failed")).toMatch(/couldn't send the email/);
+  });
+});

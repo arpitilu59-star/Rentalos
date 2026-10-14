@@ -34,6 +34,8 @@ export function friendlyResetError(message: string | undefined): string {
   ) {
     return "This reset link is invalid or has expired. Request a new one.";
   }
+  if (m.includes("sending") || m.includes("smtp") || m.includes("mail"))
+    return "We couldn't send the email right now. Please try again in a few minutes.";
   if (m.includes("network") || m.includes("fetch"))
     return "Network problem. Check your connection and try again.";
   return "Something went wrong. Please try again.";
