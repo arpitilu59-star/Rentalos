@@ -3,28 +3,25 @@ on:
   schedule:
     - cron: "*/10 * * * *" # runs only from the default branch; GitHub may delay it
   workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: whatsapp-dispatch
+  cancel-in-progress: false
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
       - name: Call dispatcher
         env:
           SECRET: ${{ secrets.WHATSAPP_DISPATCH_SECRET }}
-          URL: https://rentalos.in/api/whatsapp/dispatch
-        run: |
-          if [ -z "$SECRET" ]; then
-            echo "::error::GitHub secret WHATSAPP_DISPATCH_SECRET is not set (repo Settings > Secrets and variables > Actions)."
-            exit 1
-          fi
-          code=$(curl -sS --max-time 60 --retry 2 --retry-delay 5 -o out.txt -w "%{http_code}" -X POST "$URL" -H "Authorization: Bearer $SECRET" || echo "000")
-          echo "HTTP $code"; cat out.txt; echo
-          case "$code" in
-            200) exit 0 ;;
-            401) echo "::error::401 Unauthorized - the GitHub secret differs from WHATSAPP_DISPATCH_SECRET in Vercel." ;;
-            500) echo "::error::500 - WHATSAPP_DISPATCH_SECRET missing in Vercel env, or the dispatcher crashed (see Vercel function logs)." ;;
-            404|405) echo "::error::$code - /api/whatsapp/dispatch is not deployed yet. Push the latest code and let Vercel redeploy." ;;
-            000) echo "::error::Could not reach $URL (DNS/network/timeout)." ;;
-            *) echo "::error::Unexpected HTTP $code" ;;
-          esac
-          exit 1
+          # Canonical production host is www.rentalos.in (the apex answers 308 -> www).
+          # Override with a repository *variable* if the primary domain ever changes.
+          DISPATCH_URL: ${{ vars.WHATSAPP_DISPATCH_URL || 'https://www.rentalos.in/api/whatsapp/dispatch' }}
+          ALLOWED_HOSTS: "www.rentalos.in rentalos.in"
+        run: bash .github/scripts/whatsapp-dispatch.sh
