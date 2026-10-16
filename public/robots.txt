@@ -4,6 +4,7 @@ Allow: /about
 Allow: /contact
 Allow: /myr/browse
 Allow: /myr/room/
+Allow: /rooms-in/
 
 Disallow: /login
 Disallow: /signup

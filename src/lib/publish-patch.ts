@@ -35,6 +35,12 @@ export function buildRoomPublishPatch(d: RoomPublishInput) {
     ...(d.amenities ? { myr_amenities: d.amenities } : {}),
     ...(d.description !== undefined ? { myr_description: d.description } : {}),
     ...(d.deposit !== undefined ? { myr_deposit: d.deposit } : {}),
-    ...(d.available !== undefined ? { myr_available: d.available } : {}),
+    // Publishing a room that has a vacancy must also make it bookable; a stale myr_available=false
+    // was why "publish" appeared to do nothing. A full room is refused by the database.
+    ...(d.available !== undefined
+      ? { myr_available: d.available }
+      : d.publish
+        ? { myr_available: true }
+        : {}),
   };
 }

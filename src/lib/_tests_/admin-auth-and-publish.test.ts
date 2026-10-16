@@ -43,7 +43,8 @@ describe("publishing is independent of document verification", () => {
     expect(p).toEqual({ is_public_listing: true, myr_city: "Jaipur" });
     expect(p).not.toHaveProperty("verification_status");
     expect(p).not.toHaveProperty("verified_at");
-    expect(buildRoomPublishPatch({ publish: true })).toEqual({ is_public: true });
+    expect(buildRoomPublishPatch({ publish: true })).toEqual({ is_public: true, myr_available: true });
+    expect(buildRoomPublishPatch({ publish: false })).toEqual({ is_public: false });
   });
   it("server functions no longer consult myr_verifications or throw KYC_REQUIRED", () => {
     const src = readFileSync("src/lib/bookings.functions.ts", "utf8");

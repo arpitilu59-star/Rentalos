@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { PlanComparison } from "@/components/subscription/PlanComparison";
 import type { PlanRow, FeatureRow, EntRow } from "@/components/subscription/plan-view";
 import {
+  getGatewayStatus,
+  startGatewayPayment,
+  confirmGatewayPayment,
   cancelMyPendingPayment,
   getMySubscription,
   getPublicPlans,
@@ -21,6 +24,17 @@ export const Route = createFileRoute("/_authenticated/subscription")({
 });
 
 const MAX_PROOF = 5 * 1024 * 1024;
+function loadRazorpay(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as unknown as { Razorpay?: unknown }).Razorpay) return resolve();
+    const el = document.createElement("script");
+    el.src = "https://checkout.razorpay.com/v1/checkout.js";
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error("Couldn't load the payment window. Check your connection."));
+    document.head.appendChild(el);
+  });
+}
+
 const PROOF_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 const STATUS_COPY: Record<string, { label: string; tone: string }> = {
@@ -289,6 +303,10 @@ function PayDialog({
   onDone: () => void;
 }) {
   const submit = useServerFn(submitSubscriptionPayment);
+  const gwStatus = useServerFn(getGatewayStatus);
+  const gwStart = useServerFn(startGatewayPayment);
+  const gwConfirm = useServerFn(confirmGatewayPayment);
+  const gw = useQuery({ queryKey: ["gateway-status"], queryFn: () => gwStatus() });
   const [txn, setTxn] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
@@ -304,6 +322,44 @@ function PayDialog({
     if (!PROOF_TYPES.includes(f.type)) return setErr("Upload a JPG, PNG, WebP or PDF screenshot.");
     if (f.size > MAX_PROOF) return setErr("File is too large. Maximum is 5 MB.");
     setFile(f);
+  };
+
+  const payOnline = async () => {
+    setErr(null);
+    setBusy(true);
+    try {
+      const o = await gwStart({ data: { planCode: plan.code as "RENTDESK" | "RENTALOS_MANAGEMENT" } });
+      await loadRazorpay();
+      const Rzp = (window as unknown as { Razorpay?: new (o: unknown) => { open: () => void; on: (e: string, f: (r: { error?: { description?: string } }) => void) => void } }).Razorpay;
+      if (!Rzp) throw new Error("Couldn't load the payment window. Check your connection.");
+      const rz = new Rzp({
+        key: o.keyId,
+        order_id: o.orderId,
+        amount: o.amountPaise,
+        currency: "INR",
+        name: "Rentalos",
+        description: plan.name,
+        handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          try {
+            await gwConfirm({ data: { orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature } });
+            toast.success("Payment received — your plan is active.");
+            onDone();
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : "Verification failed.");
+            setBusy(false);
+          }
+        },
+        modal: { ondismiss: () => setBusy(false) },
+      });
+      rz.on("payment.failed", (r) => {
+        setErr(r.error?.description ?? "Payment failed. Please try again.");
+        setBusy(false);
+      });
+      rz.open();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      setBusy(false);
+    }
   };
 
   const go = async () => {
@@ -361,6 +417,22 @@ function PayDialog({
               : `Pay ₹${payable} by UPI, then share the proof below.`}
           </p>
         </div>
+
+        {!free && gw.data?.enabled && (
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-2">
+            <button
+              onClick={payOnline}
+              disabled={busy}
+              className="w-full rounded-lg bg-primary text-primary-foreground px-4 py-3 text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            >
+              {busy && <Loader2 className="size-4 animate-spin" />} Pay ₹{payable} instantly (UPI / Card / NetBanking)
+            </button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Your plan activates automatically the moment payment succeeds. No screenshot or waiting.
+            </p>
+            <p className="text-[11px] text-muted-foreground text-center">Or pay by QR below and submit proof for manual review.</p>
+          </div>
+        )}
 
         {!free && (
           <div className="rounded-xl border border-border p-4 text-center space-y-2">
@@ -455,8 +527,7 @@ function PayDialog({
           </button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Access starts only after our team approves the payment. Nothing is activated
-          automatically.
+          QR payments start after our team approves the proof. Online payments activate instantly.
         </p>
       </div>
     </div>

@@ -25,16 +25,16 @@ function OpsPage() {
   const r = useQuery({ queryKey: ["automation-runs"], queryFn: () => runs() });
 
   const tiles = [
-    { label: "Overdue bills", value: q.data?.overdueBills, to: "/admin" as const, urgent: true },
-    { label: "Due today", value: q.data?.dueToday, to: "/admin" as const },
-    { label: "Unverified payments", value: q.data?.unverifiedPayments, to: "/admin" as const },
+    { label: "Overdue bills", value: q.data?.overdueBills, urgent: true },
+    { label: "Due today", value: q.data?.dueToday },
+    { label: "Unverified payments", value: q.data?.unverifiedPayments },
     { label: "Pending KYC", value: q.data?.pendingKyc, to: "/admin/myr-verifications" as const },
     {
       label: "Videos awaiting review",
       value: q.data?.pendingVideos,
       to: "/admin/live-feed-review" as const,
     },
-    { label: "Open maintenance", value: q.data?.openTickets, to: "/admin" as const },
+    { label: "Open maintenance", value: q.data?.openTickets },
     {
       label: "Unresolved fraud flags",
       value: q.data?.openFraud,
@@ -44,7 +44,7 @@ function OpsPage() {
     {
       label: "Automation failures (7d)",
       value: q.data?.failedAutomations,
-      to: "/admin/ops" as const,
+      href: "#automation-runs",
       urgent: true,
     },
   ];
@@ -64,24 +64,40 @@ function OpsPage() {
         <Loader2 className="size-5 animate-spin" />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {tiles.map((t) => (
-            <Link
-              key={t.label}
-              to={t.to}
-              className="rounded-xl border border-border bg-card p-4 hover:bg-accent/40 transition"
-            >
+          {tiles.map((t) => {
+            const body = (
+              <>
               <div className="text-xs text-muted-foreground">{t.label}</div>
               <div
                 className={`mt-1.5 text-2xl font-semibold ${t.urgent && (t.value ?? 0) > 0 ? "text-destructive" : ""}`}
               >
                 {t.value ?? "—"}
               </div>
-            </Link>
-          ))}
+              </>
+            );
+            const cls = "rounded-xl border border-border bg-card p-4 transition";
+            if ("to" in t && t.to)
+              return (
+                <Link key={t.label} to={t.to} className={`${cls} hover:bg-accent/40`}>
+                  {body}
+                </Link>
+              );
+            if ("href" in t && t.href)
+              return (
+                <a key={t.label} href={t.href} className={`${cls} hover:bg-accent/40`}>
+                  {body}
+                </a>
+              );
+            return (
+              <div key={t.label} className={cls}>
+                {body}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <div>
+      <div id="automation-runs">
         <h2 className="text-sm font-semibold mb-2">Recent automation runs</h2>
         {r.isLoading ? (
           <Loader2 className="size-5 animate-spin" />

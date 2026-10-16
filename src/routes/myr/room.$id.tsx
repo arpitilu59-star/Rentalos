@@ -24,6 +24,7 @@ import {
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 import { getPublicRoom } from "@/lib/public-listing.functions";
 import { seo, SITE_URL, breadcrumbSchema } from "@/lib/seo";
+import { slugifyCity } from "@/lib/cities";
 
 export const Route = createFileRoute("/myr/room/$id")({
   component: RoomDetail,
@@ -73,7 +74,7 @@ export const Route = createFileRoute("/myr/room/$id")({
               { name: "Home", path: "/" },
               { name: "Browse rentals", path: "/myr/browse" },
               ...(r.city
-                ? [{ name: r.city, path: `/myr/browse?city=${encodeURIComponent(r.city)}` }]
+                ? [{ name: r.city, path: `/rooms-in/${slugifyCity(r.city)}` }]
                 : []),
             ]),
           ),

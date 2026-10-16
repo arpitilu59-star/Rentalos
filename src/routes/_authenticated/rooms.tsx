@@ -15,6 +15,8 @@ type RoomWithMyr = Room & {
   is_public?: boolean;
   myr_available?: boolean;
   has_verified_video?: boolean;
+  capacity?: number;
+  auto_unpublished?: boolean;
 };
 
 export const Route = createFileRoute("/_authenticated/rooms")({ component: RoomsPage });
@@ -113,6 +115,8 @@ function RoomsPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map((r) => {
               const occ = tenantsByRoom(r.id);
+              const cap = r.capacity ?? 1;
+              const full = occ.length >= cap;
               return (
                 <div
                   key={r.id}
@@ -126,8 +130,24 @@ function RoomsPage() {
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-full ${occ.length ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
                     >
-                      {occ.length ? `${occ.length} tenant${occ.length > 1 ? "s" : ""}` : "Empty"}
+                      {occ.length
+                        ? `${occ.length}/${cap} occupied`
+                        : cap > 1
+                          ? `Empty · ${cap} beds`
+                          : "Empty"}
                     </span>
+                  </div>
+                  <div className="mt-1 text-[11px]">
+                    {full ? (
+                      <span className="text-amber-600">
+                        Full · hidden from Rentalos
+                        {r.auto_unpublished ? " — shows again automatically when a tenant leaves" : ""}
+                      </span>
+                    ) : r.is_public ? (
+                      <span className="text-success">Live on Rentalos</span>
+                    ) : (
+                      <span className="text-muted-foreground">Not published</span>
+                    )}
                   </div>
                   <div className="mt-3 text-sm space-y-1">
                     <div className="flex justify-between">
@@ -172,9 +192,15 @@ function RoomsPage() {
                     </button>
                     <button
                       onClick={() => togglePublish(r)}
-                      disabled={busyRoom === r.id}
+                      disabled={busyRoom === r.id || (full && !r.is_public)}
                       className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-60 ${r.is_public ? "border border-border" : "bg-primary text-primary-foreground"}`}
-                      title={r.is_public ? "Remove from Rentalos" : "Show on Rentalos"}
+                      title={
+                        full && !r.is_public
+                          ? "Room is full — it is published again automatically when a tenant leaves"
+                          : r.is_public
+                            ? "Remove from Rentalos"
+                            : "Show on Rentalos"
+                      }
                     >
                       {busyRoom === r.id ? (
                         <Loader2 className="size-3 animate-spin" />
@@ -254,6 +280,9 @@ function RoomForm({
   const [water_per_person, setWater] = useState(initial?.water_per_person?.toString() ?? "");
   const [cleaning_amount, setCleaning] = useState(initial?.cleaning_amount?.toString() ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [capacity, setCapacity] = useState(
+    String((initial as { capacity?: number } | undefined)?.capacity ?? 1),
+  );
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -266,6 +295,7 @@ function RoomForm({
       water_per_person: water_per_person === "" ? null : Number(water_per_person),
       cleaning_amount: cleaning_amount === "" ? null : Number(cleaning_amount),
       notes: notes || null,
+      capacity: Math.min(50, Math.max(1, Math.round(Number(capacity)) || 1)),
     };
     if (initial) await supabase.from("rooms").update(payload).eq("id", initial.id);
     else {
@@ -317,6 +347,20 @@ function RoomForm({
               onChange={(e) => setRent(e.target.value)}
               className={input}
             />
+          </Field>
+          <Field label="Tenant slots (beds)">
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className={input}
+            />
+            <span className="text-[11px] text-muted-foreground">
+              1 for a private room. The room is hidden from Rentalos once every slot has an active
+              tenant, and shown again when one leaves.
+            </span>
           </Field>
           <div className="rounded-xl bg-muted/40 p-3 space-y-2">
             <div className="text-xs font-medium text-muted-foreground">

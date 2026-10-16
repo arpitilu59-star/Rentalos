@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- admin tables render loosely-typed joined rows */
+import { getGatewayStatus } from "@/lib/subscription.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -57,7 +58,9 @@ function SubscriptionsAdmin() {
           </button>
         ))}
       </div>
-      {tab === "Overview" && <Overview goPayments={() => setTab("Payments")} />}
+      {tab === "Overview" && (
+        <Overview goPayments={() => setTab("Payments")} goSettings={() => setTab("Plans & payment settings")} />
+      )}
       {tab === "Payments" && <Payments />}
       {tab === "Users" && <UsersTab />}
       {tab === "Plans & payment settings" && <PlansTab />}
@@ -73,9 +76,13 @@ function Err({ e }: { e: unknown }) {
   );
 }
 
-function Overview({ goPayments }: { goPayments: () => void }) {
+function Overview({ goPayments, goSettings }: { goPayments: () => void; goSettings: () => void }) {
   const fn = useServerFn(adminSubscriptionOverview);
   const q = useQuery({ queryKey: ["admin-sub-overview"], queryFn: () => fn(), retry: false });
+  const planCfg = useServerFn(adminGetPlanConfig);
+  const cfg = useQuery({ queryKey: ["admin-plan-config"], queryFn: () => planCfg(), retry: false });
+  const gwFn = useServerFn(getGatewayStatus);
+  const gw = useQuery({ queryKey: ["gateway-status"], queryFn: () => gwFn(), retry: false });
   if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
   if (q.isError || !q.data) return <Err e={q.error} />;
   const d = q.data;
@@ -101,6 +108,38 @@ function Overview({ goPayments }: { goPayments: () => void }) {
           </div>
         ))}
       </div>
+      <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <h2 className="font-medium">Payment setup</h2>
+        <div className="grid sm:grid-cols-3 gap-3 text-sm">
+          <div className="rounded-lg border border-border p-3">
+            <div className="text-xs text-muted-foreground">Payment QR (manual review)</div>
+            {cfg.data?.qrUrl ? (
+              <img src={cfg.data.qrUrl} alt="Current payment QR" className="mt-2 size-24 object-contain rounded bg-white" />
+            ) : (
+              <div className="mt-1 text-amber-600">{cfg.isLoading ? "Checking…" : "Not uploaded"}</div>
+            )}
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="text-xs text-muted-foreground">UPI ID</div>
+            <div className="mt-1 font-medium">{cfg.data?.settings?.upi_id || (cfg.isLoading ? "…" : "Not set")}</div>
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="text-xs text-muted-foreground">Instant online payment (auto-activation)</div>
+            <div className={`mt-1 font-medium ${gw.data?.enabled ? "text-emerald-600" : "text-amber-600"}`}>
+              {gw.isLoading ? "…" : gw.data?.enabled ? "On — plans activate automatically" : "Off — add Razorpay keys"}
+            </div>
+          </div>
+        </div>
+        <button className={btnP} onClick={goSettings}>
+          {cfg.data?.qrUrl ? "Change QR / payment settings" : "Upload payment QR"}
+        </button>
+        {!gw.data?.enabled && !gw.isLoading && (
+          <p className="text-xs text-muted-foreground">
+            QR payments are approved by you after checking the proof. For automatic activation (money straight to your
+            account, plan active instantly) set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET in Vercel.
+          </p>
+        )}
+      </section>
       {d.pendingPayments > 0 && (
         <button className={btnP} onClick={goPayments}>
           Review {d.pendingPayments} pending payment(s)
@@ -735,6 +774,7 @@ function PlansTab() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const [qrBusy, setQrBusy] = useState(false);
   const upQr = async (f: File | null) => {
     if (!f) return;
     if (!["image/png", "image/jpeg", "image/webp"].includes(f.type) || f.size > 2 * 1024 * 1024)
@@ -745,12 +785,15 @@ function PlansTab() {
       r.onerror = () => rej(new Error("read"));
       r.readAsDataURL(f);
     });
+    setQrBusy(true);
     try {
       await qr({ data: { base64: b64, mime: f.type as "image/png" } });
       toast.success("QR updated.");
-      refresh();
+      await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setQrBusy(false);
     }
   };
   if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
@@ -770,11 +813,22 @@ function PlansTab() {
         ) : (
           <p className="text-amber-600">No QR uploaded yet. Users can't pay until you add one.</p>
         )}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={(e) => upQr(e.target.files?.[0] ?? null)}
-        />
+        <label className={`${btnP} inline-flex items-center gap-2 cursor-pointer ${qrBusy ? "opacity-50 pointer-events-none" : ""}`}>
+          {qrBusy ? "Uploading…" : d.qrUrl ? "Replace QR image" : "Upload QR image"}
+          <input
+            type="file"
+            className="sr-only"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={qrBusy}
+            onChange={(e) => {
+              const input = e.currentTarget;
+              void upQr(input.files?.[0] ?? null).finally(() => {
+                input.value = "";
+              });
+            }}
+          />
+        </label>
+        <p className="text-xs text-muted-foreground">PNG / JPG / WebP, up to 2 MB.</p>
         <div className="grid md:grid-cols-2 gap-2">
           <label>
             UPI ID

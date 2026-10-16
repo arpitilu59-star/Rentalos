@@ -346,6 +346,10 @@ function TenantForm({
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{" "}
             Active tenant
           </label>
+          <p className="-mt-2 text-[11px] text-muted-foreground">
+            Untick when the tenant leaves: the room is freed and shown on Rentalos again
+            automatically (if you had it published).
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

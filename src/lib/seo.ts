@@ -12,7 +12,11 @@
  * don't each reinvent a partial version.
  */
 
-export const SITE_URL = "https://www.rentalos.in";
+/** Canonical host is www.rentalos.in (the apex 308-redirects to it). Override with VITE_SITE_URL if that changes. */
+export const SITE_URL = (
+  (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_SITE_URL) ||
+  "https://www.rentalos.in"
+).replace(/\/+$/, "");
 export const SITE_NAME = "Rentalos";
 
 export type SeoInput = {

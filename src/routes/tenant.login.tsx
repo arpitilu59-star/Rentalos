@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { claimRole } from "@/lib/account.functions";
 import { ForgotPassword } from "@/components/ForgotPassword";
+import { GoogleButton, OrDivider } from "@/components/GoogleButton";
 import { Loader2, User, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/tenant/login")({
@@ -153,71 +154,78 @@ function TenantLogin() {
           {forgot ? (
             <ForgotPassword initialEmail={email} onBack={() => setForgot(false)} />
           ) : (
-            <form onSubmit={submit} className="space-y-3">
-              {mode === "signup" && (
-                <>
-                  <Field label="Full name">
-                    <input
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={input}
-                    />
-                  </Field>
-                  <Field label="Mobile (for landlord to match your booking)">
-                    <input
-                      required
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      placeholder="+91 98765 43210"
-                      className={input}
-                    />
-                  </Field>
-                </>
-              )}
-              <Field label="Email">
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={input}
-                />
-              </Field>
-              <Field label="Password">
-                <input
-                  required
-                  type="password"
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={input}
-                />
-              </Field>
-              {mode === "signin" && (
-                <div className="text-right -mt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgot(true);
-                      setError(null);
-                    }}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-              {error && <p className="text-xs text-destructive">{error}</p>}
-              <button
-                disabled={loading}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
-              >
-                {loading && <Loader2 className="size-4 animate-spin" />}
-                {mode === "signup" ? "Create tenant account" : "Sign in as tenant"}
-              </button>
-            </form>
+            <>
+              <GoogleButton
+                path={`/tenant/login${typeof window !== "undefined" ? window.location.search : ""}`}
+                onError={setError}
+              />
+              <OrDivider />
+              <form onSubmit={submit} className="space-y-3">
+                {mode === "signup" && (
+                  <>
+                    <Field label="Full name">
+                      <input
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className={input}
+                      />
+                    </Field>
+                    <Field label="Mobile (for landlord to match your booking)">
+                      <input
+                        required
+                        type="tel"
+                        value={mobile}
+                        onChange={(e) => setMobile(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className={input}
+                      />
+                    </Field>
+                  </>
+                )}
+                <Field label="Email">
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={input}
+                  />
+                </Field>
+                <Field label="Password">
+                  <input
+                    required
+                    type="password"
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={input}
+                  />
+                </Field>
+                {mode === "signin" && (
+                  <div className="text-right -mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgot(true);
+                        setError(null);
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+                {error && <p className="text-xs text-destructive">{error}</p>}
+                <button
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" />}
+                  {mode === "signup" ? "Create tenant account" : "Sign in as tenant"}
+                </button>
+              </form>
+            </>
           )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">

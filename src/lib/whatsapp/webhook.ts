@@ -165,7 +165,7 @@ export async function handleIncomingMessage(msg: MetaMessage): Promise<void> {
   if (!sent.ok) console.error("[whatsapp] reply failed:", sent.error);
 }
 
-const siteUrl = () => (process.env.SITE_URL || "https://rentalos.in").replace(/\/$/, "");
+const siteUrl = () => (process.env.SITE_URL || "https://www.rentalos.in").replace(/\/$/, "");
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export async function resolveIntent(intent: Intent, userId: string): Promise<string> {

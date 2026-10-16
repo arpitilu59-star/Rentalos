@@ -66,7 +66,13 @@ export const publishRoom = createServerFn({ method: "POST" })
       .from("rooms")
       .update(patch as never)
       .eq("id", data.room_id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (/ROOM_FULL/.test(error.message))
+        throw new Error(
+          "This room is full, so it can't be shown on Rentalos. It is published again automatically when a tenant moves out (mark the tenant inactive).",
+        );
+      throw new Error(error.message);
+    }
     return { ok: true };
   });
 
@@ -95,6 +101,20 @@ export const createBooking = createServerFn({ method: "POST" })
       .eq("id", data.room_id)
       .maybeSingle();
     if (!r || !r.is_public || !r.myr_available) throw new Error("Room not available");
+
+    // Vacancy + abuse guards (service role: these read other users' rows).
+    const { supabaseAdmin: guard } = await import("@/integrations/supabase/client.server");
+    const [{ data: roomRow }, { count: active }, { data: mine }] = await Promise.all([
+      guard.from("rooms").select("capacity").eq("id", r.id).maybeSingle(),
+      guard.from("tenants").select("id", { count: "exact", head: true }).eq("room_id", r.id).eq("active", true),
+      guard.from("bookings").select("id, room_id, status").eq("tenant_user_id", userId).eq("status", "pending"),
+    ]);
+    if ((active ?? 0) >= ((roomRow as { capacity: number } | null)?.capacity ?? 1))
+      throw new Error("Room not available");
+    if ((mine ?? []).some((b: { room_id: string }) => b.room_id === r.id))
+      throw new Error("You already have a pending request for this room.");
+    if ((mine ?? []).length >= 10)
+      throw new Error("You have too many pending requests. Wait for owners to respond first.");
 
     // Terms gate: if the landlord published terms, every acknowledgement is required BEFORE
     // anything is created. The snapshot itself is built in the database, never from the client.
@@ -154,6 +174,22 @@ export const createBooking = createServerFn({ method: "POST" })
         accErr.message.replace(/^.*?ERROR:\s*/, "").slice(0, 200) ||
           "Couldn't record the terms. Please try again.",
       );
+    }
+    // Admin visibility: every new booking is surfaced so a human can confirm it is genuine.
+    try {
+      const { data: admins } = await adminForTerms.from("admin_users").select("user_id").eq("active", true);
+      if (admins?.length)
+        await adminForTerms.from("myr_notifications").insert(
+          admins.map((a: { user_id: string }) => ({
+            user_id: a.user_id,
+            kind: "admin_new_booking",
+            title: "New booking request",
+            body: `${data.tenant_name} (${data.tenant_mobile}) requested a room. Verify it in Admin → Bookings.`,
+            link: "/admin/bookings",
+          })),
+        );
+    } catch {
+      /* best-effort: the Admin → Bookings page is the source of truth */
     }
     return { booking_id: ins.id };
   });
@@ -223,6 +259,12 @@ export const decideBooking = createServerFn({ method: "POST" })
 
     // Accept path
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: cap }, { count: occupied }] = await Promise.all([
+      supabaseAdmin.from("rooms").select("capacity").eq("id", b.room_id).maybeSingle(),
+      supabaseAdmin.from("tenants").select("id", { count: "exact", head: true }).eq("room_id", b.room_id).eq("active", true),
+    ]);
+    if ((occupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1))
+      throw new Error("This room is already full. Reject the request or free a slot first.");
     const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
     const tenantCode = (codeRow as string) ?? null;
 
@@ -260,8 +302,37 @@ export const decideBooking = createServerFn({ method: "POST" })
       })
       .eq("id", b.id);
 
-    // Mark room unavailable on MYR
-    await supabaseAdmin.from("rooms").update({ myr_available: false }).eq("id", b.room_id);
+    // The room's listing state (full => hidden, vacancy => shown) is maintained by the database
+    // trigger on tenants. If this acceptance filled the room, the other waiting requests can't be
+    // honoured: close them so those tenants aren't left hanging.
+    const { count: nowOccupied } = await supabaseAdmin
+      .from("tenants")
+      .select("id", { count: "exact", head: true })
+      .eq("room_id", b.room_id)
+      .eq("active", true);
+    if ((nowOccupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1)) {
+      const { data: others } = await supabaseAdmin
+        .from("bookings")
+        .select("id, tenant_user_id")
+        .eq("room_id", b.room_id)
+        .eq("status", "pending")
+        .neq("id", b.id);
+      if (others?.length) {
+        await supabaseAdmin
+          .from("bookings")
+          .update({ status: "rejected", decided_at: new Date().toISOString() })
+          .in("id", others.map((o: { id: string }) => o.id));
+        await supabaseAdmin.from("myr_notifications").insert(
+          others.map((o: { tenant_user_id: string }) => ({
+            user_id: o.tenant_user_id,
+            kind: "booking_closed",
+            title: "Room no longer available",
+            body: "Another tenant booked this room. Browse similar rooms on Rentalos.",
+            link: "/myr/browse",
+          })),
+        );
+      }
+    }
 
     return { ok: true, tenant_id: newTenant.id, tenant_code: tenantCode };
   });

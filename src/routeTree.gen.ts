@@ -45,6 +45,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
 import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
+import { Route as AdminBookingsRouteImport } from './routes/admin/bookings'
 import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
 import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
 import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
@@ -66,6 +67,7 @@ import { Route as MyrOnboardRouteImport } from './routes/myr/onboard'
 import { Route as MyrProfileRouteImport } from './routes/myr/profile'
 import { Route as MyrRoommatesRouteImport } from './routes/myr/roommates'
 import { Route as MyrSavedRouteImport } from './routes/myr/saved'
+import { Route as RoomsInCityRouteImport } from './routes/rooms-in.$city'
 import { Route as TenantIndexRouteImport } from './routes/tenant/index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant/$tenantId'
 import { Route as TenantLoginRouteImport } from './routes/tenant.login'
@@ -277,6 +279,11 @@ const AdminAuditsRoute = AdminAuditsRouteImport.update({
   path: '/audits',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBookingsRoute = AdminBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDiagnosticsRoute = AdminDiagnosticsRouteImport.update({
   id: '/diagnostics',
   path: '/diagnostics',
@@ -381,6 +388,11 @@ const MyrSavedRoute = MyrSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
   getParentRoute: () => MyrRoute,
+} as any)
+const RoomsInCityRoute = RoomsInCityRouteImport.update({
+  id: '/rooms-in/$city',
+  path: '/rooms-in/$city',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const TenantIndexRoute = TenantIndexRouteImport.update({
   id: '/',
@@ -536,6 +548,7 @@ export interface FileRoutesByFullPath {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
+  '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
@@ -556,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/myr/profile': typeof MyrProfileRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
+  '/rooms-in/$city': typeof RoomsInCityRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/tenant/login': typeof TenantLoginRoute
   '/admin/': typeof AdminIndexRoute
@@ -614,6 +628,7 @@ export interface FileRoutesByTo {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
+  '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
@@ -633,6 +648,7 @@ export interface FileRoutesByTo {
   '/myr/profile': typeof MyrProfileRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
+  '/rooms-in/$city': typeof RoomsInCityRoute
   '/tenant/login': typeof TenantLoginRoute
   '/admin': typeof AdminIndexRoute
   '/myr': typeof MyrIndexRoute
@@ -695,6 +711,7 @@ export interface FileRoutesById {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/audits': typeof AdminAuditsRoute
+  '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
@@ -715,6 +732,7 @@ export interface FileRoutesById {
   '/myr/profile': typeof MyrProfileRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
+  '/rooms-in/$city': typeof RoomsInCityRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/tenant/login': typeof TenantLoginRoute
   '/admin/': typeof AdminIndexRoute
@@ -778,6 +796,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
+    | '/admin/bookings'
     | '/admin/diagnostics'
     | '/admin/fraud'
     | '/admin/live-feed-review'
@@ -798,6 +817,7 @@ export interface FileRouteTypes {
     | '/myr/profile'
     | '/myr/roommates'
     | '/myr/saved'
+    | '/rooms-in/$city'
     | '/tenant/$tenantId'
     | '/tenant/login'
     | '/admin/'
@@ -856,6 +876,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
+    | '/admin/bookings'
     | '/admin/diagnostics'
     | '/admin/fraud'
     | '/admin/live-feed-review'
@@ -875,6 +896,7 @@ export interface FileRouteTypes {
     | '/myr/profile'
     | '/myr/roommates'
     | '/myr/saved'
+    | '/rooms-in/$city'
     | '/tenant/login'
     | '/admin'
     | '/myr'
@@ -936,6 +958,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/admins'
     | '/admin/audits'
+    | '/admin/bookings'
     | '/admin/diagnostics'
     | '/admin/fraud'
     | '/admin/live-feed-review'
@@ -956,6 +979,7 @@ export interface FileRouteTypes {
     | '/myr/profile'
     | '/myr/roommates'
     | '/myr/saved'
+    | '/rooms-in/$city'
     | '/tenant/$tenantId'
     | '/tenant/login'
     | '/admin/'
@@ -997,6 +1021,7 @@ export interface RootRouteChildren {
   SystemAdminControlRoute: typeof SystemAdminControlRoute
   TenantRoute: typeof TenantRouteWithChildren
   LandlordLoginRoute: typeof LandlordLoginRoute
+  RoomsInCityRoute: typeof RoomsInCityRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1253,6 +1278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/bookings': {
+      id: '/admin/bookings'
+      path: '/bookings'
+      fullPath: '/admin/bookings'
+      preLoaderRoute: typeof AdminBookingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/diagnostics': {
       id: '/admin/diagnostics'
       path: '/diagnostics'
@@ -1399,6 +1431,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/myr/saved'
       preLoaderRoute: typeof MyrSavedRouteImport
       parentRoute: typeof MyrRoute
+    }
+    '/rooms-in/$city': {
+      id: '/rooms-in/$city'
+      path: '/rooms-in/$city'
+      fullPath: '/rooms-in/$city'
+      preLoaderRoute: typeof RoomsInCityRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/tenant/': {
       id: '/tenant/'
@@ -1620,6 +1659,7 @@ interface AdminRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminAdminsRoute: typeof AdminAdminsRoute
   AdminAuditsRoute: typeof AdminAuditsRoute
+  AdminBookingsRoute: typeof AdminBookingsRoute
   AdminDiagnosticsRoute: typeof AdminDiagnosticsRoute
   AdminFraudRoute: typeof AdminFraudRoute
   AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
@@ -1638,6 +1678,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminAdminsRoute: AdminAdminsRoute,
   AdminAuditsRoute: AdminAuditsRoute,
+  AdminBookingsRoute: AdminBookingsRoute,
   AdminDiagnosticsRoute: AdminDiagnosticsRoute,
   AdminFraudRoute: AdminFraudRoute,
   AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
@@ -1767,6 +1808,7 @@ const rootRouteChildren: RootRouteChildren = {
   SystemAdminControlRoute: SystemAdminControlRoute,
   TenantRoute: TenantRouteWithChildren,
   LandlordLoginRoute: LandlordLoginRoute,
+  RoomsInCityRoute: RoomsInCityRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

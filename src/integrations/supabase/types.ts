@@ -400,6 +400,10 @@ export type Database = {
       }
       bookings: {
         Row: {
+          admin_note: string | null
+          admin_review: string
+          admin_reviewed_at: string | null
+          admin_reviewed_by: string | null
           created_at: string
           decided_at: string | null
           id: string
@@ -416,6 +420,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_note?: string | null
+          admin_review?: string
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
           created_at?: string
           decided_at?: string | null
           id?: string
@@ -432,6 +440,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_note?: string | null
+          admin_review?: string
+          admin_reviewed_at?: string | null
+          admin_reviewed_by?: string | null
           created_at?: string
           decided_at?: string | null
           id?: string
@@ -1687,6 +1699,8 @@ export type Database = {
       }
       rooms: {
         Row: {
+          auto_unpublished: boolean
+          capacity: number
           cleaning_amount: number | null
           created_at: string
           has_verified_video: boolean
@@ -1706,6 +1720,8 @@ export type Database = {
           water_per_person: number | null
         }
         Insert: {
+          auto_unpublished?: boolean
+          capacity?: number
           cleaning_amount?: number | null
           created_at?: string
           has_verified_video?: boolean
@@ -1725,6 +1741,8 @@ export type Database = {
           water_per_person?: number | null
         }
         Update: {
+          auto_unpublished?: boolean
+          capacity?: number
           cleaning_amount?: number | null
           created_at?: string
           has_verified_video?: boolean

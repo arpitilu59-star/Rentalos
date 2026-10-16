@@ -134,3 +134,66 @@ export function cleanDbError(msg: string): string {
     msg.replace(/^.*?ERROR:\s*/, "").slice(0, 300) || "Something went wrong. Please try again."
   );
 }
+
+/** Is automatic (Razorpay) payment available? Manual UPI-QR proof stays as the fallback. */
+export const getGatewayStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { razorpayConfigured } = await import("@/lib/razorpay.server");
+    return { enabled: razorpayConfigured(), keyId: razorpayConfigured() ? (process.env.RAZORPAY_KEY_ID as string) : null };
+  });
+
+/** Create a Razorpay order for the database-computed price and reserve a DRAFT payment. */
+export const startGatewayPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ planCode: z.enum(["RENTDESK", "RENTALOS_MANAGEMENT"]) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { razorpayConfigured, createRazorpayOrder } = await import("@/lib/razorpay.server");
+    if (!razorpayConfigured()) throw new Error("Online payment isn't enabled yet. Please pay by QR.");
+    const admin = await getAdmin();
+    const { data: amount, error: qe } = await admin.rpc("gateway_quote", { _uid: context.userId, _plan_code: data.planCode });
+    if (qe) throw new Error(cleanDbError(qe.message));
+    const paise = Math.round(Number(amount) * 100);
+    if (!(paise >= 100)) throw new Error("No payment is needed for this plan.");
+    let orderId: string;
+    try {
+      orderId = await createRazorpayOrder(paise, `sub_${Date.now()}`, { user_id: context.userId, plan: data.planCode });
+    } catch (e) {
+      console.error("[razorpay] order failed:", e);
+      throw new Error("Couldn't start the payment. Please try again or pay by QR.");
+    }
+    const { error } = await admin.rpc("create_gateway_payment", {
+      _uid: context.userId,
+      _plan_code: data.planCode,
+      _gateway: "razorpay",
+      _order_id: orderId,
+    });
+    if (error) throw new Error(cleanDbError(error.message));
+    return { orderId, amountPaise: paise, keyId: process.env.RAZORPAY_KEY_ID as string };
+  });
+
+/** Checkout success callback: verify the signature, then activate immediately (webhook is the safety net). */
+export const confirmGatewayPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ orderId: z.string().min(5).max(64), paymentId: z.string().min(5).max(64), signature: z.string().min(10).max(200) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { verifyCheckoutSignature, fetchRazorpayPayment } = await import("@/lib/razorpay.server");
+    if (!verifyCheckoutSignature(data.orderId, data.paymentId, data.signature, process.env.RAZORPAY_KEY_SECRET ?? "")) {
+      throw new Error("Payment couldn't be verified. If money was deducted it will activate automatically within a few minutes.");
+    }
+    const admin = await getAdmin();
+    const { data: mine } = await admin
+      .from("subscription_payments").select("id").eq("gateway", "razorpay").eq("gateway_order_id", data.orderId).eq("user_id", context.userId).maybeSingle();
+    if (!mine) throw new Error("Order not found for your account.");
+    const pay = await fetchRazorpayPayment(data.paymentId);
+    if (pay.order_id !== data.orderId || (pay.status !== "captured" && pay.status !== "authorized")) {
+      throw new Error("Payment isn't confirmed yet. It will activate automatically as soon as the bank confirms.");
+    }
+    const { data: res, error } = await admin.rpc("settle_gateway_payment", {
+      _gateway: "razorpay", _order_id: data.orderId, _gateway_payment_id: data.paymentId, _amount_paise: pay.amount ?? 0,
+    });
+    if (error) throw new Error(cleanDbError(error.message));
+    return res as { status: string; expires_at?: string };
+  });

@@ -20,6 +20,7 @@ import {
   FileText,
 } from "lucide-react";
 import { PublicPlans } from "@/components/subscription/PublicPlans";
+import { KNOWN_CITIES, slugifyCity } from "@/lib/cities";
 import { SiteNavbar } from "@/components/SiteNavbar";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 
@@ -500,6 +501,23 @@ function MyrLanding() {
           >
             <Building2 className="size-4" /> Landlord login / Signup
           </Link>
+        </div>
+      </section>
+
+      {/* Crawlable links to every city landing page */}
+      <section className="max-w-6xl mx-auto px-4 py-10" aria-labelledby="cities-h">
+        <h2 id="cities-h" className="text-lg font-semibold">Find rooms &amp; PGs by city</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {KNOWN_CITIES.slice(0, 24).map((c) => (
+            <Link
+              key={c}
+              to="/rooms-in/$city"
+              params={{ city: slugifyCity(c) }}
+              className="text-xs rounded-full border border-border px-3 py-1.5 hover:bg-accent"
+            >
+              Rooms in {c}
+            </Link>
+          ))}
         </div>
       </section>
 

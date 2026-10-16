@@ -70,6 +70,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 // the installed TanStack Start has no raw-HTTP route API. Never throws:
 // webhook errors answer 200 so Meta doesn't retry-storm; dispatch errors 500.
 async function handleWhatsAppRoute(request: Request, path: string): Promise<Response> {
+  let authed = false;
   try {
     if (path === "/api/whatsapp/webhook") {
       const { handleWebhookVerify, handleWebhookEvent } = await import("./lib/whatsapp/webhook");
@@ -84,14 +85,53 @@ async function handleWhatsAppRoute(request: Request, path: string): Promise<Resp
     if (request.headers.get("authorization") !== `Bearer ${secret}`) {
       return new Response("Unauthorized", { status: 401 });
     }
+    authed = true;
     const { dispatchPendingNotifications } = await import("./lib/whatsapp/dispatch");
     const summary = await dispatchPendingNotifications();
     return new Response(JSON.stringify(summary), { status: 200, headers: { "content-type": "application/json" } });
   } catch (error) {
     console.error("[whatsapp] route error:", error);
-    return path === "/api/whatsapp/webhook"
-      ? new Response("ok", { status: 200 })
-      : new Response("Internal error", { status: 500 });
+    if (path === "/api/whatsapp/webhook") return new Response("ok", { status: 200 });
+    // Only a caller that already proved the shared secret gets the reason (shown in the Actions log).
+    const reason = authed && error instanceof Error ? error.message.slice(0, 300) : "Internal error";
+    return new Response(JSON.stringify({ error: reason }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  }
+}
+
+/** Dynamic sitemap: static pages + every city with live listings + every live room. */
+async function handleSitemap(): Promise<Response> {
+  try {
+    const { buildSitemapXml } = await import("./lib/sitemap");
+    const { SITE_URL } = await import("./lib/seo");
+    const { loadSitemapData } = await import("./lib/city-listing.server");
+    const d = await loadSitemapData();
+    const xml = buildSitemapXml(SITE_URL, [
+      { path: "/", changefreq: "daily", priority: 1.0 },
+      { path: "/myr/browse", changefreq: "daily", priority: 0.9 },
+      { path: "/pricing", changefreq: "monthly", priority: 0.6 },
+      { path: "/about", changefreq: "monthly", priority: 0.5 },
+      { path: "/contact", changefreq: "monthly", priority: 0.5 },
+      ...d.cities.map((c) => ({ path: `/rooms-in/${c.slug}`, changefreq: "daily" as const, priority: 0.8 })),
+      ...d.rooms.map((r) => ({
+        path: `/myr/room/${r.id}`,
+        changefreq: "weekly" as const,
+        priority: 0.6,
+        lastmod: r.updatedAt,
+      })),
+    ]);
+    return new Response(xml, {
+      status: 200,
+      headers: {
+        "content-type": "application/xml; charset=utf-8",
+        "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
+  } catch (error) {
+    console.error("[sitemap] failed:", error);
+    return new Response("Sitemap temporarily unavailable", { status: 503, headers: { "retry-after": "300" } });
   }
 }
 
@@ -99,6 +139,11 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const path = new URL(request.url).pathname;
+      if (path === "/sitemap.xml" && request.method === "GET") return await handleSitemap();
+      if (path === "/api/razorpay/webhook") {
+        const { handleRazorpayWebhook } = await import("./lib/razorpay-webhook.server");
+        return await handleRazorpayWebhook(request);
+      }
       if (path === "/api/whatsapp/webhook" || path === "/api/whatsapp/dispatch") {
         return await handleWhatsAppRoute(request, path);
       }

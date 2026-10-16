@@ -97,6 +97,7 @@ function AdminLayout() {
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/ops", label: "Operations", icon: Activity },
     { to: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
+    { to: "/admin/bookings", label: "Bookings", icon: ClipboardList },
     { to: "/admin/rental-terms", label: "Rental terms", icon: ClipboardList },
     { to: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
     { to: "/admin/fraud", label: "Fraud", icon: ShieldAlert },

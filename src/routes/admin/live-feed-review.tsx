@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   listPendingLiveFeedVideos,
   signLiveFeedVideoForAdmin,
@@ -22,8 +23,15 @@ function LiveFeedReview() {
   const q = useQuery({ queryKey: ["lfv-pending"], queryFn: () => list() });
 
   const watch = async (id: string) => {
-    const { url } = await sign({ data: { id } });
-    setPlaying({ id, url });
+    setBusy(id);
+    try {
+      const { url } = await sign({ data: { id } });
+      setPlaying({ id, url });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't load the video.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const act = async (id: string, decision: "verified" | "rejected") => {
@@ -35,7 +43,7 @@ function LiveFeedReview() {
       setPlaying(null);
       qc.invalidateQueries({ queryKey: ["lfv-pending"] });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Couldn't save the decision.");
     } finally {
       setBusy(null);
     }

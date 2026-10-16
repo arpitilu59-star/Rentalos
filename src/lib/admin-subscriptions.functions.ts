@@ -561,7 +561,10 @@ export const adminUploadQr = createServerFn({ method: "POST" })
     const { error } = await admin.storage
       .from("payment-qr")
       .upload(path, buf, { contentType: data.mime, upsert: false });
-    if (error) throw new Error("Couldn't upload the QR. Please try again.");
+    if (error) {
+      console.error("[admin] QR upload failed:", error.message);
+      throw new Error(`Couldn't upload the QR: ${error.message}`);
+    }
     await run(
       admin
         .from("subscription_settings")

@@ -7,6 +7,8 @@ import {
   detectDuplicatePhotos,
   resolveFraudFlag,
 } from "@/lib/admin-monitoring.functions";
+import { useState } from "react";
+import { toast } from "sonner";
 import { AlertTriangle, Loader2, ShieldAlert, Check, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/admin/fraud")({ component: FraudPage });
@@ -20,14 +22,32 @@ function FraudPage() {
 
   const q = useQuery({ queryKey: ["fraud-flags"], queryFn: () => fetchFlags() });
 
+  const [scanning, setScanning] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
   const runScan = async () => {
-    await Promise.all([detect(), detectPhotos()]);
-    qc.invalidateQueries({ queryKey: ["fraud-flags"] });
+    setScanning(true);
+    try {
+      await Promise.all([detect(), detectPhotos()]);
+      await qc.invalidateQueries({ queryKey: ["fraud-flags"] });
+      toast.success("Scan complete.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Scan failed. Please try again.");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const toggle = async (id: string, resolved: boolean) => {
-    await resolve({ data: { id, resolved } });
-    qc.invalidateQueries({ queryKey: ["fraud-flags"] });
+    setBusyId(id);
+    try {
+      await resolve({ data: { id, resolved } });
+      await qc.invalidateQueries({ queryKey: ["fraud-flags"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update the flag.");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -43,9 +63,10 @@ function FraudPage() {
         </div>
         <button
           onClick={runScan}
-          className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-accent"
+          disabled={scanning}
+          className="disabled:opacity-50 inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-accent"
         >
-          <RefreshCw className="size-3.5" /> Scan duplicates
+          <RefreshCw className={`size-3.5 ${scanning ? "animate-spin" : ""}`} /> {scanning ? "Scanning…" : "Scan duplicates"}
         </button>
       </div>
 
@@ -63,6 +84,8 @@ function FraudPage() {
               details: unknown;
               resolved: boolean;
               created_at: string;
+              user_id?: string;
+              profile?: { full_name?: string | null; email?: string | null } | null;
             }) => (
               <div
                 key={f.id}
@@ -94,7 +117,8 @@ function FraudPage() {
                 </div>
                 <button
                   onClick={() => toggle(f.id, !f.resolved)}
-                  className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent shrink-0"
+                  disabled={busyId === f.id}
+                  className="disabled:opacity-50 text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent shrink-0"
                 >
                   <Check className="size-3.5" /> {f.resolved ? "Reopen" : "Resolve"}
                 </button>

@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { listLandlordBookings, decideBooking } from "@/lib/bookings.functions";
+import { landlordBookingTermsStatus } from "@/lib/terms.functions";
 import { Loader2, Check, X, Clock, Phone, Mail } from "lucide-react";
 import { useState } from "react";
 
@@ -12,6 +13,8 @@ function BookingsPage() {
   const list = useServerFn(listLandlordBookings);
   const decide = useServerFn(decideBooking);
   const qc = useQueryClient();
+  const termsFn = useServerFn(landlordBookingTermsStatus);
+  const terms = useQuery({ queryKey: ["landlord-booking-terms"], queryFn: () => termsFn() });
   const { data, isLoading } = useQuery({ queryKey: ["landlord-bookings"], queryFn: () => list() });
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -49,6 +52,15 @@ function BookingsPage() {
                   <div className="text-xs mt-1">
                     {b.properties?.name} · Room {b.rooms?.room_number} · ₹{b.rooms?.rent_amount}/mo
                   </div>
+                  {terms.data?.[b.id] && (
+                    <div className={`mt-1 text-[11px] ${terms.data[b.id].needs ? "text-warning" : "text-muted-foreground"}`}>
+                      {terms.data[b.id].accepted
+                        ? terms.data[b.id].needs
+                          ? `Accepted terms v${terms.data[b.id].accepted} — waiting to accept v${terms.data[b.id].current}`
+                          : `Terms v${terms.data[b.id].accepted} accepted`
+                        : "No structured terms on this request"}
+                    </div>
+                  )}
                   {b.message && <div className="mt-2 text-xs text-muted-foreground italic">"{b.message}"</div>}
                 </div>
                 <StatusBadge status={b.status} />
