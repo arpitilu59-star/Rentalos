@@ -38,15 +38,15 @@ function ContactPage() {
           {/* TODO — fill in real values. See chat for what's needed. */}
           <div className="flex items-center gap-3 text-sm">
             <Mail className="size-4 text-primary" />
-            <span className="text-muted-foreground">[your support email]</span>
+            <span className="text-muted-foreground">agarwalarpit516@gmail.com</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Phone className="size-4 text-primary" />
-            <span className="text-muted-foreground">[your contact/WhatsApp number]</span>
+            <span className="text-muted-foreground">+91 7791851997</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <MapPin className="size-4 text-primary" />
-            <span className="text-muted-foreground">[city — optional]</span>
+            <span className="text-muted-foreground">Jaipur, India</span>
           </div>
         </div>
       </div>
