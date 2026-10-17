@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { startRoommateChat } from "@/lib/roommate-chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   saveRoommateProfile,
@@ -351,6 +352,7 @@ function RoommatesPage() {
                         {m.sharedTraits.join(" · ")}
                       </div>
                     )}
+                    <ChatButton userId={m.user_id} name={m.display_name} />
                   </div>
                 ))}
               </div>
@@ -358,6 +360,33 @@ function RoommatesPage() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function ChatButton({ userId, name }: { userId: string; name: string | null }) {
+  const nav = useNavigate();
+  const start = useServerFn(startRoommateChat);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const go = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await start({ data: { otherUserId: userId, message: `Hi${name ? " " + name : ""}! Main bhi roommate dhoondh raha/rahi hu. Chat karein?` } });
+      nav({ to: "/myr/roommate-chat", search: { t: r.threadId } });
+    } catch (e) {
+      setErr((e as Error).message || "Couldn't start chat");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-4">
+      <button onClick={go} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+        {busy ? <Loader2 className="size-4 animate-spin" /> : null} Chat & video call
+      </button>
+      {err && <div className="mt-1 text-[11px] text-destructive">{err}</div>}
     </div>
   );
 }

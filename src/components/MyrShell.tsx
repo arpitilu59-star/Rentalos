@@ -17,6 +17,7 @@ import {
   Star,
   BarChart3,
   Settings,
+  Users,
 } from "lucide-react";
 
 type Variant = "tenant" | "landlord";
@@ -47,6 +48,7 @@ export function MyrShell({
     { to: "/myr/browse", label: "Browse", icon: Search },
     { to: "/myr/saved", label: "Saved", icon: Heart },
     { to: "/myr/messages", label: "Inbox", icon: MessageSquare },
+    { to: "/myr/roommates", label: "Roommates", icon: Users },
     { to: "/myr/bookings", label: "Bookings", icon: CalendarCheck },
   ] as const;
 

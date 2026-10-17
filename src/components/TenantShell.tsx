@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Home as HomeIcon, Receipt, Wallet, Gauge, Wrench, FileText, Bell, UserCircle, LogOut, History } from "lucide-react";
+import { LayoutDashboard, Home as HomeIcon, Receipt, Wallet, Gauge, Wrench, FileText, Bell, UserCircle, LogOut, History, Users } from "lucide-react";
 
 export function TenantShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -27,6 +27,7 @@ export function TenantShell({ children }: { children: React.ReactNode }) {
     { to: `${base}/meter`, label: "Meter", icon: Gauge },
     { to: `${base}/maintenance`, label: "Maintenance", icon: Wrench },
     { to: `${base}/documents`, label: "Documents", icon: FileText },
+    { to: "/myr/roommates", label: "Find a roommate", icon: Users },
     { to: `${base}/notifications`, label: "Notifications", icon: Bell },
     { to: `${base}/history`, label: "History", icon: History },
     { to: `${base}/profile`, label: "Profile", icon: UserCircle },

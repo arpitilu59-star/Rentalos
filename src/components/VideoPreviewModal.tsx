@@ -1,4 +1,5 @@
 import { X, ShieldCheck } from "lucide-react";
+import { ResilientVideo } from "./ResilientVideo";
 
 /**
  * Small shared full-screen video viewer — same visual language as the
@@ -22,7 +23,9 @@ export function VideoPreviewModal({
         <button onClick={onClose} className="absolute -top-10 right-0 text-white p-1">
           <X className="size-5" />
         </button>
-        <video src={url} controls autoPlay playsInline className="w-full rounded-xl bg-black" />
+        <div className="relative aspect-[9/16] max-h-[80vh] mx-auto rounded-xl overflow-hidden bg-black">
+          <ResilientVideo src={url} controls autoPlay className="absolute inset-0 w-full h-full object-contain bg-black" />
+        </div>
         {caption && (
           <div className="mt-2 inline-flex items-center gap-1 text-white/90 text-xs">
             <ShieldCheck className="size-3 text-green-400" /> {caption}

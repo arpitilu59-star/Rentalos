@@ -15,6 +15,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
+import { OCCUPANT_TYPES, OCCUPANT_LABEL, ROOM_SIZES, ROOM_SIZE_LABEL, roomProfileLabel } from "@/lib/room-profile";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
 import { seo } from "@/lib/seo";
 import { groupCities, slugifyCity } from "@/lib/cities";
@@ -55,6 +56,8 @@ type PublicRoom = {
   id: string;
   room_number: string;
   rent_amount: number;
+  occupant_type?: string | null;
+  room_size?: string | null;
   myr_amenities: string[] | null;
   myr_description: string | null;
   myr_photos: unknown;
@@ -282,6 +285,8 @@ function BrowsePage() {
     search.minRent,
     search.maxRent,
     search.type,
+    search.occ,
+    search.size,
     search.sort,
     search.pages,
     termsActive > 0,
@@ -296,7 +301,7 @@ function BrowsePage() {
         let q = supabase
           .from("rooms")
           .select(
-            "id, room_number, rent_amount, myr_amenities, myr_description, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, property_type, myr_cover_photos, is_public_listing, verification_status, terms_summary)",
+            "id, room_number, rent_amount, occupant_type, room_size, myr_amenities, myr_description, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, property_type, myr_cover_photos, is_public_listing, verification_status, terms_summary)",
             { count: "exact" },
           )
           .eq("is_public", true)
@@ -304,6 +309,8 @@ function BrowsePage() {
         if (search.city) q = q.or(cityOrFilter(search.city), { foreignTable: "properties" });
         if (search.q) q = q.or(textOrFilter(search.q), { foreignTable: "properties" });
         if (search.type) q = q.eq("properties.property_type", search.type);
+        if (search.occ) q = q.in("occupant_type", [search.occ, "anyone"]);
+        if (search.size) q = q.eq("room_size", search.size);
         if (search.minRent !== undefined) q = q.gte("rent_amount", search.minRent);
         if (search.maxRent !== undefined) q = q.lte("rent_amount", search.maxRent);
         if (search.sort === "rent_asc") q = q.order("rent_amount", { ascending: true });
@@ -448,6 +455,31 @@ function BrowsePage() {
             ))}
           </div>
 
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground mr-1">For</span>
+            {OCCUPANT_TYPES.filter((o) => o !== "anyone").map((o) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => update({ occ: search.occ === o ? undefined : o })}
+                className={chip(search.occ === o)}
+              >
+                {OCCUPANT_LABEL[o]}
+              </button>
+            ))}
+            <span className="text-xs text-muted-foreground ml-2 mr-1">Size</span>
+            {ROOM_SIZES.map((z) => (
+              <button
+                key={z}
+                type="button"
+                onClick={() => update({ size: search.size === z ? undefined : z })}
+                className={chip(search.size === z)}
+              >
+                {ROOM_SIZE_LABEL[z]}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <TermsFilterDrawer
               value={{ includeUnknown: true, ...termsFilters }}
@@ -568,6 +600,9 @@ function BrowsePage() {
                       </div>
                     </div>
                     <div className="p-3">
+                      {roomProfileLabel(r) && (
+                        <div className="mb-1 text-[11px] font-medium text-primary">{roomProfileLabel(r)}</div>
+                      )}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="font-semibold truncate">

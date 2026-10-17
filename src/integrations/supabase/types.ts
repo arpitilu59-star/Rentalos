@@ -565,6 +565,57 @@ export type Database = {
         }
         Relationships: []
       }
+      live_feed_photos: {
+        Row: {
+          caption: string | null
+          captured_lat: number | null
+          captured_lng: number | null
+          created_at: string
+          distance_m: number | null
+          expires_at: string | null
+          id: string
+          owner_id: string
+          property_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          room_id: string | null
+          storage_path: string
+          verification_status: string
+        }
+        Insert: {
+          caption?: string | null
+          captured_lat?: number | null
+          captured_lng?: number | null
+          created_at?: string
+          distance_m?: number | null
+          expires_at?: string | null
+          id?: string
+          owner_id: string
+          property_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          room_id?: string | null
+          storage_path: string
+          verification_status?: string
+        }
+        Update: {
+          caption?: string | null
+          captured_lat?: number | null
+          captured_lng?: number | null
+          created_at?: string
+          distance_m?: number | null
+          expires_at?: string | null
+          id?: string
+          owner_id?: string
+          property_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          room_id?: string | null
+          storage_path?: string
+          verification_status?: string
+        }
+        Relationships: []
+      }
       live_feed_videos: {
         Row: {
           captured_lat: number | null
@@ -1700,6 +1751,8 @@ export type Database = {
       rooms: {
         Row: {
           auto_unpublished: boolean
+          occupant_type: string | null
+          room_size: string | null
           capacity: number
           cleaning_amount: number | null
           created_at: string
@@ -1721,6 +1774,8 @@ export type Database = {
         }
         Insert: {
           auto_unpublished?: boolean
+          occupant_type?: string | null
+          room_size?: string | null
           capacity?: number
           cleaning_amount?: number | null
           created_at?: string
@@ -1742,6 +1797,8 @@ export type Database = {
         }
         Update: {
           auto_unpublished?: boolean
+          occupant_type?: string | null
+          room_size?: string | null
           capacity?: number
           cleaning_amount?: number | null
           created_at?: string

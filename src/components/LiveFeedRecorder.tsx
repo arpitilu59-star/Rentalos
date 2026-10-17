@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Loader2, Square, Video, X, MapPin, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { currentPosition, pickRandomPrompt, uploadRecordedBlob } from "@/lib/live-feed";
+import { currentPosition, pickRandomPrompt, pickRecorderMime, uploadRecordedBlob } from "@/lib/live-feed";
+import { fixWebmBlobDuration } from "@/lib/webm-fix";
 import { submitLiveVideo, type LiveFeedTarget } from "@/lib/live-feed.functions";
 import { friendlyVideoError } from "@/lib/video";
 
@@ -21,6 +22,8 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const stoppedRef = useRef<Promise<void>>(Promise.resolve());
+  const startedAtRef = useRef(0);
   const submit = useServerFn(submitLiveVideo);
 
   const [phase, setPhase] = useState<"init" | "ready" | "recording" | "processing" | "done" | "error">("init");
@@ -69,11 +72,16 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
       return;
     }
 
-    const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"]
-      .find((m) => (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m))) || "video/webm";
+    const mime = pickRecorderMime();
     chunksRef.current = [];
-    const rec = new MediaRecorder(streamRef.current, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+    const rec = new MediaRecorder(streamRef.current, {
+      mimeType: mime,
+      videoBitsPerSecond: 2_000_000,
+      audioBitsPerSecond: 96_000,
+    });
     rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+    stoppedRef.current = new Promise<void>((resolve) => { rec.onstop = () => resolve(); });
+    startedAtRef.current = Date.now();
     recorderRef.current = rec;
 
     setElapsed(0);
@@ -100,18 +108,21 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
   };
 
   const finish = async () => {
-    stopRecording();
     if (elapsed < MIN_SEC) { setErr(`Please record at least ${MIN_SEC} seconds.`); return; }
+    const durationMs = Date.now() - startedAtRef.current;
+    stopRecording();
     setPhase("processing");
     try {
-      // wait for last chunk
-      await new Promise((r) => setTimeout(r, 400));
-      const blob = new Blob(chunksRef.current, { type: recorderRef.current?.mimeType || "video/webm" });
+      await stoppedRef.current; // the recorder flushes its final chunk before it reports "stopped"
+      const type = recorderRef.current?.mimeType || "video/webm";
+      let blob = new Blob(chunksRef.current, { type });
       if (blob.size < 10_000) throw new Error("Recording failed. Try again.");
+      // WebM from MediaRecorder has no duration/seek info; patch it so the video plays, seeks and loops properly.
+      blob = await fixWebmBlobDuration(blob, durationMs);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sign in required.");
       if (!coords) throw new Error("Location missing.");
-      const ext = (recorderRef.current?.mimeType || "video/webm").includes("mp4") ? "mp4" : "webm";
+      const ext = type.includes("mp4") ? "mp4" : "webm";
       const path = await uploadRecordedBlob(user.id, blob, ext);
       const res = await submit({ data: {
         target,
@@ -119,7 +130,7 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
         captured_lat: coords.lat,
         captured_lng: coords.lng,
         random_prompt: prompt,
-        duration_seconds: elapsed,
+        duration_seconds: Math.max(5, Math.round(durationMs / 1000)),
         mime_type: blob.type,
       }});
       setResult({ status: res.status, distance_m: res.distance_m });
@@ -170,7 +181,7 @@ export function LiveFeedRecorder({ target, onClose, onSuccess }: Props) {
             <div className="absolute inset-0 grid place-items-center bg-black/60 text-white">
               <div className="text-center space-y-2">
                 <Loader2 className="size-8 animate-spin mx-auto" />
-                <div className="text-sm">Uploading & verifying…</div>
+                <div className="text-sm">Saving your video — keep this screen open…</div>
               </div>
             </div>
           )}

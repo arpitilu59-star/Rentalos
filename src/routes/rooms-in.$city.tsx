@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { MapPin } from "lucide-react";
 import { getCityPage } from "@/lib/city-listing.functions";
 import { KNOWN_CITIES, cityFromSlug, slugifyCity } from "@/lib/cities";
+import { cityAbout } from "@/lib/city-about";
 import { seo, jsonLd, breadcrumbSchema, SITE_URL } from "@/lib/seo";
 
 const inr = (n: number) =>
@@ -28,8 +29,7 @@ export const Route = createFileRoute("/rooms-in/$city")({
       title: `Rooms & PGs for rent in ${name}`,
       description,
       path,
-      // A city with nothing live is a thin page: keep it out of the index until it has listings.
-      noindex: loaderData.total === 0,
+      // Every city page is indexable: it carries its own "about the city" content even before listings exist.
     });
     const graph: Record<string, unknown>[] = [
       breadcrumbSchema([
@@ -69,6 +69,7 @@ export const Route = createFileRoute("/rooms-in/$city")({
 
 function CityPage() {
   const d = Route.useLoaderData();
+  const about = cityAbout(d.city);
   const faq: Array<[string, string]> = [
     [
       `How do I find a room for rent in ${d.city}?`,
@@ -183,6 +184,13 @@ function CityPage() {
             </Link>
           </div>
         )}
+
+        <section className="mt-10 rounded-2xl border border-border bg-card p-5" aria-labelledby="about-city">
+          <h2 id="about-city" className="text-lg font-semibold">{about.heading}</h2>
+          {about.paragraphs.map((p) => (
+            <p key={p} className="text-sm text-muted-foreground mt-2 max-w-3xl">{p}</p>
+          ))}
+        </section>
 
         <section className="mt-10">
           <h2 className="text-lg font-semibold">Renting in {d.city}: common questions</h2>

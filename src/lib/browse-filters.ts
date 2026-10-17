@@ -1,5 +1,6 @@
 /** Pure helpers for the /myr/browse filters: URL parsing, PostgREST-safe patterns, counts. */
 import type { TermsFilters } from "@/lib/terms/match";
+import { OCCUPANT_TYPES, ROOM_SIZES, type OccupantType, type RoomSize } from "@/lib/room-profile";
 
 export const RENT_MIN = 0;
 export const RENT_MAX = 50000;
@@ -18,6 +19,8 @@ export type BrowseSearch = {
   minRent?: number;
   maxRent?: number;
   type?: PropertyType;
+  occ?: OccupantType;
+  size?: RoomSize;
   sort?: Sort;
   pages?: number;
   tf?: TermsFilters;
@@ -77,6 +80,8 @@ export function parseBrowseSearch(s: Record<string, unknown>): BrowseSearch {
   if (min !== undefined && min > RENT_MIN) out.minRent = min;
   if (max !== undefined && max < RENT_MAX) out.maxRent = max;
   if ((PROPERTY_TYPES as readonly string[]).includes(s.type as string)) out.type = s.type as PropertyType;
+  if ((OCCUPANT_TYPES as readonly string[]).includes(s.occ as string)) out.occ = s.occ as OccupantType;
+  if ((ROOM_SIZES as readonly string[]).includes(s.size as string)) out.size = s.size as RoomSize;
   if ((SORTS as readonly string[]).includes(s.sort as string) && s.sort !== "newest") out.sort = s.sort as Sort;
   const pages = num(s.pages);
   if (pages !== undefined && pages > 1) out.pages = Math.min(Math.round(pages), 12);
@@ -111,6 +116,8 @@ export function activeBrowseFilters(s: BrowseSearch, termsCount: number): number
   if (s.q) n++;
   if (s.minRent !== undefined || s.maxRent !== undefined) n++;
   if (s.type) n++;
+  if (s.occ) n++;
+  if (s.size) n++;
   return n + termsCount;
 }
 

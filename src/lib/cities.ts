@@ -1,6 +1,6 @@
 /** City helpers for SEO landing pages (/rooms-in/<slug>). Pure, unit-tested. */
 
-/** Large rental markets that get a landing page even before they have listings (noindex until then). */
+/** Large rental markets that always get an indexable landing page, even before they have listings. */
 export const KNOWN_CITIES = [
   "Jaipur", "Delhi", "Mumbai", "Bengaluru", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad",
   "Lucknow", "Kanpur", "Nagpur", "Indore", "Bhopal", "Patna", "Ranchi", "Chandigarh", "Gurugram",

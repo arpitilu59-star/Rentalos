@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getTenantDashboard } from "@/lib/tenant.functions";
 import { TenantShell } from "@/components/TenantShell";
-import { Loader2, Wallet, Receipt, Gauge, Wrench, Calendar } from "lucide-react";
+import { Loader2, Wallet, Receipt, Gauge, Wrench, Calendar, Users } from "lucide-react";
 
 export const Route = createFileRoute("/tenant/$tenantId/")({ component: Page });
 
@@ -50,6 +50,13 @@ function Page() {
             <QuickLink to="/tenant/$tenantId/maintenance" tenantId={tenantId} icon={Wrench} title="Maintenance" sub="Raise a ticket" />
             <QuickLink to="/tenant/$tenantId/meter" tenantId={tenantId} icon={Gauge} title="Meter readings" sub="Past consumption" />
             <QuickLink to="/tenant/$tenantId/deposit" tenantId={tenantId} icon={Wallet} title="Security deposit" sub="Held & refunds" />
+            <Link to="/myr/roommates" className="rounded-2xl bg-card border border-border p-4 hover:bg-accent/50 flex items-center gap-3 md:col-span-2">
+              <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center"><Users className="size-5" /></div>
+              <div>
+                <div className="text-sm font-medium">Find a roommate</div>
+                <div className="text-xs text-muted-foreground">Match karein, app ke andar chat aur video call karein</div>
+              </div>
+            </Link>
           </div>
         </div>
       )}

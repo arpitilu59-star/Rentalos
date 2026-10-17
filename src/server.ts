@@ -107,6 +107,7 @@ async function handleSitemap(): Promise<Response> {
     const { buildSitemapXml } = await import("./lib/sitemap");
     const { SITE_URL } = await import("./lib/seo");
     const { loadSitemapData } = await import("./lib/city-listing.server");
+    const { KNOWN_CITIES, slugifyCity } = await import("./lib/cities");
     const d = await loadSitemapData();
     const xml = buildSitemapXml(SITE_URL, [
       { path: "/", changefreq: "daily", priority: 1.0 },
@@ -114,7 +115,11 @@ async function handleSitemap(): Promise<Response> {
       { path: "/pricing", changefreq: "monthly", priority: 0.6 },
       { path: "/about", changefreq: "monthly", priority: 0.5 },
       { path: "/contact", changefreq: "monthly", priority: 0.5 },
-      ...d.cities.map((c) => ({ path: `/rooms-in/${c.slug}`, changefreq: "daily" as const, priority: 0.8 })),
+      // Every known city is listed (even with no rooms yet) plus any other city that has live rooms.
+      ...[
+        ...d.cities.map((c) => c.slug),
+        ...KNOWN_CITIES.map((c) => slugifyCity(c)),
+      ].map((slug) => ({ path: `/rooms-in/${slug}`, changefreq: "daily" as const, priority: 0.8 })),
       ...d.rooms.map((r) => ({
         path: `/myr/room/${r.id}`,
         changefreq: "weekly" as const,

@@ -62,3 +62,20 @@ export function eventForNotificationKind(rawKind: string): WhatsAppEventType | n
   // Everything else (live feed, meter OCR…) stays in-app only.
   return null;
 }
+
+/** Events that concern a room/booking: the message must say that terms apply and where to read them. */
+const TERMS_NOTE = "Rent, deposit, room type & house rules = your accepted terms (Rentalos > Bookings).";
+const MAX_DETAIL = 200;
+
+/**
+ * Build WhatsApp variable {{2}}. For room/booking messages the terms reminder is always kept
+ * (the main text is shortened to make room for it); other events are only length-capped.
+ * Meta rejects newlines/tabs inside variables, so whitespace is collapsed.
+ */
+export function detailWithTerms(event: WhatsAppEventType, body: string | null | undefined): string {
+  const main = (body ?? "Open Rentalos for details").replace(/\s+/g, " ").trim() || "Open Rentalos for details";
+  if (event !== "booking_update") return main.slice(0, MAX_DETAIL);
+  const room = MAX_DETAIL - TERMS_NOTE.length - 1;
+  const head = main.length > room ? main.slice(0, room - 1).trimEnd() + "…" : main;
+  return `${head} ${TERMS_NOTE}`;
+}

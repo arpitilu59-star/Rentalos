@@ -128,6 +128,14 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
       .single();
     if (insErr) throw insErr;
 
+    // Best effort: make sure the stored WebM carries a duration so it plays/seeks properly everywhere.
+    try {
+      const { repairStoredVideo } = await import("@/lib/video-repair.server");
+      await repairStoredVideo(storage_path, Math.round(duration_seconds) * 1000);
+    } catch (e) {
+      console.error("[live-feed] repair skipped:", e instanceof Error ? e.message : e);
+    }
+
     return {
       id: row.id as string,
       status: row.verification_status as string,
@@ -194,7 +202,7 @@ export const getVerifiedVideoUrl = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: sig } = await supabaseAdmin.storage
       .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 3600);
+      .createSignedUrl(row.storage_path, 21600);
     return { url: sig?.signedUrl ?? null };
   });
 
@@ -262,7 +270,7 @@ export const getOwnLiveFeedVideoUrl = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: sig, error: signErr } = await supabaseAdmin.storage
       .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 900);
+      .createSignedUrl(row.storage_path, 3600);
     if (signErr || !sig?.signedUrl) {
       // Don't leak storage internals to the client — log server-side only.
       console.error("getOwnLiveFeedVideoUrl: failed to sign", {

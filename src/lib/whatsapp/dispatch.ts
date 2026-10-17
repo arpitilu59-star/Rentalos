@@ -4,7 +4,7 @@
  * Called by /api/whatsapp/dispatch (shared-secret protected) on a schedule.
  * Idempotent: each notification id can be sent at most once.
  */
-import { eventForNotificationKind } from "./templates";
+import { eventForNotificationKind, detailWithTerms } from "./templates";
 import { sendWhatsAppNotification } from "./service";
 
 export type DispatchSummary = {
@@ -41,7 +41,7 @@ export async function dispatchPendingNotifications(limit = 100): Promise<Dispatc
           event,
           entityId: n.id,
           periodKey: "v1",
-          params: [n.title.slice(0, 60), (n.body ?? "Open Rentalos for details").slice(0, 200)],
+          params: [n.title.slice(0, 60), detailWithTerms(event, n.body)],
         });
         if (out.status === "sent") summary.sent++;
         else if (out.status === "mocked") summary.mocked++;

@@ -22,6 +22,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
+import { roomProfileLabel } from "@/lib/room-profile";
+import { LivePhotoStrip } from "@/components/LivePhotoStrip";
 import { getPublicRoom } from "@/lib/public-listing.functions";
 import { seo, SITE_URL, breadcrumbSchema } from "@/lib/seo";
 import { slugifyCity } from "@/lib/cities";
@@ -120,6 +122,8 @@ type RoomDetailData = {
   room_number: string;
   rent_amount: number;
   myr_amenities: string[] | null;
+  occupant_type?: string | null;
+  room_size?: string | null;
   myr_description: string | null;
   myr_deposit: number | null;
   myr_photos: unknown;
@@ -163,7 +167,7 @@ function RoomDetail() {
       const { data } = await supabase
         .from("rooms")
         .select(
-          "id, room_number, rent_amount, myr_amenities, myr_description, myr_deposit, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, myr_description, property_type)",
+          "id, room_number, rent_amount, occupant_type, room_size, myr_amenities, myr_description, myr_deposit, myr_photos, properties!inner(id, name, myr_city, myr_address, city, address, myr_description, property_type)",
         )
         .eq("id", id)
         .eq("is_public", true)
@@ -249,6 +253,14 @@ function RoomDetail() {
             </div>
           ))}
         </div>
+
+        <LivePhotoStrip roomId={r.id} />
+
+        {roomProfileLabel(r) && (
+          <div className="inline-flex items-center rounded-full bg-primary/10 text-primary text-sm font-medium px-3 py-1">
+            {roomProfileLabel(r)}
+          </div>
+        )}
 
         <div className="flex items-start justify-between gap-3">
           <div>

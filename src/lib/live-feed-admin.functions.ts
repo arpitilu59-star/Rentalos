@@ -48,7 +48,7 @@ export const signLiveFeedVideoForAdmin = createServerFn({ method: "POST" })
     if (!row) throw new Error("Not found");
     const { data: sig, error } = await supabaseAdmin.storage
       .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 900);
+      .createSignedUrl(row.storage_path, 3600);
     if (error) throw new Error(error.message);
     return { url: sig.signedUrl };
   });
@@ -77,6 +77,64 @@ export const decideLiveFeedVideo = createServerFn({ method: "POST" })
       patch.expires_at = expires.toISOString();
     }
     const { error } = await supabase.from("live_feed_videos").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    if (data.decision === "verified") {
+      // Old recordings (made before the duration fix) get repaired the moment they go public.
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: row } = await supabaseAdmin
+          .from("live_feed_videos")
+          .select("storage_path, duration_seconds")
+          .eq("id", data.id)
+          .maybeSingle();
+        if (row?.storage_path) {
+          const { repairStoredVideo } = await import("@/lib/video-repair.server");
+          await repairStoredVideo(row.storage_path, (row.duration_seconds ?? 0) * 1000);
+        }
+      } catch (e) {
+        console.error("[live-feed] repair on verify skipped:", e instanceof Error ? e.message : e);
+      }
+    }
+    return { ok: true };
+  });
+
+// ---------- live photos review ----------
+export const listPendingLivePhotos = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("live_feed_photos")
+      .select("id, owner_id, room_id, property_id, storage_path, verification_status, distance_m, created_at")
+      .in("verification_status", ["pending", "flagged"])
+      .order("created_at", { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return {
+      items: (data ?? []).map((p) => ({
+        ...p,
+        url: supabaseAdmin.storage.from("live-feed-photos").getPublicUrl(p.storage_path as string).data.publicUrl as string,
+      })),
+    };
+  });
+
+export const decideLivePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => DecideSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const expires = new Date(Date.now() + VERIFICATION_VALIDITY_DAYS * 864e5).toISOString();
+    const { error } = await supabaseAdmin
+      .from("live_feed_photos")
+      .update({
+        verification_status: data.decision,
+        reviewed_by: context.userId,
+        reviewed_at: new Date().toISOString(),
+        expires_at: data.decision === "verified" ? expires : null,
+      })
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -10,6 +10,14 @@ import { formatINR, getOwnerId, type Property, type Room, type Tenant } from "@/
 import { publishRoom } from "@/lib/bookings.functions";
 import { Plus, Pencil, Trash2, X, Globe2, EyeOff, Loader2, Video } from "lucide-react";
 import { LiveFeedManager } from "@/components/LiveFeedManager";
+import {
+  OCCUPANT_TYPES,
+  OCCUPANT_LABEL,
+  ROOM_SIZES,
+  ROOM_SIZE_LABEL,
+  roomProfileMissing,
+  roomProfileLabel,
+} from "@/lib/room-profile";
 
 type RoomWithMyr = Room & {
   is_public?: boolean;
@@ -17,6 +25,8 @@ type RoomWithMyr = Room & {
   has_verified_video?: boolean;
   capacity?: number;
   auto_unpublished?: boolean;
+  occupant_type?: string | null;
+  room_size?: string | null;
 };
 
 export const Route = createFileRoute("/_authenticated/rooms")({ component: RoomsPage });
@@ -51,6 +61,15 @@ function RoomsPage() {
   const propName = (id: string) => properties.find((p) => p.id === id)?.name ?? "—";
 
   const togglePublish = async (r: RoomWithMyr) => {
+    if (!r.is_public) {
+      const missing = roomProfileMissing(r);
+      if (missing.length) {
+        alert(`Before publishing, please add: ${missing.join(" and ")}.`);
+        setEditing(r);
+        setShowForm(true);
+        return;
+      }
+    }
     setBusyRoom(r.id);
     try {
       await doPublishRoom({ data: { room_id: r.id, publish: !r.is_public } });
@@ -136,6 +155,11 @@ function RoomsPage() {
                           ? `Empty · ${cap} beds`
                           : "Empty"}
                     </span>
+                  </div>
+                  <div className="mt-1 text-[11px] font-medium">
+                    {roomProfileLabel(r) ?? (
+                      <span className="text-amber-600">Add who it's for + room size to publish</span>
+                    )}
                   </div>
                   <div className="mt-1 text-[11px]">
                     {full ? (
@@ -283,6 +307,12 @@ function RoomForm({
   const [capacity, setCapacity] = useState(
     String((initial as { capacity?: number } | undefined)?.capacity ?? 1),
   );
+  const [occupant, setOccupant] = useState<string>(
+    (initial as { occupant_type?: string | null } | undefined)?.occupant_type ?? "",
+  );
+  const [size, setSize] = useState<string>(
+    (initial as { room_size?: string | null } | undefined)?.room_size ?? "",
+  );
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -296,6 +326,8 @@ function RoomForm({
       cleaning_amount: cleaning_amount === "" ? null : Number(cleaning_amount),
       notes: notes || null,
       capacity: Math.min(50, Math.max(1, Math.round(Number(capacity)) || 1)),
+      occupant_type: occupant || null,
+      room_size: size || null,
     };
     if (initial) await supabase.from("rooms").update(payload).eq("id", initial.id);
     else {
@@ -347,6 +379,34 @@ function RoomForm({
               onChange={(e) => setRent(e.target.value)}
               className={input}
             />
+          </Field>
+          <Field label="Who will live here? (required to publish)">
+            <div className="flex flex-wrap gap-2">
+              {OCCUPANT_TYPES.map((o) => (
+                <button
+                  type="button"
+                  key={o}
+                  onClick={() => setOccupant(o)}
+                  className={`px-3 py-1.5 rounded-full border text-xs ${occupant === o ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}
+                >
+                  {OCCUPANT_LABEL[o]}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Room size (required to publish)">
+            <div className="flex flex-wrap gap-2">
+              {ROOM_SIZES.map((z) => (
+                <button
+                  type="button"
+                  key={z}
+                  onClick={() => setSize(z)}
+                  className={`px-3 py-1.5 rounded-full border text-xs ${size === z ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}
+                >
+                  {ROOM_SIZE_LABEL[z]}
+                </button>
+              ))}
+            </div>
           </Field>
           <Field label="Tenant slots (beds)">
             <input

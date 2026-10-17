@@ -71,6 +71,10 @@ export const publishRoom = createServerFn({ method: "POST" })
         throw new Error(
           "This room is full, so it can't be shown on Rentalos. It is published again automatically when a tenant moves out (mark the tenant inactive).",
         );
+      if (/ROOM_PROFILE_INCOMPLETE/.test(error.message))
+        throw new Error(
+          "Before publishing, choose who the room is for (boys / girls / family) and the room size (1 RK, 1 BHK, 2 BHK…). Edit the room to add them.",
+        );
       throw new Error(error.message);
     }
     return { ok: true };

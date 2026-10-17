@@ -5,6 +5,7 @@ import { AlertTriangle, Menu, X } from "lucide-react";
 const LINKS = [
   { label: "Home", to: "/" },
   { label: "Find a Rental", to: "/myr/browse" },
+  { label: "Find a Roommate", to: "/myr/roommates" },
   { label: "RentDesk", to: "/#rentdesk" },
   { label: "How It Works", to: "/#how-it-works" },
   { label: "Pricing", to: "/pricing" },

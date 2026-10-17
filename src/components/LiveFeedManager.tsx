@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { LiveFeedRecorder } from "./LiveFeedRecorder";
+import { LivePhotosManager } from "./LivePhotosManager";
 import { VideoPreviewModal } from "./VideoPreviewModal";
 import {
   deleteLiveVideo,
@@ -96,6 +97,7 @@ export function LiveFeedManager({
   };
 
   return (
+    <div className="space-y-3">
     <div className="rounded-xl border border-border p-3 space-y-2 bg-card">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium inline-flex items-center gap-1.5">
@@ -196,6 +198,8 @@ export function LiveFeedManager({
           }}
         />
       )}
+    </div>
+    {(target.kind === "room" || target.kind === "property") && <LivePhotosManager target={{ kind: target.kind, id: target.id }} />}
     </div>
   );
 }

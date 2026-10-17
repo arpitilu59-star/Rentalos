@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ResilientVideo } from "./ResilientVideo";
 import { useServerFn } from "@tanstack/react-start";
 import { Play, ShieldCheck, X, Clock, Video } from "lucide-react";
 import {
@@ -27,7 +28,12 @@ type Props = {
 
 // Simple in-memory caches so grid cards don't re-hit the server
 const idCache = new Map<string, string | null>();
-const urlCache = new Map<string, string>();
+const urlCache = new Map<string, { url: string; at: number }>();
+const URL_TTL_MS = 5 * 60 * 60 * 1000; // signed links last 6h; refresh a bit before
+const cachedUrl = (id: string) => {
+  const c = urlCache.get(id);
+  return c && Date.now() - c.at < URL_TTL_MS ? c.url : null;
+};
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -62,7 +68,7 @@ export function LiveFeedCover({
   const cacheKey = `${target.kind}:${target.id}`;
   const [videoId, setVideoId] = useState<string | null | undefined>(() => idCache.get(cacheKey));
   const [url, setUrl] = useState<string | null>(() =>
-    idCache.get(cacheKey) ? (urlCache.get(idCache.get(cacheKey)!) ?? null) : null,
+    idCache.get(cacheKey) ? cachedUrl(idCache.get(cacheKey)!) : null,
   );
   const [near, setNear] = useState(false); // close to viewport → fetch URL
   const [inView, setInView] = useState(false); // actually visible → play
@@ -106,7 +112,7 @@ export function LiveFeedCover({
         idCache.set(cacheKey, id);
         setVideoId(id);
         if (id) {
-          const cached = urlCache.get(id);
+          const cached = cachedUrl(id);
           if (cached) {
             setUrl(cached);
             return;
@@ -114,7 +120,7 @@ export function LiveFeedCover({
           const { url: u } = await getUrl({ data: { id } });
           if (cancelled) return;
           if (u) {
-            urlCache.set(id, u);
+            urlCache.set(id, { url: u, at: Date.now() });
             setUrl(u);
           }
         }
@@ -135,7 +141,7 @@ export function LiveFeedCover({
       try {
         const { url: u } = await getUrl({ data: { id: videoId } });
         if (!cancelled && u) {
-          urlCache.set(videoId, u);
+          urlCache.set(videoId, { url: u, at: Date.now() });
           setUrl(u);
         }
       } catch {
@@ -153,13 +159,15 @@ export function LiveFeedCover({
     if (!v || !url || isFull) return;
     if (inView && !reducedMotion) v.play().catch(() => {});
     else v.pause();
-  }, [inView, url, isFull, reducedMotion]);
+  }, [inView, url, isFull, reducedMotion, ready]);
 
-  // Preview: loop only the first PREVIEW_SECONDS of the full video.
-  const onTimeUpdate = () => {
-    const v = videoRef.current;
-    if (v && !isFull && v.currentTime >= PREVIEW_SECONDS) v.currentTime = 0;
-  };
+  const freshUrl = useCallback(async () => {
+    if (!videoId) return null;
+    urlCache.delete(videoId);
+    const { url: u } = await getUrl({ data: { id: videoId } });
+    if (u) urlCache.set(videoId, { url: u, at: Date.now() });
+    return u ?? null;
+  }, [videoId, getUrl]);
 
   const hasVideo = !!url && !failed;
   const isPending = videoId === null && showPendingState;
@@ -201,20 +209,16 @@ export function LiveFeedCover({
         )}
 
         {hasVideo && (
-          <video
-            ref={videoRef}
-            src={url!}
-            muted={!isFull}
-            loop={!isFull}
-            controls={isFull}
-            playsInline
-            preload={isFull ? "metadata" : near ? "metadata" : "none"}
-            poster={fallback || undefined}
-            onLoadedData={() => setReady(true)}
-            onError={() => setFailed(true)}
-            onTimeUpdate={onTimeUpdate}
-            aria-label={alt ? `Video of ${alt}` : "Room video"}
-            className={`absolute inset-0 w-full h-full ${isFull ? "object-contain bg-black" : "object-cover"} transition-opacity duration-300 ${ready || isFull ? "opacity-100" : "opacity-0"}`}
+          <VideoSlot
+            videoRef={videoRef}
+            url={url!}
+            isFull={isFull}
+            ready={ready}
+            fallback={fallback}
+            alt={alt}
+            freshUrl={freshUrl}
+            onReady={() => setReady(true)}
+            onFailed={() => setFailed(true)}
           />
         )}
 
@@ -262,7 +266,17 @@ export function LiveFeedCover({
             >
               <X className="size-5" />
             </button>
-            <video src={url} controls autoPlay playsInline className="w-full rounded-xl bg-black" />
+            <div className="relative aspect-[9/16] max-h-[80vh] mx-auto rounded-xl overflow-hidden bg-black">
+              <ResilientVideo
+                src={url}
+                getFreshUrl={freshUrl}
+                controls
+                autoPlay
+                poster={fallback}
+                ariaLabel="Full room video"
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+              />
+            </div>
             <div className="mt-2 inline-flex items-center gap-1 text-white/90 text-xs">
               <ShieldCheck className="size-3 text-green-400" /> Recorded live at the property
             </div>
@@ -270,5 +284,59 @@ export function LiveFeedCover({
         </div>
       )}
     </>
+  );
+}
+
+function VideoSlot({
+  videoRef,
+  url,
+  isFull,
+  ready,
+  fallback,
+  alt,
+  freshUrl,
+  onReady,
+  onFailed,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  url: string;
+  isFull: boolean;
+  ready: boolean;
+  fallback?: string | null;
+  alt?: string;
+  freshUrl: () => Promise<string | null>;
+  onReady: () => void;
+  onFailed: () => void;
+}) {
+  // ResilientVideo owns the <video>; mirror its element into the parent's ref for play/pause control.
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sync = () => {
+      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current =
+        wrap.current?.querySelector("video") ?? null;
+    };
+    sync();
+    const mo = new MutationObserver(sync);
+    if (wrap.current) mo.observe(wrap.current, { childList: true });
+    return () => mo.disconnect();
+  }, [videoRef, url]);
+  return (
+    <div
+      ref={wrap}
+      className={`absolute inset-0 transition-opacity duration-300 ${ready || isFull ? "opacity-100" : "opacity-0"}`}
+    >
+      <ResilientVideo
+        src={url}
+        getFreshUrl={freshUrl}
+        poster={fallback}
+        muted={!isFull}
+        controls={isFull}
+        previewSeconds={isFull ? undefined : PREVIEW_SECONDS}
+        ariaLabel={alt ? `Video of ${alt}` : "Room video"}
+        className={`absolute inset-0 w-full h-full ${isFull ? "object-contain bg-black" : "object-cover"}`}
+        onReady={onReady}
+        onFailed={onFailed}
+      />
+    </div>
   );
 }

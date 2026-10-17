@@ -122,6 +122,11 @@ function ChooseTenant() {
               </section>
             )}
 
+            <Link to="/myr/roommates" className="block rounded-2xl bg-card border border-border p-4 hover:bg-accent/50">
+              <div className="font-medium">Find a roommate</div>
+              <div className="text-xs text-muted-foreground">Compatible roommate dhoondhein — chat aur video call app ke andar.</div>
+            </Link>
+
             {tenants.length === 0 && pendings.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
                 No tenancy or bookings yet. <Link to="/myr/browse" className="text-primary underline">Browse rooms</Link> to book one.

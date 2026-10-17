@@ -359,6 +359,9 @@ function UsersTab() {
       </form>
       {q.isLoading && <Loader2 className="size-5 animate-spin" />}
       {q.isError && <Err e={q.error} />}
+      {!sel && q.data && q.data.length === 0 && (
+        <p className="text-sm text-muted-foreground">No users found for “{submitted}”.</p>
+      )}
       {!sel &&
         q.data?.map((u: Record<string, any>) => (
           <button
@@ -610,7 +613,7 @@ function UserDetail({ userId, onBack }: { userId: string; onBack: () => void }) 
                 · {x.periods_used}/{x.duration_months} used {x.active ? "" : "(inactive)"}
               </span>
               {x.active && (
-                <button className="text-xs underline" onClick={() => need() && mRevD.mutate(x.id)}>
+                <button className="text-xs underline disabled:opacity-50" disabled={mRevD.isPending} onClick={() => need() && mRevD.mutate(x.id)}>
                   remove
                 </button>
               )}
@@ -668,7 +671,7 @@ function UserDetail({ userId, onBack }: { userId: string; onBack: () => void }) 
                   {x.feature_key}: <b>{x.enabled ? "ON" : "OFF"}</b> · until{" "}
                   {x.expires_at ? fmt(x.expires_at) : "revoked"}
                 </span>
-                <button className="text-xs underline" onClick={() => need() && mRevO.mutate(x.id)}>
+                <button className="text-xs underline disabled:opacity-50" disabled={mRevO.isPending} onClick={() => need() && mRevO.mutate(x.id)}>
                   remove
                 </button>
               </div>

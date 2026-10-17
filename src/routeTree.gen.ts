@@ -65,6 +65,7 @@ import { Route as MyrLandlordRouteImport } from './routes/myr/landlord'
 import { Route as MyrMessagesRouteImport } from './routes/myr/messages'
 import { Route as MyrOnboardRouteImport } from './routes/myr/onboard'
 import { Route as MyrProfileRouteImport } from './routes/myr/profile'
+import { Route as MyrRoommateChatRouteImport } from './routes/myr/roommate-chat'
 import { Route as MyrRoommatesRouteImport } from './routes/myr/roommates'
 import { Route as MyrSavedRouteImport } from './routes/myr/saved'
 import { Route as RoomsInCityRouteImport } from './routes/rooms-in.$city'
@@ -379,6 +380,11 @@ const MyrProfileRoute = MyrProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => MyrRoute,
 } as any)
+const MyrRoommateChatRoute = MyrRoommateChatRouteImport.update({
+  id: '/roommate-chat',
+  path: '/roommate-chat',
+  getParentRoute: () => MyrRoute,
+} as any)
 const MyrRoommatesRoute = MyrRoommatesRouteImport.update({
   id: '/roommates',
   path: '/roommates',
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommate-chat': typeof MyrRoommateChatRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/rooms-in/$city': typeof RoomsInCityRoute
@@ -646,6 +653,7 @@ export interface FileRoutesByTo {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommate-chat': typeof MyrRoommateChatRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/rooms-in/$city': typeof RoomsInCityRoute
@@ -730,6 +738,7 @@ export interface FileRoutesById {
   '/myr/messages': typeof MyrMessagesRoute
   '/myr/onboard': typeof MyrOnboardRoute
   '/myr/profile': typeof MyrProfileRoute
+  '/myr/roommate-chat': typeof MyrRoommateChatRoute
   '/myr/roommates': typeof MyrRoommatesRoute
   '/myr/saved': typeof MyrSavedRoute
   '/rooms-in/$city': typeof RoomsInCityRoute
@@ -815,6 +824,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommate-chat'
     | '/myr/roommates'
     | '/myr/saved'
     | '/rooms-in/$city'
@@ -894,6 +904,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommate-chat'
     | '/myr/roommates'
     | '/myr/saved'
     | '/rooms-in/$city'
@@ -977,6 +988,7 @@ export interface FileRouteTypes {
     | '/myr/messages'
     | '/myr/onboard'
     | '/myr/profile'
+    | '/myr/roommate-chat'
     | '/myr/roommates'
     | '/myr/saved'
     | '/rooms-in/$city'
@@ -1418,6 +1430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyrProfileRouteImport
       parentRoute: typeof MyrRoute
     }
+    '/myr/roommate-chat': {
+      id: '/myr/roommate-chat'
+      path: '/roommate-chat'
+      fullPath: '/myr/roommate-chat'
+      preLoaderRoute: typeof MyrRoommateChatRouteImport
+      parentRoute: typeof MyrRoute
+    }
     '/myr/roommates': {
       id: '/myr/roommates'
       path: '/roommates'
@@ -1726,6 +1745,7 @@ interface MyrRouteChildren {
   MyrMessagesRoute: typeof MyrMessagesRoute
   MyrOnboardRoute: typeof MyrOnboardRoute
   MyrProfileRoute: typeof MyrProfileRoute
+  MyrRoommateChatRoute: typeof MyrRoommateChatRoute
   MyrRoommatesRoute: typeof MyrRoommatesRoute
   MyrSavedRoute: typeof MyrSavedRoute
   MyrIndexRoute: typeof MyrIndexRoute
@@ -1740,6 +1760,7 @@ const MyrRouteChildren: MyrRouteChildren = {
   MyrMessagesRoute: MyrMessagesRoute,
   MyrOnboardRoute: MyrOnboardRoute,
   MyrProfileRoute: MyrProfileRoute,
+  MyrRoommateChatRoute: MyrRoommateChatRoute,
   MyrRoommatesRoute: MyrRoommatesRoute,
   MyrSavedRoute: MyrSavedRoute,
   MyrIndexRoute: MyrIndexRoute,
