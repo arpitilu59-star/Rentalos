@@ -18,12 +18,22 @@ export function vibeNotes(): Array<[number, number, number]> {
 
 export const vibeDuration = (): number => Math.max(...vibeNotes().map(([s, , d]) => s + d));
 
-export function playVibe(): () => void {
+/** Returns a stop function, or null when the browser kept audio locked (no user gesture yet). */
+export async function playVibe(): Promise<(() => void) | null> {
   const Ctx = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext) as
     | typeof AudioContext
     | undefined;
-  if (!Ctx) return () => {};
+  if (!Ctx) return null;
   const ctx = new Ctx();
+  try {
+    if (ctx.state !== "running") await ctx.resume();
+  } catch {
+    /* still locked */
+  }
+  if (ctx.state !== "running") {
+    void ctx.close().catch(() => {});
+    return null;
+  }
   const master = ctx.createGain();
   master.gain.value = 0;
   // Soft low-pass + tiny echo for the warm "vibe" feel

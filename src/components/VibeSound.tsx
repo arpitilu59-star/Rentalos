@@ -41,15 +41,24 @@ export function VibeSound() {
 
   useEffect(() => {
     if (!ready || !PUBLIC(pathname) || read(VIBE_PLAYED_KEY, "session") === "1") return;
-    const events = ["pointerdown", "keydown", "touchstart", "wheel"] as const;
-    const start = () => {
-      events.forEach((e) => window.removeEventListener(e, start));
-      if (mutedRef.current || read(VIBE_PLAYED_KEY, "session") === "1") return;
-      write(VIBE_PLAYED_KEY, "1", "session");
+    // Only real "activation" gestures unlock audio (scroll/touchstart do not), so listen for these.
+    const events = ["click", "pointerup", "keydown", "touchend"] as const;
+    let busy = false;
+    const start = async () => {
+      if (busy || mutedRef.current || read(VIBE_PLAYED_KEY, "session") === "1") return;
+      busy = true;
       try {
-        stopRef.current = playVibe();
+        const stop = await playVibe();
+        if (stop) {
+          // Only now is it really playing: stop listening and remember it for this visit.
+          write(VIBE_PLAYED_KEY, "1", "session");
+          stopRef.current = stop;
+          events.forEach((e) => window.removeEventListener(e, start));
+        }
       } catch {
         /* audio not available */
+      } finally {
+        busy = false;
       }
     };
     events.forEach((e) => window.addEventListener(e, start, { passive: true }));
@@ -68,13 +77,16 @@ export function VibeSound() {
     if (next) {
       stopRef.current?.();
       stopRef.current = null;
-    } else if (read(VIBE_PLAYED_KEY, "session") !== "1") {
-      write(VIBE_PLAYED_KEY, "1", "session");
-      try {
-        stopRef.current = playVibe();
-      } catch {
-        /* audio not available */
-      }
+    } else {
+      // Turning sound on is itself a tap, so audio is allowed: play the tone now.
+      void playVibe()
+        .then((stop) => {
+          if (stop) {
+            write(VIBE_PLAYED_KEY, "1", "session");
+            stopRef.current = stop;
+          }
+        })
+        .catch(() => {});
     }
   };
 
