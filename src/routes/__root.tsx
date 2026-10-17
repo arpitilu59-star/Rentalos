@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
+import { VibeSound } from "@/components/VibeSound";
 import {
   Outlet,
   Link,
@@ -124,6 +125,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <VibeSound />
       <Toaster position="top-center" richColors closeButton />
     </QueryClientProvider>
   );

@@ -443,6 +443,7 @@ function RoomDetail() {
           propertyId={r.properties?.id ?? null}
           rent={Number(r.rent_amount)}
           deposit={r.myr_deposit != null ? Number(r.myr_deposit) : null}
+          roomProfile={roomProfileLabel(r)}
           onClose={() => setShowBook(false)}
           onDone={() => nav({ to: "/tenant" })}
         />
@@ -707,6 +708,7 @@ function BookModal({
   propertyId,
   rent,
   deposit,
+  roomProfile,
   onClose,
   onDone,
 }: {
@@ -714,6 +716,7 @@ function BookModal({
   propertyId: string | null;
   rent: number;
   deposit: number | null;
+  roomProfile?: string | null;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -849,6 +852,7 @@ function BookModal({
             version={termsInfo.version}
             rent={rent}
             deposit={deposit}
+            roomProfile={roomProfile}
             onChange={setGate}
           />
         )}
