@@ -21,12 +21,15 @@ export function TermsGate({
   version,
   rent,
   deposit,
+  roomProfile,
   onChange,
 }: {
   terms: Terms;
   version: number;
   rent: number;
   deposit: number | null;
+  /** e.g. "Boys · 2 BHK" — who may live in the room and its size, part of what the tenant agrees to. */
+  roomProfile?: string | null;
   onChange: (v: GateValue) => void;
 }) {
   const [acks, setAcks] = useState<Acks>({});
@@ -73,6 +76,11 @@ export function TermsGate({
         <div className="text-sm font-medium">Rental terms (v{version})</div>
         <CompletenessBadge terms={terms} />
       </div>
+      {roomProfile && (
+        <div className="rounded-lg bg-primary/10 text-primary text-xs font-medium px-3 py-2">
+          This room is for: {roomProfile}. Only this kind of occupancy is allowed under these terms.
+        </div>
+      )}
       <div className="max-h-56 overflow-y-auto rounded-lg border border-border p-3">
         <TermsView terms={terms} rent={rent} deposit={deposit} />
       </div>
