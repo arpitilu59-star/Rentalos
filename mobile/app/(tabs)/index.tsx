@@ -1,8 +1,8 @@
 import React from "react";
-import { RefreshControl, ScrollView, Text, View, Linking } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { api, WEB } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Button, Card, Empty, ErrorText, screen } from "@/components/ui";
 import { useColors, inr } from "@/theme";
 
@@ -30,7 +30,7 @@ export default function HomeTab() {
           <Text style={{ color: c.muted, fontSize: 12, fontWeight: "700" }}>{due > 0 ? "RENT DUE" : "ALL CLEAR"}</Text>
           <Text style={{ color: c.text, fontSize: 34, fontWeight: "800", marginTop: 4 }}>{due > 0 ? inr(due) : "No dues 🎉"}</Text>
           {d.nextDue && due > 0 && <Text style={{ color: c.muted, marginTop: 2 }}>Due {new Date(d.nextDue.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</Text>}
-          {due > 0 && <Button title="Pay rent" style={{ marginTop: 14 }} onPress={() => Linking.openURL(`${WEB}/tenant/${d.tenancies[0].id}/rent`)} />}
+          {due > 0 && <Button title="Pay rent" style={{ marginTop: 14 }} onPress={() => router.push("/bills")} />}
         </Card>
       )}
       {d?.tenancies.map((t) => (
@@ -38,11 +38,15 @@ export default function HomeTab() {
           <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>{t.rooms?.properties?.name ?? "Your room"}</Text>
           <Text style={{ color: c.muted, marginTop: 2 }}>Room {t.rooms?.room_number} · {inr(t.rooms?.rent_amount)}/mo · {t.rooms?.properties?.myr_city || t.rooms?.properties?.city}</Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-            <Button kind="ghost" title="Bills" style={{ flex: 1 }} onPress={() => Linking.openURL(`${WEB}/tenant/${t.id}/rent`)} />
-            <Button kind="ghost" title="Maintenance" style={{ flex: 1 }} onPress={() => Linking.openURL(`${WEB}/tenant/${t.id}/maintenance`)} />
+            <Button kind="ghost" title="Bills" style={{ flex: 1 }} onPress={() => router.push("/bills")} />
+            <Button kind="ghost" title="Maintenance" style={{ flex: 1 }} onPress={() => router.push("/maintenance")} />
           </View>
         </Card>
       ))}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button kind="ghost" title="❤ Saved" style={{ flex: 1 }} onPress={() => router.push("/saved")} />
+        <Button kind="ghost" title="My requests" style={{ flex: 1 }} onPress={() => router.push("/bookings")} />
+      </View>
       {d && d.pendingBookings.length > 0 && (
         <View style={{ gap: 8 }}>
           <Text style={{ color: c.muted, fontWeight: "700", fontSize: 12 }}>BOOKING REQUESTS</Text>

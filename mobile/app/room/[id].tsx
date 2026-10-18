@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Dimensions, FlatList, Image, Linking, ScrollView, Text, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Dimensions, FlatList, Image, Linking, ScrollView, Share, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Heart } from "@/components/Heart";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { WEB } from "@/lib/api";
@@ -14,13 +15,14 @@ const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is 
 export default function RoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useColors();
+  const router = useRouter();
   const [idx, setIdx] = useState(0);
   const q = useQuery({
     queryKey: ["room", id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rooms")
-        .select("id, room_number, rent_amount, myr_deposit, occupant_type, room_size, myr_amenities, myr_description, myr_photos, properties(name, myr_city, city, myr_address, address, myr_cover_photos, terms_summary)")
+        .select("id, room_number, rent_amount, myr_deposit, occupant_type, room_size, myr_amenities, myr_description, myr_photos, properties(name, myr_city, city, myr_address, address, myr_cover_photos, terms_summary, myr_lat, myr_lng, latitude, longitude)")
         .eq("id", id).maybeSingle();
       if (error) throw new Error(error.message);
       return data as any;
@@ -47,6 +49,7 @@ export default function RoomScreen() {
           <FlatList data={photos} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={(u, i) => u + i}
             onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / W))}
             renderItem={({ item }) => <Image source={{ uri: item }} style={{ width: W, height: 260, backgroundColor: c.soft }} />} />
+          <Heart roomId={r.id} style={{ position: "absolute", right: 12, top: 12 }} />
           <Text style={{ position: "absolute", right: 12, bottom: 10, color: "#fff", backgroundColor: "#0008", paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, fontSize: 12 }}>{idx + 1}/{photos.length}</Text>
         </View>
       ) : <View style={{ height: 200, backgroundColor: c.soft }} />}
@@ -69,7 +72,15 @@ export default function RoomScreen() {
           </View>
         )}
         <Text style={{ color: c.muted, fontSize: 12 }}>Booking se pehle owner ke rental terms (rent, deposit, house rules) padhna aur accept karna zaroori hai.</Text>
-        <Button title="Request booking" onPress={() => Linking.openURL(`${WEB}/myr/room/${r.id}`)} />
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" title="📍 Map" style={{ flex: 1 }} onPress={() => {
+            const p = r.properties; const la = p?.myr_lat ?? p?.latitude, ln = p?.myr_lng ?? p?.longitude;
+            const q = la != null && ln != null ? `${la},${ln}` : encodeURIComponent(`${p?.myr_address || p?.address || p?.name}, ${p?.myr_city || p?.city || ""}`);
+            Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
+          }} />
+          <Button kind="ghost" title="Share" style={{ flex: 1 }} onPress={() => Share.share({ message: `${r.properties?.name} Room ${r.room_number} — ${inr(r.rent_amount)}/month. ${WEB}/myr/room/${r.id}` })} />
+        </View>
+        <Button title="Request booking" onPress={() => router.push({ pathname: "/book/[roomId]", params: { roomId: r.id } })} />
       </View>
     </ScrollView>
   );

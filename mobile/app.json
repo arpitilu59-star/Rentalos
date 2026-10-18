@@ -7,15 +7,53 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "splash": { "image": "./assets/icon.png", "resizeMode": "contain", "backgroundColor": "#1f9d55" },
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1f9d55"
+    },
     "android": {
       "package": "in.rentalos.app",
-      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#1f9d55" },
-      "permissions": ["CAMERA", "RECORD_AUDIO", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1f9d55"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
-    "ios": { "bundleIdentifier": "in.rentalos.app", "supportsTablet": false },
-    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
-    "experiments": { "typedRoutes": false },
-    "extra": { "eas": { "projectId": "" } }
+    "ios": {
+      "bundleIdentifier": "in.rentalos.app",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rentalos aapki photo payment proof aur complaint ke liye use karta hai.",
+          "cameraPermission": "Complaint ki photo kheenchne ke liye camera chahiye."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Aapke paas ke rooms dikhane ke liye location chahiye."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
   }
 }

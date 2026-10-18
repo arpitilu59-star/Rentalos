@@ -67,6 +67,12 @@ function Gate() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="room/[id]" options={{ title: "Room" }} />
       <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
+      <Stack.Screen name="book/[roomId]" options={{ title: "Book this room" }} />
+      <Stack.Screen name="bookings" options={{ title: "My requests" }} />
+      <Stack.Screen name="bills" options={{ title: "Rent & bills" }} />
+      <Stack.Screen name="pay/[billId]" options={{ title: "Pay rent" }} />
+      <Stack.Screen name="maintenance" options={{ title: "Maintenance" }} />
+      <Stack.Screen name="saved" options={{ title: "Saved rooms" }} />
       <Stack.Screen name="roommate-profile" options={{ title: "My roommate profile" }} />
     </Stack>
   );

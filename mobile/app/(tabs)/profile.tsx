@@ -38,6 +38,10 @@ export default function Profile() {
         }, !bioOk)}
         {row("Welcome sound", "App kholte hi halki si vibe tone", sound, async (v) => { setSound(v); await setVibeMuted(!v); if (v) void playVibe(true); })}
       </Card>
+      <Button kind="ghost" title="Rent & bills" onPress={() => router.push("/bills")} />
+      <Button kind="ghost" title="Maintenance complaints" onPress={() => router.push("/maintenance")} />
+      <Button kind="ghost" title="Saved rooms" onPress={() => router.push("/saved")} />
+      <Button kind="ghost" title="My booking requests" onPress={() => router.push("/bookings")} />
       <Button kind="ghost" title="My roommate profile" onPress={() => router.push("/roommate-profile")} />
       <Button kind="ghost" title="Open full website" onPress={() => Linking.openURL(WEB)} />
       <Button kind="danger" title="Sign out" onPress={() => Alert.alert("Sign out?", "", [{ text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: () => supabase.auth.signOut() }])} />
