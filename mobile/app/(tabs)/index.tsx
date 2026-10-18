@@ -53,7 +53,8 @@ export default function HomeTab() {
         <Card key={t.id}>
           <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>{t.rooms?.properties?.name ?? "Your room"}</Text>
           <Text style={{ color: c.muted, marginTop: 2 }}>Room {t.rooms?.room_number} · {inr(t.rooms?.rent_amount)}/mo · {t.rooms?.properties?.myr_city || t.rooms?.properties?.city}</Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+          <Button kind="ghost" title="My stay · owner · deposit" style={{ marginTop: 12 }} onPress={() => router.push("/stay")} />
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
             <Button kind="ghost" title="Bills" style={{ flex: 1 }} onPress={() => router.push("/bills")} />
             <Button kind="ghost" title="Meter" style={{ flex: 1 }} onPress={() => router.push("/meter")} />
             <Button kind="ghost" title="Complaint" style={{ flex: 1 }} onPress={() => router.push("/maintenance")} />

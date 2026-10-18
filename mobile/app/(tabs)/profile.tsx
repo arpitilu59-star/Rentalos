@@ -22,6 +22,8 @@ export default function Profile() {
   const home = useQuery({ queryKey: ["home"], queryFn: () => api<{ name: string | null }>("home") });
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [del, setDel] = useState(false);
+  const [delText, setDelText] = useState("");
   useEffect(() => { if (home.data?.name) setName((n) => n || home.data!.name!); }, [home.data?.name]);
   const saveName = async () => { setSaving(true); try { await api("profile/name", { name }); await qc.invalidateQueries({ queryKey: ["home"] }); Alert.alert("Naam save ho gaya"); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } setSaving(false); };
   useEffect(() => { (async () => { setBioOk(await biometricAvailable()); setBio(await getBiometricOn()); setSound(!(await isVibeMuted())); })(); }, []);
@@ -59,6 +61,18 @@ export default function Profile() {
       <Button kind="ghost" title="My booking requests" onPress={() => router.push("/bookings")} />
       <Button kind="ghost" title="My roommate profile" onPress={() => router.push("/roommate-profile")} />
       <Button kind="ghost" title="Open full website" onPress={() => Linking.openURL(WEB)} />
+      <Button kind="ghost" title="Privacy policy" onPress={() => Linking.openURL(`${WEB}/privacy`)} />
+      <Button kind="ghost" title="Delete my account" onPress={() => Alert.prompt ? Alert.prompt("Account delete karein?", "Ye wapas nahi ho sakta. Confirm karne ke liye DELETE likhein.", async (t) => { try { await api("account/delete", { confirm: t }); await supabase.auth.signOut(); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } }) : setDel(true)} />
+      {del && (
+        <Card style={{ gap: 8 }}>
+          <Text style={{ color: c.danger, fontWeight: "700" }}>Account permanently delete hoga.</Text>
+          <TextInput value={delText} onChangeText={setDelText} placeholder="Confirm ke liye DELETE likhein" placeholderTextColor={c.muted} autoCapitalize="characters" style={{ backgroundColor: c.bg, borderColor: c.border, borderWidth: 1, borderRadius: R.m, padding: 12, color: c.text }} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button kind="ghost" title="Cancel" onPress={() => { setDel(false); setDelText(""); }} />
+            <Button kind="danger" title="Delete" style={{ flex: 1 }} disabled={delText !== "DELETE"} onPress={async () => { try { await api("account/delete", { confirm: delText }); await supabase.auth.signOut(); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } }} />
+          </View>
+        </Card>
+      )}
       <Button kind="danger" title="Sign out" onPress={() => Alert.alert("Sign out?", "", [{ text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: () => supabase.auth.signOut() }])} />
     </ScrollView>
   );

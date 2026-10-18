@@ -17,6 +17,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyrRouteImport } from './routes/myr'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SystemAdminControlRouteImport } from './routes/system-admin-control'
@@ -131,6 +132,11 @@ const MyrRoute = MyrRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -533,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
@@ -616,6 +623,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
@@ -700,6 +708,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/myr': typeof MyrRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/system-admin-control': typeof SystemAdminControlRoute
@@ -787,6 +796,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/myr'
     | '/pricing'
+    | '/privacy'
     | '/reset-password'
     | '/signup'
     | '/system-admin-control'
@@ -870,6 +880,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/login'
     | '/pricing'
+    | '/privacy'
     | '/reset-password'
     | '/signup'
     | '/system-admin-control'
@@ -953,6 +964,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/myr'
     | '/pricing'
+    | '/privacy'
     | '/reset-password'
     | '/signup'
     | '/system-admin-control'
@@ -1040,6 +1052,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyrRoute: typeof MyrRouteWithChildren
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SystemAdminControlRoute: typeof SystemAdminControlRoute
@@ -1104,6 +1117,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1845,6 +1865,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyrRoute: MyrRouteWithChildren,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SystemAdminControlRoute: SystemAdminControlRoute,

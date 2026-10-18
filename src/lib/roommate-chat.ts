@@ -21,5 +21,8 @@ export function maskContactDetails(s: string): string {
 
 /** Unguessable video room: the thread id is a random UUID known only to its two members. */
 export const videoRoomName = (threadId: string): string => `rentalos-rm-${threadId.replace(/-/g, "")}`;
-export const videoRoomUrl = (threadId: string): string =>
-  `https://meet.jit.si/${videoRoomName(threadId)}#config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
+/** Open Jitsi server that lets the first person start a room WITHOUT signing in (meet.jit.si now demands a login). */
+export const DEFAULT_VIDEO_DOMAIN = "meet.ffmuc.net";
+const VIDEO_HASH = "#config.prejoinPageEnabled=false&config.prejoinConfig.enabled=false&config.disableDeepLinking=true&config.requireDisplayName=false";
+export const videoRoomUrl = (threadId: string, domain: string = DEFAULT_VIDEO_DOMAIN): string =>
+  `https://${domain}/${videoRoomName(threadId)}${VIDEO_HASH}`;

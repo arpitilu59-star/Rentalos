@@ -13,7 +13,7 @@ describe("roommate chat rules", () => {
   it("builds a private video room from the thread id", () => {
     const id = "123e4567-e89b-42d3-a456-426614174000";
     expect(videoRoomName(id)).toBe("rentalos-rm-123e4567e89b42d3a456426614174000");
-    expect(videoRoomUrl(id)).toMatch(/^https:\/\/meet\.jit\.si\/rentalos-rm-/);
+    expect(videoRoomUrl(id)).toMatch(/^https:\/\/meet\.ffmuc\.net\/rentalos-rm-/);
   });
   it("trims and caps messages", () => {
     expect(cleanMessage("  hi\n\n\n\nthere ")).toBe("hi\n\nthere");

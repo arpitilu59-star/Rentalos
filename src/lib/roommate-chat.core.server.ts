@@ -1,6 +1,7 @@
 /** Roommate chat logic shared by the web (server functions) and the mobile app (REST). */
 import { getAdmin } from "@/lib/whatsapp/db";
-import { canSend, cleanMessage, maskContactDetails, videoRoomUrl, type ThreadStatus } from "@/lib/roommate-chat";
+import { canSend, cleanMessage, maskContactDetails, type ThreadStatus } from "@/lib/roommate-chat";
+import { callUrlFor } from "@/lib/video-call.server";
 
 type Admin = Awaited<ReturnType<typeof getAdmin>>;
 export type Thread = {
@@ -107,7 +108,7 @@ export async function getThread(me: string, threadId: string) {
     incoming: t.recipient_id === me && t.status === "pending",
     name: await nameOf(admin, other),
     messages: (msgs ?? []) as { id: string; sender_id: string; kind: "text" | "call"; body: string; created_at: string }[],
-    callUrl: t.status === "active" ? videoRoomUrl(t.id) : null,
+    callUrl: t.status === "active" ? callUrlFor(t.id, me, await nameOf(admin, me)) : null,
   };
 }
 
@@ -148,5 +149,5 @@ export async function startCall(me: string, threadId: string) {
   await admin.from("roommate_threads").update({ last_message: "📹 Video call", last_message_at: new Date().toISOString() }).eq("id", t.id);
   const other = t.requester_id === me ? t.recipient_id : t.requester_id;
   await notify(admin, other, "Video call invite", `${await nameOf(admin, me)} is calling you. Open Roommate chat to join.`);
-  return { url: videoRoomUrl(t.id) };
+  return { url: callUrlFor(t.id, me, await nameOf(admin, me)) };
 }

@@ -382,3 +382,68 @@ export async function setMyName(me: string, name: string) {
   await a.from("profiles").update({ full_name: n }).eq("id", me);
   return { ok: true };
 }
+
+// ---------- my stay: tenancy details, landlord contact, deposit, usage, notice ----------
+export async function myStay(me: string) {
+  const a = await admin();
+  const ids = await myTenantIds(a, me);
+  if (!ids.length) return { stays: [] };
+  const { data: tenants } = await a
+    .from("tenants")
+    .select("id, name, move_in_date, rent_share, persons, owner_id, room_id, rooms(room_number, rent_amount, properties(name, address, myr_address, city, myr_city))")
+    .in("id", ids);
+  const stays = [];
+  for (const t of (tenants ?? []) as any[]) {
+    const [{ data: landlord }, { data: dep }, { data: reads }, { data: notice }] = await Promise.all([
+      a.from("profiles").select("full_name, business_name, mobile, phone").eq("id", t.owner_id).maybeSingle(),
+      a.from("deposits").select("amount_held, amount_deducted, amount_refunded, status, deduction_reason").eq("tenant_id", t.id).maybeSingle(),
+      a.from("meter_readings").select("reading, reading_date").eq("room_id", t.room_id).order("reading_date", { ascending: false }).order("created_at", { ascending: false }).limit(7),
+      a.from("activity_log").select("created_at, metadata").eq("user_id", me).eq("action", "notice_requested").eq("target_id", t.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const list = ((reads ?? []) as Array<{ reading: number; reading_date: string }>).map((r) => ({ reading: Number(r.reading), date: r.reading_date })).reverse();
+    const usage = list.slice(1).map((r, i) => ({ date: r.date, units: Math.max(0, r.reading - list[i].reading) }));
+    stays.push({
+      tenant_id: t.id as string,
+      name: t.name as string,
+      move_in_date: t.move_in_date as string,
+      rent_share: t.rent_share != null ? Number(t.rent_share) : null,
+      persons: t.persons as number,
+      room: t.rooms?.room_number as string,
+      rent: Number(t.rooms?.rent_amount ?? 0),
+      property: t.rooms?.properties?.name as string,
+      address: (t.rooms?.properties?.myr_address || t.rooms?.properties?.address || "") as string,
+      city: (t.rooms?.properties?.myr_city || t.rooms?.properties?.city || "") as string,
+      landlord: { name: landlord?.business_name || landlord?.full_name || "Owner", mobile: landlord?.mobile || landlord?.phone || null },
+      deposit: dep ? { held: Number(dep.amount_held), deducted: Number(dep.amount_deducted), refunded: Number(dep.amount_refunded), status: dep.status as string, reason: dep.deduction_reason as string | null } : null,
+      usage,
+      notice: notice ? { at: notice.created_at as string, moveOut: (notice.metadata as any)?.move_out_date as string | null } : null,
+    });
+  }
+  return { stays };
+}
+
+export async function requestNotice(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const t = await assertTenant(a, me, uuid(body.tenant_id));
+  const moveOut = str(body.move_out_date, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(moveOut) || Number.isNaN(Date.parse(moveOut))) throw new Error("Enter the move-out date as YYYY-MM-DD.");
+  if (Date.parse(moveOut) < Date.now() - 86_400_000) throw new Error("Move-out date can't be in the past.");
+  const { data: recent } = await a.from("activity_log").select("id").eq("user_id", me).eq("action", "notice_requested").eq("target_id", t.id)
+    .gt("created_at", new Date(Date.now() - 7 * 86_400_000).toISOString()).limit(1);
+  if (recent?.length) throw new Error("You already sent a notice this week.");
+  const reason = str(body.reason, 300);
+  await a.from("activity_log").insert({ user_id: me, action: "notice_requested", target_type: "tenant", target_id: t.id, metadata: { move_out_date: moveOut, reason } });
+  await a.from("myr_notifications").insert({
+    user_id: t.owner_id, kind: "notice_requested", title: "Tenant gave notice",
+    body: `${t.name} plans to move out on ${moveOut}.${reason ? ` Reason: ${reason}` : ""}`, link: "/tenants",
+  });
+  return { ok: true };
+}
+
+export async function deleteAccount(me: string, confirm: string) {
+  if (confirm !== "DELETE") throw new Error('Type DELETE to confirm.');
+  const a = await admin();
+  const { error } = await a.auth.admin.deleteUser(me);
+  if (error) throw new Error("Couldn't delete the account. Please try again.");
+  return { ok: true };
+}
