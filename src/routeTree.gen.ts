@@ -55,6 +55,7 @@ import { Route as AdminPartnersRouteImport } from './routes/admin/partners'
 import { Route as AdminRentalTermsRouteImport } from './routes/admin/rental-terms'
 import { Route as AdminSecurityRouteImport } from './routes/admin/security'
 import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
+import { Route as AdminTenantDocsRouteImport } from './routes/admin/tenant-docs'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminWhatsappRouteImport } from './routes/admin/whatsapp'
 import { Route as LandlordLoginRouteImport } from './routes/landlord.login'
@@ -330,6 +331,11 @@ const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
   path: '/subscriptions',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTenantDocsRoute = AdminTenantDocsRouteImport.update({
+  id: '/tenant-docs',
+  path: '/tenant-docs',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/tenant-docs': typeof AdminTenantDocsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -645,6 +652,7 @@ export interface FileRoutesByTo {
   '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/tenant-docs': typeof AdminTenantDocsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -729,6 +737,7 @@ export interface FileRoutesById {
   '/admin/rental-terms': typeof AdminRentalTermsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/tenant-docs': typeof AdminTenantDocsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/whatsapp': typeof AdminWhatsappRoute
   '/landlord/login': typeof LandlordLoginRoute
@@ -815,6 +824,7 @@ export interface FileRouteTypes {
     | '/admin/rental-terms'
     | '/admin/security'
     | '/admin/subscriptions'
+    | '/admin/tenant-docs'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -896,6 +906,7 @@ export interface FileRouteTypes {
     | '/admin/rental-terms'
     | '/admin/security'
     | '/admin/subscriptions'
+    | '/admin/tenant-docs'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -979,6 +990,7 @@ export interface FileRouteTypes {
     | '/admin/rental-terms'
     | '/admin/security'
     | '/admin/subscriptions'
+    | '/admin/tenant-docs'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/landlord/login'
@@ -1360,6 +1372,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSubscriptionsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/tenant-docs': {
+      id: '/admin/tenant-docs'
+      path: '/tenant-docs'
+      fullPath: '/admin/tenant-docs'
+      preLoaderRoute: typeof AdminTenantDocsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -1688,6 +1707,7 @@ interface AdminRouteChildren {
   AdminRentalTermsRoute: typeof AdminRentalTermsRoute
   AdminSecurityRoute: typeof AdminSecurityRoute
   AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
+  AdminTenantDocsRoute: typeof AdminTenantDocsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminWhatsappRoute: typeof AdminWhatsappRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1707,6 +1727,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminRentalTermsRoute: AdminRentalTermsRoute,
   AdminSecurityRoute: AdminSecurityRoute,
   AdminSubscriptionsRoute: AdminSubscriptionsRoute,
+  AdminTenantDocsRoute: AdminTenantDocsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminWhatsappRoute: AdminWhatsappRoute,
   AdminIndexRoute: AdminIndexRoute,

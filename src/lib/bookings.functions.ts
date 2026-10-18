@@ -227,7 +227,20 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
       .eq("landlord_id", userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { bookings: data ?? [] };
+    // "Verified tenant" = an admin approved one of their ID documents (service role: reads another user's docs).
+    const rows = data ?? [];
+    const verified = new Set<string>();
+    if (rows.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: docs } = await (supabaseAdmin as any)
+        .from("tenant_documents")
+        .select("user_id")
+        .in("user_id", Array.from(new Set(rows.map((b) => b.tenant_user_id))))
+        .eq("status", "verified")
+        .neq("doc_type", "photo");
+      for (const d of (docs ?? []) as Array<{ user_id: string }>) verified.add(d.user_id);
+    }
+    return { bookings: rows.map((b) => ({ ...b, tenant_verified: verified.has(b.tenant_user_id) })) };
   });
 
 const DecideSchema = z.object({

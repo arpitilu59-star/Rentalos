@@ -8,6 +8,7 @@ import { useColors, inr } from "@/theme";
 
 type Home = {
   name: string | null;
+  verified?: boolean;
   tenancies: Array<{ id: string; rooms: { room_number: string; rent_amount: number; properties: { name: string; myr_city: string | null; city: string | null } | null } | null }>;
   outstanding: number;
   nextDue: { total_amount: number; amount_paid: number; due_date: string } | null;
@@ -23,7 +24,22 @@ export default function HomeTab() {
 
   return (
     <ScrollView contentContainerStyle={screen.pad} refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} tintColor={c.primary} />}>
-      <Text style={{ color: c.text, fontSize: 24, fontWeight: "800" }}>Hi{d?.name ? `, ${d.name.split(" ")[0]}` : ""} 👋</Text>
+      <View>
+        <Text style={{ color: c.muted, fontSize: 14 }}>Namaste</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Text style={{ color: c.text, fontSize: 26, fontWeight: "800" }}>{d?.name ? d.name.trim() : "Welcome"} 👋</Text>
+          {d?.verified && <Text style={{ color: c.onPrimary, backgroundColor: c.primary, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99, fontSize: 11, fontWeight: "800", overflow: "hidden" }}>✔ Verified</Text>}
+        </View>
+      </View>
+      {d && d.verified === false && (
+        <Card style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: c.text, fontWeight: "700" }}>Verified tenant banein</Text>
+            <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>ID upload karein — owners ka bharosa badhta hai.</Text>
+          </View>
+          <Button title="Verify" onPress={() => router.push("/(tabs)/verify")} />
+        </Card>
+      )}
       <ErrorText error={q.error} />
       {d && d.tenancies.length > 0 && (
         <Card style={{ backgroundColor: due > 0 ? c.soft : c.card }}>
@@ -39,7 +55,8 @@ export default function HomeTab() {
           <Text style={{ color: c.muted, marginTop: 2 }}>Room {t.rooms?.room_number} · {inr(t.rooms?.rent_amount)}/mo · {t.rooms?.properties?.myr_city || t.rooms?.properties?.city}</Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
             <Button kind="ghost" title="Bills" style={{ flex: 1 }} onPress={() => router.push("/bills")} />
-            <Button kind="ghost" title="Maintenance" style={{ flex: 1 }} onPress={() => router.push("/maintenance")} />
+            <Button kind="ghost" title="Meter" style={{ flex: 1 }} onPress={() => router.push("/meter")} />
+            <Button kind="ghost" title="Complaint" style={{ flex: 1 }} onPress={() => router.push("/maintenance")} />
           </View>
         </Card>
       ))}

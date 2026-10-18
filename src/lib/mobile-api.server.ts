@@ -88,8 +88,11 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         .in("status", ["pending", "rejected"])
         .order("created_at", { ascending: false })
         .limit(10);
+      const { data: tv } = await admin.rpc("tenant_verified", { _uid: me });
+      const tenantName = ((tenants ?? []) as Array<{ name?: string | null }>).map((t) => t.name).find((n) => !!n && n.trim().length > 1) ?? null;
       return json({
-        name: (prof?.full_name as string | null) ?? null,
+        name: tenantName ?? (prof?.full_name as string | null) ?? (email ? email.split("@")[0] : null),
+        verified: tv === true,
         tenancies: tenants ?? [],
         outstanding: unpaid.reduce((n, b) => n + ((b.total_amount ?? 0) - (b.amount_paid ?? 0)), 0),
         nextDue: unpaid[0] ?? null,
@@ -160,6 +163,11 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         case "room/video": return json(await t.roomVideo(uuid(body.room_id)));
         case "docs": return json(await t.myDocuments(me));
         case "notif/read": return json(await t.markNotifRead(me, body.id ? uuid(body.id) : null));
+        case "kyc": return json(await t.kycList(me));
+        case "kyc/upload": return json(await t.kycUpload(me, body));
+        case "meter": return json(await t.meterOverview(me));
+        case "meter/submit": return json(await t.meterSubmit(me, body));
+        case "profile/name": return json(await t.setMyName(me, str(body.name, 80)));
         case "tickets": return json(await t.listTickets(me));
         case "tickets/create": return json(await t.createTicket(me, body));
       }

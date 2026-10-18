@@ -44,7 +44,7 @@ function BookingsPage() {
             <div key={b.id} className="rounded-2xl bg-card border border-border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{b.tenant_name}</div>
+                  <div className="font-medium flex items-center gap-2">{b.tenant_name}{b.tenant_verified && <span className="text-[10px] rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-0.5">✔ Verified tenant</span>}</div>
                   <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 mt-1">
                     <span className="inline-flex items-center gap-1"><Phone className="size-3" /> {b.tenant_mobile}</span>
                     {b.tenant_email && <span className="inline-flex items-center gap-1"><Mail className="size-3" /> {b.tenant_email}</span>}

@@ -14,10 +14,11 @@ export default function TabsLayout() {
     queryFn: async () => { const { count } = await supabase.from("myr_notifications").select("id", { count: "exact", head: true }).is("read_at", null); return count ?? 0; },
   });
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: c.primary, tabBarInactiveTintColor: c.muted, tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, height: 62, paddingBottom: 8, paddingTop: 6 },
-      headerStyle: { backgroundColor: c.bg }, headerTintColor: c.text, headerShadowVisible: false }}>
+    <Tabs screenOptions={{ tabBarActiveTintColor: c.primary, tabBarInactiveTintColor: c.muted, tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, height: 62, paddingBottom: 8, paddingTop: 6 }, tabBarLabelStyle: { fontSize: 11 },
+      headerStyle: { backgroundColor: c.bg }, headerTintColor: c.text, headerShadowVisible: false, sceneStyle: { backgroundColor: c.bg } }}>
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
       <Tabs.Screen name="explore" options={{ title: "Explore", tabBarIcon: icon("search") }} />
+      <Tabs.Screen name="verify" options={{ title: "Verify", tabBarIcon: icon("shield-checkmark") }} />
       <Tabs.Screen name="roommates" options={{ title: "Roommates", tabBarIcon: icon("people") }} />
       <Tabs.Screen name="inbox" options={{ title: "Inbox", tabBarIcon: icon("chatbubbles"), tabBarBadge: unread.data ? unread.data : undefined }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: icon("person") }} />

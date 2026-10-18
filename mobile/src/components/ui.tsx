@@ -6,7 +6,7 @@ export function Button({ title, onPress, busy, kind = "primary", disabled, style
   title: string; onPress: () => void; busy?: boolean; kind?: "primary" | "ghost" | "danger"; disabled?: boolean; style?: ViewStyle;
 }) {
   const c = useColors();
-  const bg = kind === "primary" ? c.primary : kind === "danger" ? c.danger : "transparent";
+  const bg = kind === "primary" ? c.primary : kind === "danger" ? c.danger : c.card;
   const fg = kind === "ghost" ? c.text : "#fff";
   return (
     <Pressable

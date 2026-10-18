@@ -5,9 +5,56 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, getOwnerId, type MeterReading, type Room } from "@/lib/db";
 import { detectMeterReading } from "@/lib/meter-ocr.functions";
-import { Camera, Sparkles, Trash2, X, Zap, LineChart } from "lucide-react";
+import { Camera, Sparkles, Trash2, X, Zap, LineChart, Check } from "lucide-react";
+import { listPendingMeterSubmissions, decideMeterSubmission } from "@/lib/meter-submissions.functions";
 
 export const Route = createFileRoute("/_authenticated/meters")({ component: MetersPage });
+
+function TenantReadingApprovals({ onChanged }: { onChanged: () => void }) {
+  const list = useServerFn(listPendingMeterSubmissions);
+  const decide = useServerFn(decideMeterSubmission);
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof listPendingMeterSubmissions>>>([]);
+  const [edit, setEdit] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const load = () => list().then(setRows).catch(() => undefined);
+  useEffect(() => { void load(); }, []);
+  if (rows.length === 0) return null;
+  const act = async (id: string, approve: boolean) => {
+    setBusy(id); setErr(null);
+    try {
+      const v = edit[id];
+      await decide({ data: { id, approve, reading: approve && v !== undefined && v !== "" ? Number(v) : undefined } });
+      await load(); onChanged();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save. Please try again."); }
+    setBusy(null);
+  };
+  return (
+    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 mb-5">
+      <h2 className="font-semibold">Tenant readings waiting for you ({rows.length})</h2>
+      <p className="text-xs text-muted-foreground mb-3">Check the photo, correct the number if needed, then approve. Only approved readings are used in bills.</p>
+      {err && <p role="alert" className="text-sm text-destructive mb-2">{err}</p>}
+      <div className="space-y-3">
+        {rows.map((r) => (
+          <div key={r.id} className="rounded-xl bg-card border border-border p-3 flex flex-wrap items-center gap-3">
+            {r.photo ? <a href={r.photo} target="_blank" rel="noreferrer"><img src={r.photo} alt="meter" className="size-16 rounded-lg object-cover border border-border" /></a> : <div className="size-16 rounded-lg bg-muted" />}
+            <div className="min-w-[140px]">
+              <div className="text-sm font-medium">{r.tenant} · Room {r.room}</div>
+              <div className="text-xs text-muted-foreground">Submitted {new Date(r.createdAt).toLocaleString("en-IN")}{r.note ? ` · ${r.note}` : ""}</div>
+            </div>
+            <label className="text-xs text-muted-foreground">Reading
+              <input type="number" step="any" defaultValue={r.reading} onChange={(e) => setEdit((p) => ({ ...p, [r.id]: e.target.value }))} className="block w-28 mt-0.5 px-2 py-1.5 rounded-md bg-background border border-input text-sm text-foreground" />
+            </label>
+            <div className="flex gap-2 ml-auto">
+              <button disabled={busy === r.id} onClick={() => act(r.id, false)} className="px-3 py-1.5 rounded-md border border-border text-xs disabled:opacity-50">Reject</button>
+              <button disabled={busy === r.id} onClick={() => act(r.id, true)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs disabled:opacity-50"><Check className="size-3" /> Approve</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function MetersPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -64,6 +111,8 @@ function MetersPage() {
           <Camera className="size-4" /> New reading
         </button>
       </div>
+
+      <TenantReadingApprovals onChanged={load} />
 
       {rooms.map((room) => {
         const list = readings.filter((r) => r.room_id === room.id);

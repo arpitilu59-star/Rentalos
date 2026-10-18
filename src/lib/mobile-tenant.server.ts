@@ -286,3 +286,99 @@ export async function markNotifRead(me: string, id: string | null) {
   await q;
   return { ok: true };
 }
+
+// ---------- identity documents (admin verifies → "verified tenant") ----------
+const DOC_TYPES = ["aadhaar", "pan", "driving_license", "voter_id", "passport", "college_id", "photo"] as const;
+
+export async function kycList(me: string) {
+  const a = await admin();
+  const [{ data: docs }, { data: v }] = await Promise.all([
+    a.from("tenant_documents").select("id, doc_type, status, admin_note, created_at, reviewed_at").eq("user_id", me).order("created_at", { ascending: false }),
+    a.rpc("tenant_verified", { _uid: me }),
+  ]);
+  return { verified: v === true, docs: docs ?? [] };
+}
+
+export async function kycUpload(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const type = str(body.doc_type, 30);
+  if (!(DOC_TYPES as readonly string[]).includes(type)) throw new Error("Choose a document type.");
+  const b64 = typeof body.image_base64 === "string" ? body.image_base64 : "";
+  if (!b64) throw new Error("Choose a photo of the document.");
+  if (b64.length > 8_000_000) throw new Error("Photo is too large. Try a smaller one.");
+  const mime = /^image\/(jpeg|png|webp)$/.test(str(body.mime, 30)) ? str(body.mime, 30) : "image/jpeg";
+  const { data: existing } = await a.from("tenant_documents").select("id, status, storage_path").eq("user_id", me).eq("doc_type", type);
+  if ((existing ?? []).some((d: any) => d.status === "verified")) throw new Error("This document is already verified.");
+  const { count } = await a.from("tenant_documents").select("id", { count: "exact", head: true }).eq("user_id", me).eq("status", "pending");
+  const pendingSame = (existing ?? []).filter((d: any) => d.status === "pending");
+  if ((count ?? 0) - pendingSame.length >= 6) throw new Error("Too many documents waiting for review.");
+  const path = `${me}/${type}-${Date.now()}.${mime.split("/")[1]}`;
+  const { error: upErr } = await a.storage.from("tenant-docs").upload(path, Buffer.from(b64, "base64"), { contentType: mime, upsert: false });
+  if (upErr) throw new Error("Couldn't upload. Please try again.");
+  // A new upload replaces an older pending/rejected one of the same type.
+  for (const d of (existing ?? []) as any[]) {
+    await a.from("tenant_documents").delete().eq("id", d.id);
+    await a.storage.from("tenant-docs").remove([d.storage_path]);
+  }
+  const { error } = await a.from("tenant_documents").insert({ user_id: me, doc_type: type, storage_path: path });
+  if (error) throw new Error("Couldn't save. Please try again.");
+  return { ok: true };
+}
+
+// ---------- meter readings (tenant submits, landlord approves) ----------
+export async function meterOverview(me: string) {
+  const a = await admin();
+  const ids = await myTenantIds(a, me);
+  if (!ids.length) return { rooms: [], submissions: [] };
+  const { data: tenants } = await a.from("tenants").select("id, room_id, rooms(room_number, properties(name))").in("id", ids);
+  const rooms = [];
+  for (const t of (tenants ?? []) as any[]) {
+    const { data: last } = await a.from("meter_readings").select("reading, reading_date").eq("room_id", t.room_id)
+      .order("reading_date", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    rooms.push({ tenant_id: t.id, room: t.rooms?.room_number, property: t.rooms?.properties?.name, last: last ? { reading: Number(last.reading), date: last.reading_date } : null });
+  }
+  const { data: subs } = await a.from("meter_submissions")
+    .select("id, tenant_id, reading, approved_reading, status, landlord_note, created_at, decided_at")
+    .in("tenant_id", ids).order("created_at", { ascending: false }).limit(30);
+  return { rooms, submissions: subs ?? [] };
+}
+
+export async function meterSubmit(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const t = await assertTenant(a, me, uuid(body.tenant_id));
+  const reading = Number(body.reading);
+  if (!Number.isFinite(reading) || reading < 0 || reading > 99_999_999) throw new Error("Enter the meter reading as a number.");
+  const { data: last } = await a.from("meter_readings").select("reading").eq("room_id", t.room_id)
+    .order("reading_date", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (last && reading < Number(last.reading)) throw new Error(`Reading can't be lower than the last one (${Number(last.reading)}).`);
+  const { data: pending } = await a.from("meter_submissions").select("id").eq("tenant_id", t.id).eq("room_id", t.room_id).eq("status", "pending").maybeSingle();
+  if (pending) throw new Error("Your previous reading is still waiting for the owner's approval.");
+  let photo_path: string | null = null;
+  const b64 = typeof body.photo_base64 === "string" ? body.photo_base64 : "";
+  if (b64) {
+    if (b64.length > 8_000_000) throw new Error("Photo is too large.");
+    const path = `${t.owner_id}/${t.room_id}/tenant-${Date.now()}.jpg`;
+    const { error } = await a.storage.from("meter-photos").upload(path, Buffer.from(b64, "base64"), { contentType: "image/jpeg", upsert: false });
+    if (!error) photo_path = path;
+  }
+  if (!photo_path) throw new Error("Meter ki photo zaroori hai taaki owner number check kar sake.");
+  const { error } = await a.from("meter_submissions").insert({
+    tenant_id: t.id, room_id: t.room_id, owner_id: t.owner_id, submitted_by: me, reading, photo_path, note: str(body.note, 300) || null,
+  });
+  if (error) throw new Error("Couldn't submit. Please try again.");
+  try {
+    await a.from("myr_notifications").insert({
+      user_id: t.owner_id, kind: "meter_submitted", title: "Meter reading to approve",
+      body: `${t.name} submitted a meter reading (${reading}). Approve it so it's used in the bill.`, link: "/meters",
+    });
+  } catch { /* best-effort */ }
+  return { ok: true };
+}
+
+export async function setMyName(me: string, name: string) {
+  const a = await admin();
+  const n = name.trim().slice(0, 80);
+  if (n.length < 2) throw new Error("Enter your name.");
+  await a.from("profiles").update({ full_name: n }).eq("id", me);
+  return { ok: true };
+}
