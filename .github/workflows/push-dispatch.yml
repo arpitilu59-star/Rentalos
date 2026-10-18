@@ -1,0 +1,24 @@
+name: App push dispatch
+on:
+  schedule:
+    - cron: "*/5 * * * *" # runs only from the default branch; GitHub may delay it
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: push-dispatch
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Send pending app push notifications
+        env:
+          # Same secret as the WhatsApp dispatcher (or set PUSH_DISPATCH_SECRET in Vercel + this secret).
+          SECRET: ${{ secrets.PUSH_DISPATCH_SECRET || secrets.WHATSAPP_DISPATCH_SECRET }}
+        run: |
+          code=$(curl -sS --proto '=https' --max-time 60 -o body.txt -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $SECRET" https://www.rentalos.in/api/app/push/dispatch) || code=000
+          echo "HTTP $code"; head -c 300 body.txt; echo
+          [ "$code" = "200" ]

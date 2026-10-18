@@ -145,6 +145,10 @@ export default {
     try {
       const path = new URL(request.url).pathname;
       if (path === "/sitemap.xml" && request.method === "GET") return await handleSitemap();
+      if (path.startsWith("/api/app/")) {
+        const { handleMobileApi } = await import("./lib/mobile-api.server");
+        return await handleMobileApi(request, path);
+      }
       if (path === "/api/razorpay/webhook") {
         const { handleRazorpayWebhook } = await import("./lib/razorpay-webhook.server");
         return await handleRazorpayWebhook(request);

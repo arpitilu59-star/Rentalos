@@ -53,7 +53,7 @@ export const stopLookingForRoommate = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-type Candidate = {
+export type Candidate = {
   user_id: string;
   display_name: string | null;
   age: number | null;
@@ -68,7 +68,7 @@ type Candidate = {
   budget_max: number | null;
 };
 
-function scoreMatch(me: Candidate, other: Candidate): { score: number; sharedTraits: string[] } {
+export function scoreMatch(me: Candidate, other: Candidate): { score: number; sharedTraits: string[] } {
   let score = 0;
   let max = 0;
   const sharedTraits: string[] = [];

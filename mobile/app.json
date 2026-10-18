@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Rentalos",
+    "slug": "rentalos",
+    "scheme": "rentalos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": { "image": "./assets/icon.png", "resizeMode": "contain", "backgroundColor": "#1f9d55" },
+    "android": {
+      "package": "in.rentalos.app",
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#1f9d55" },
+      "permissions": ["CAMERA", "RECORD_AUDIO", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+    },
+    "ios": { "bundleIdentifier": "in.rentalos.app", "supportsTablet": false },
+    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
+    "experiments": { "typedRoutes": false },
+    "extra": { "eas": { "projectId": "" } }
+  }
+}
