@@ -39,6 +39,7 @@ export default function Profile() {
         {row("Welcome sound", "App kholte hi halki si vibe tone", sound, async (v) => { setSound(v); await setVibeMuted(!v); if (v) void playVibe(true); })}
       </Card>
       <Button kind="ghost" title="Rent & bills" onPress={() => router.push("/bills")} />
+      <Button kind="ghost" title="Documents & receipts" onPress={() => router.push("/documents")} />
       <Button kind="ghost" title="Maintenance complaints" onPress={() => router.push("/maintenance")} />
       <Button kind="ghost" title="Saved rooms" onPress={() => router.push("/saved")} />
       <Button kind="ghost" title="My booking requests" onPress={() => router.push("/bookings")} />

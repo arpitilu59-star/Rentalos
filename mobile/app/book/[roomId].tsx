@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -10,7 +11,7 @@ import { termsRows } from "@/lib/terms";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useColors, R } from "@/theme";
 
-type TermsRes = { terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
+type TermsRes = { speech: string | null; terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
 
 export default function Book() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
@@ -27,10 +28,14 @@ export default function Book() {
   useEffect(() => { setName((n) => n || (session?.user.user_metadata?.full_name as string) || ""); }, [session]);
 
   const submit = useMutation({
-    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked }),
+    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked, listened: heard }),
     onSuccess: () => { void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); qc.invalidateQueries({ queryKey: ["home"] }); qc.invalidateQueries({ queryKey: ["bookings"] }); setDone(true); },
   });
   const d = q.data;
+  const [speaking, setSpeaking] = useState(false);
+  const [heard, setHeard] = useState(false);
+  useEffect(() => () => { Speech.stop(); }, []);
+  const listen = () => { if (speaking) { Speech.stop(); setSpeaking(false); return; } if (!d?.speech) return; setSpeaking(true); Speech.speak(d.speech, { language: "en-IN", onDone: () => { setSpeaking(false); setHeard(true); }, onStopped: () => setSpeaking(false), onError: () => setSpeaking(false) }); };
   const hasTerms = !!d?.terms && d.version != null;
   const allTicked = !hasTerms || d!.acks.every((a) => ticked[a.key]);
   const input = { backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: R.m, padding: 12, color: c.text } as const;
@@ -51,6 +56,7 @@ export default function Book() {
         {hasTerms ? (
           <Card>
             <Text style={{ color: c.text, fontWeight: "800", fontSize: 16, marginBottom: 6 }}>Rental terms (v{d!.version})</Text>
+            {d!.speech ? <Button kind="ghost" title={speaking ? "⏹ Rokein" : "🔊 Sunein (read aloud)"} style={{ marginBottom: 6 }} onPress={listen} /> : null}
             {termsRows(d!.terms, d!.rent, d!.deposit).map(([k, val]) => (
               <View key={k} style={{ flexDirection: "row", paddingVertical: 5, gap: 10 }}>
                 <Text style={{ color: c.muted, width: 120 }}>{k}</Text>

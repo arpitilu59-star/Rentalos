@@ -3,7 +3,7 @@
  * Tenant features of the mobile app (/api/app/*): booking with terms, bills + UPI payment proof,
  * maintenance tickets with photos. Same ownership/terms rules as the web server functions.
  */
-import { missingAcks, REQUIRED_ACKS, ACK_LABELS, TermsSchema, completeness } from "./terms/schema";
+import { missingAcks, REQUIRED_ACKS, ACK_LABELS, TermsSchema, completeness, termsToSpeech } from "./terms/schema";
 
 const str = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,6 +59,7 @@ export async function roomTerms(roomId: string) {
     completeness: terms ? completeness(terms) : 0,
     rent: Number(r.rent_amount ?? 0),
     deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null,
+    speech: terms ? termsToSpeech(terms, { rent: Number(r.rent_amount ?? 0), deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null }) : null,
     acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })),
   };
 }
@@ -98,7 +99,7 @@ export async function createBookingFromApp(me: string, body: Record<string, unkn
     .single();
   if (error) throw new Error(cleanDb(error.message));
 
-  const { error: accErr } = await a.rpc("record_terms_acceptance", { _user: me, _booking: ins.id, _acks: acks, _listened: false });
+  const { error: accErr } = await a.rpc("record_terms_acceptance", { _user: me, _booking: ins.id, _acks: acks, _listened: body.listened === true });
   if (accErr) {
     await a.from("bookings").delete().eq("id", ins.id); // never a request without its terms record
     throw new Error(cleanDb(accErr.message) || "Couldn't record the terms. Please try again.");
@@ -245,5 +246,43 @@ export async function createTicket(me: string, body: Record<string, unknown>) {
     description: str(body.description, 2000) || null, priority, status: "open", photo_paths: paths,
   });
   if (error) throw new Error(cleanDb(error.message));
+  return { ok: true };
+}
+
+/** Latest verified, unexpired live video of a public room (signed URL, same rule as the web player). */
+export async function roomVideo(roomId: string) {
+  const a = await admin();
+  const { data: room } = await a.from("rooms").select("id, is_public, myr_available").eq("id", roomId).maybeSingle();
+  if (!room || !room.is_public) return { url: null as string | null };
+  const { data: row } = await a
+    .from("live_feed_videos")
+    .select("storage_path, expires_at")
+    .eq("room_id", roomId).eq("verification_status", "verified")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!row) return { url: null as string | null };
+  const { data: sig } = await a.storage.from("live-feed-videos").createSignedUrl(row.storage_path, 21600);
+  return { url: (sig?.signedUrl as string | undefined) ?? null };
+}
+
+/** Documents: terms the tenant accepted (immutable snapshots) and verified payment receipts. */
+export async function myDocuments(me: string) {
+  const a = await admin();
+  const [{ data: acc }, { data: pays }] = await Promise.all([
+    a.from("booking_terms_acceptances")
+      .select("id, booking_id, terms_version, accepted_at, snapshot_hash, snapshot, property_id, room_id, rooms(room_number, rent_amount, myr_deposit), properties(name)")
+      .eq("tenant_user_id", me).order("accepted_at", { ascending: false }).limit(30),
+    a.from("payments")
+      .select("id, amount, upi_ref, verified_at, created_at, bills(rent_period_start, rent_period_end, rooms(room_number, properties(name)))")
+      .eq("tenant_user_id", me).eq("verification_status", "verified").order("verified_at", { ascending: false }).limit(60),
+  ]);
+  return { terms: acc ?? [], receipts: pays ?? [] };
+}
+
+export async function markNotifRead(me: string, id: string | null) {
+  const a = await admin();
+  let q = a.from("myr_notifications").update({ read_at: new Date().toISOString() }).eq("user_id", me).is("read_at", null);
+  if (id) q = q.eq("id", id);
+  await q;
   return { ok: true };
 }

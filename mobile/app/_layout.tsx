@@ -10,6 +10,9 @@ import { playVibe } from "@/lib/vibe";
 import { biometricAvailable, getBiometricOn, unlock } from "@/lib/security";
 import { Button } from "@/components/ui";
 import { configured } from "@/lib/supabase";
+import { routeForLink } from "@/lib/links";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ONBOARD_KEY } from "./onboarding";
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 20_000 } } });
 
@@ -21,6 +24,8 @@ function Gate() {
   const [locked, setLocked] = useState(false);
   const [checked, setChecked] = useState(false);
   const played = useRef(false);
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  useEffect(() => { AsyncStorage.getItem(ONBOARD_KEY).then((v) => setOnboarded(v === "1")).catch(() => setOnboarded(true)); }, []);
 
   // Welcome tone once per app open + optional fingerprint lock.
   useEffect(() => {
@@ -35,17 +40,17 @@ function Gate() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
-    const inAuth = segments[0] === "login";
-    if (!session && !inAuth) router.replace("/login");
+    if (loading || onboarded === null) return;
+    const inAuth = segments[0] === "login" || segments[0] === "onboarding";
+    if (!session && !inAuth) router.replace(onboarded ? "/login" : "/onboarding");
     if (session && inAuth) { router.replace("/"); void registerForPush(); }
     if (session && !inAuth) void registerForPush();
-  }, [session, loading, segments, router]);
+  }, [session, loading, onboarded, segments, router]);
 
   // Tapping a push opens the right screen.
   useEffect(() => {
     return listenForNotificationTaps((link) => {
-      if (link?.includes("roommate")) router.push("/(tabs)/inbox");
+      router.push(routeForLink(link) as never);
     });
   }, [router]);
 
@@ -54,7 +59,7 @@ function Gate() {
       <Text style={{ color: c.text, fontSize: 16 }}>App not configured. Copy .env.example to .env and fill EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY, then restart.</Text>
     </View>;
   }
-  if (loading || !checked) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.bg }}><ActivityIndicator color={c.primary} size="large" /></View>;
+  if (loading || !checked || onboarded === null) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.bg }}><ActivityIndicator color={c.primary} size="large" /></View>;
   if (locked) {
     return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, backgroundColor: c.bg, padding: 24 }}>
       <Text style={{ color: c.text, fontSize: 20, fontWeight: "700" }}>Rentalos is locked</Text>
@@ -65,6 +70,8 @@ function Gate() {
     <Stack screenOptions={{ headerStyle: { backgroundColor: c.bg }, headerTintColor: c.text, contentStyle: { backgroundColor: c.bg } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="documents" options={{ title: "Documents" }} />
       <Stack.Screen name="room/[id]" options={{ title: "Room" }} />
       <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
       <Stack.Screen name="book/[roomId]" options={{ title: "Book this room" }} />

@@ -46,6 +46,7 @@ export default function HomeTab() {
       <View style={{ flexDirection: "row", gap: 8 }}>
         <Button kind="ghost" title="❤ Saved" style={{ flex: 1 }} onPress={() => router.push("/saved")} />
         <Button kind="ghost" title="My requests" style={{ flex: 1 }} onPress={() => router.push("/bookings")} />
+        <Button kind="ghost" title="Documents" style={{ flex: 1 }} onPress={() => router.push("/documents")} />
       </View>
       {d && d.pendingBookings.length > 0 && (
         <View style={{ gap: 8 }}>

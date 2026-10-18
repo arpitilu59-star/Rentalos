@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Dimensions, FlatList, Image, Linking, ScrollView, Share, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Heart } from "@/components/Heart";
+import { RoomVideo } from "@/components/RoomVideo";
+import { api } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { WEB } from "@/lib/api";
@@ -35,6 +37,7 @@ export default function RoomScreen() {
       return (data ?? []).map((p: { storage_path: string }) => supabase.storage.from("live-feed-photos").getPublicUrl(p.storage_path).data.publicUrl);
     },
   });
+  const vid = useQuery({ queryKey: ["room-video", id], queryFn: () => api<{ url: string | null }>("room/video", { room_id: id }) });
   const r = q.data;
   if (q.isLoading) return <Text style={{ color: c.muted, padding: 24 }}>Loading…</Text>;
   if (!r) return <View style={{ padding: 16 }}><ErrorText error={q.error ?? new Error("Room not found.")} /></View>;
@@ -65,6 +68,7 @@ export default function RoomScreen() {
         </Card>
         {r.myr_description ? <Text style={{ color: c.text, lineHeight: 21 }}>{r.myr_description}</Text> : null}
         {strArr(r.myr_amenities).length > 0 && <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>{strArr(r.myr_amenities).map((a) => <Pill key={a} t={a} />)}</View>}
+        {vid.data?.url ? <RoomVideo url={vid.data.url} /> : null}
         {live && live.length > 0 && (
           <View style={{ gap: 8 }}>
             <Text style={{ color: c.text, fontWeight: "700" }}>Live photos (camera se, verified)</Text>
