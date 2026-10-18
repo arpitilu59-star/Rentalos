@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/theme";
 
-const icon = (name: React.ComponentProps<typeof Ionicons>["name"]) => ({ color, size }: { color: string; size: number }) => <Ionicons name={name} size={size} color={color} />;
+const icon = (name: React.ComponentProps<typeof Ionicons>["name"]) => ({ color, size }: { color: import("react-native").ColorValue; size: number }) => <Ionicons name={name} size={size} color={color} />;
 
 export default function TabsLayout() {
   const c = useColors();

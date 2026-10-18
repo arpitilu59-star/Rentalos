@@ -3,10 +3,9 @@ import { View, ActivityIndicator, Text } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useColors } from "@/theme";
-import { registerForPush } from "@/lib/push";
+import { registerForPush, listenForNotificationTaps } from "@/lib/push";
 import { playVibe } from "@/lib/vibe";
 import { biometricAvailable, getBiometricOn, unlock } from "@/lib/security";
 import { Button } from "@/components/ui";
@@ -45,11 +44,9 @@ function Gate() {
 
   // Tapping a push opens the right screen.
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((r) => {
-      const link = (r.notification.request.content.data as { link?: string } | undefined)?.link;
+    return listenForNotificationTaps((link) => {
       if (link?.includes("roommate")) router.push("/(tabs)/inbox");
     });
-    return () => sub.remove();
   }, [router]);
 
   if (!configured) {
