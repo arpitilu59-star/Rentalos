@@ -1,8 +1,10 @@
 import React, { useRef, useState } from "react";
-import { Dimensions, FlatList, Text, View } from "react-native";
+import { Dimensions, FlatList, View } from "react-native";
+import { Text } from "@/components/Text";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LangPicker } from "@/components/LangPicker";
 import { Button } from "@/components/ui";
 import { useColors } from "@/theme";
 
@@ -22,6 +24,7 @@ export default function Onboarding() {
   const finish = async () => { await AsyncStorage.setItem(ONBOARD_KEY, "1"); router.replace("/login"); };
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={{ paddingTop: 54, paddingHorizontal: 20 }}><LangPicker /></View>
       <FlatList ref={list} data={SLIDES} horizontal pagingEnabled showsHorizontalScrollIndicator={false} keyExtractor={(s) => s.t}
         onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / W))}
         renderItem={({ item }) => (

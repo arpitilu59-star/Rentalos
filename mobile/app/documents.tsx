@@ -1,5 +1,6 @@
 import React from "react";
-import { ScrollView, Share, Text, View } from "react-native";
+import { ScrollView, Share, View } from "react-native";
+import { Text } from "@/components/Text";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { termsRows } from "@/lib/terms";

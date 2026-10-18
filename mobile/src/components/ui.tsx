@@ -1,5 +1,6 @@
 import React from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { Text } from "@/components/Text";
 import { useColors, R } from "@/theme";
 
 export function Button({ title, onPress, busy, kind = "primary", disabled, style }: {

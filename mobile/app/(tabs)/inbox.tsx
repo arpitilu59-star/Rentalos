@@ -1,5 +1,7 @@
 import React from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { useT } from "@/lib/i18n";
+import { Text } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { routeForLink } from "@/lib/links";
 import { Button } from "@/components/ui";
@@ -14,6 +16,7 @@ type Notif = { id: string; title: string; body: string | null; link: string | nu
 
 export default function Inbox() {
   const c = useColors();
+  const t = useT();
   const router = useRouter();
   const threads = useQuery({ queryKey: ["threads"], queryFn: () => api<Thread[]>("roommate/threads"), refetchInterval: 15000 });
   const notifs = useQuery({
@@ -46,7 +49,7 @@ export default function Inbox() {
         </Pressable>
       ))}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <Text style={{ color: c.muted, fontWeight: "700", fontSize: 12 }}>NOTIFICATIONS{unread ? ` (${unread} new)` : ""}</Text>
+        <Text style={{ color: c.muted, fontWeight: "700", fontSize: 12 }}>{t("NOTIFICATIONS")}{unread ? ` (${unread} ${t("new")})` : ""}</Text>
         {unread > 0 && <Button kind="ghost" title="Sab padh liye" onPress={() => read.mutate(null)} />}
       </View>
       <ErrorText error={notifs.error} />

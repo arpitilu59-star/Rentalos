@@ -1,5 +1,6 @@
 import React from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
+import { Text } from "@/components/Text";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";

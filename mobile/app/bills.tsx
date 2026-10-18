@@ -1,8 +1,10 @@
 import React from "react";
-import { FlatList, Share, Text, View } from "react-native";
+import { FlatList, Share, View } from "react-native";
+import { Text } from "@/components/Text";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";
 import { useColors, inr } from "@/theme";
 
@@ -13,6 +15,7 @@ const d = (s: string) => new Date(s).toLocaleDateString("en-IN", { day: "numeric
 export default function Bills() {
   const c = useColors();
   const router = useRouter();
+  const t = useT();
   const q = useQuery({ queryKey: ["bills"], queryFn: () => api<{ bills: Bill[]; outstanding: number }>("bills") });
   const line = (k: string, v: number | null | undefined) => (v ? <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: c.muted }}>{k}</Text><Text style={{ color: c.text }}>{inr(v)}</Text></View> : null);
   return (
@@ -31,7 +34,7 @@ export default function Bills() {
               <Text style={{ color: c.text, fontWeight: "700" }}>{d(b.rent_period_start)} – {d(b.rent_period_end)}</Text>
               <Text style={{ color: paid ? c.primary : c.warn, fontWeight: "800" }}>{paid ? "PAID" : "DUE"}</Text>
             </View>
-            {line("Rent", b.rent_amount)}{line(`Electricity${b.units_consumed ? ` (${b.units_consumed} units)` : ""}`, b.electricity_amount)}
+            {line("Rent", b.rent_amount)}{line(`${t("Electricity")}${b.units_consumed ? ` (${b.units_consumed} ${t("units")})` : ""}`, b.electricity_amount)}
             {line("Water", b.water_amount)}{line("Other", b.other_charges)}{line("Previous dues", b.previous_dues)}
             <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: c.border, paddingTop: 6, marginTop: 2 }}>
               <Text style={{ color: c.text, fontWeight: "800" }}>Total</Text><Text style={{ color: c.text, fontWeight: "800" }}>{inr(b.total_amount)}</Text>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { FlatList, Image, ScrollView, Text, TextInput, View } from "react-native";
+import { FlatList, Image, ScrollView, View } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";

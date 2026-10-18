@@ -171,6 +171,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         case "stay": return json(await t.myStay(me));
         case "stay/notice": return json(await t.requestNotice(me, body));
         case "account/delete": return json(await t.deleteAccount(me, str(body.confirm, 10)));
+        case "notif/prefs": return json(await t.getPrefs(me));
+        case "notif/prefs/save": return json(await t.savePrefs(me, body));
         case "tickets": return json(await t.listTickets(me));
         case "tickets/create": return json(await t.createTicket(me, body));
       }

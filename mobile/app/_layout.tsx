@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator } from "react-native";
+import { Text } from "@/components/Text";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { playVibe } from "@/lib/vibe";
 import { biometricAvailable, getBiometricOn, unlock } from "@/lib/security";
 import { Button } from "@/components/ui";
 import { configured } from "@/lib/supabase";
+import { LangProvider, useT } from "@/lib/i18n";
 import { routeForLink } from "@/lib/links";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ONBOARD_KEY } from "./onboarding";
@@ -21,6 +23,7 @@ function Gate() {
   const segments = useSegments();
   const router = useRouter();
   const c = useColors();
+  const t = useT();
   const [locked, setLocked] = useState(false);
   const [checked, setChecked] = useState(false);
   const played = useRef(false);
@@ -71,18 +74,19 @@ function Gate() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="stay" options={{ title: "My stay" }} />
-      <Stack.Screen name="meter" options={{ title: "Meter reading" }} />
-      <Stack.Screen name="documents" options={{ title: "Documents" }} />
-      <Stack.Screen name="room/[id]" options={{ title: "Room" }} />
-      <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
-      <Stack.Screen name="book/[roomId]" options={{ title: "Book this room" }} />
-      <Stack.Screen name="bookings" options={{ title: "My requests" }} />
-      <Stack.Screen name="bills" options={{ title: "Rent & bills" }} />
-      <Stack.Screen name="pay/[billId]" options={{ title: "Pay rent" }} />
-      <Stack.Screen name="maintenance" options={{ title: "Maintenance" }} />
-      <Stack.Screen name="saved" options={{ title: "Saved rooms" }} />
-      <Stack.Screen name="roommate-profile" options={{ title: "My roommate profile" }} />
+      <Stack.Screen name="stay" options={{ title: t("My stay") }} />
+      <Stack.Screen name="meter" options={{ title: t("Meter reading") }} />
+      <Stack.Screen name="notification-settings" options={{ title: t("Notification settings") }} />
+      <Stack.Screen name="documents" options={{ title: t("Documents") }} />
+      <Stack.Screen name="room/[id]" options={{ title: t("Room") }} />
+      <Stack.Screen name="chat/[id]" options={{ title: t("Chat") }} />
+      <Stack.Screen name="book/[roomId]" options={{ title: t("Book this room") }} />
+      <Stack.Screen name="bookings" options={{ title: t("My requests") }} />
+      <Stack.Screen name="bills" options={{ title: t("Rent & bills") }} />
+      <Stack.Screen name="pay/[billId]" options={{ title: t("Pay rent") }} />
+      <Stack.Screen name="maintenance" options={{ title: t("Maintenance") }} />
+      <Stack.Screen name="saved" options={{ title: t("Saved rooms") }} />
+      <Stack.Screen name="roommate-profile" options={{ title: t("My roommate profile") }} />
     </Stack>
   );
 }
@@ -90,10 +94,12 @@ function Gate() {
 export default function Root() {
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <StatusBar style="auto" />
-        <Gate />
-      </AuthProvider>
+      <LangProvider>
+        <AuthProvider>
+          <StatusBar style="auto" />
+          <Gate />
+        </AuthProvider>
+      </LangProvider>
     </QueryClientProvider>
   );
 }

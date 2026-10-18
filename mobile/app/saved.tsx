@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { FlatList, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { FlatList, Image, Pressable, ScrollView, View } from "react-native";
+import { useT } from "@/lib/i18n";
+import { Text } from "@/components/Text";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +14,7 @@ type Saved = RoomRow & { myr_deposit: number | null; myr_amenities: unknown; myr
 
 export default function SavedRooms() {
   const c = useColors();
+  const t = useT();
   const router = useRouter();
   const [pick, setPick] = useState<string[]>([]);
   const [cmp, setCmp] = useState(false);
@@ -69,7 +72,7 @@ export default function SavedRooms() {
       data={rooms} keyExtractor={(r) => r.id} contentContainerStyle={{ padding: 16, gap: 12 }} refreshing={q.isRefetching} onRefresh={() => q.refetch()}
       ListHeaderComponent={<View style={{ gap: 8 }}><ErrorText error={q.error} />
         {rooms.length > 1 && <Text style={{ color: c.muted, fontSize: 12 }}>Compare ke liye 2–3 rooms select karein</Text>}
-        {pick.length >= 2 && <Button title={`Compare ${pick.length} rooms`} onPress={() => setCmp(true)} />}</View>}
+        {pick.length >= 2 && <Button title={t("Compare {n} rooms", { n: pick.length })} onPress={() => setCmp(true)} />}</View>}
       ListEmptyComponent={<Empty text={q.isLoading ? "Loading…" : "Koi saved room nahi. Room par ❤ dabaiye."} />}
       renderItem={({ item: r }) => {
         const on = pick.includes(r.id);

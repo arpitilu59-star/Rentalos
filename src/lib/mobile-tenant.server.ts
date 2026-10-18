@@ -447,3 +447,27 @@ export async function deleteAccount(me: string, confirm: string) {
   if (error) throw new Error("Couldn't delete the account. Please try again.");
   return { ok: true };
 }
+
+// ---------- notification settings ----------
+const PREF_KEYS = ["push_enabled", "rent", "bookings", "maintenance", "roommate", "account"] as const;
+export async function getPrefs(me: string) {
+  const a = await admin();
+  const { data } = await a.from("notification_prefs").select("*").eq("user_id", me).maybeSingle();
+  const { DEFAULT_PREFS } = await import("./push");
+  return { prefs: { ...DEFAULT_PREFS, ...(data ?? {}) } };
+}
+export async function savePrefs(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const row: Record<string, unknown> = { user_id: me, updated_at: new Date().toISOString() };
+  for (const k of PREF_KEYS) if (typeof body[k] === "boolean") row[k] = body[k];
+  const hr = (v: unknown) => (v === null ? null : Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 23 ? (v as number) : undefined);
+  if ("quiet_start" in body || "quiet_end" in body) {
+    const qs = hr(body.quiet_start), qe = hr(body.quiet_end);
+    if (qs === undefined || qe === undefined) throw new Error("Invalid quiet hours.");
+    row.quiet_start = qs; row.quiet_end = qe;
+  }
+  if (Number.isInteger(body.tz_offset_min) && Math.abs(body.tz_offset_min as number) <= 840) row.tz_offset_min = body.tz_offset_min;
+  const { error } = await a.from("notification_prefs").upsert(row, { onConflict: "user_id" });
+  if (error) throw new Error("Couldn't save settings. Please try again.");
+  return getPrefs(me);
+}

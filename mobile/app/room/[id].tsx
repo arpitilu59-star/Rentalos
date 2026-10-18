@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Dimensions, FlatList, Image, Linking, ScrollView, Share, Text, View } from "react-native";
+import { Dimensions, FlatList, Image, Linking, ScrollView, Share, View } from "react-native";
+import { Text } from "@/components/Text";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useT } from "@/lib/i18n";
 import { Heart } from "@/components/Heart";
 import { RoomVideo } from "@/components/RoomVideo";
 import { api } from "@/lib/api";
@@ -18,6 +20,7 @@ export default function RoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useColors();
   const router = useRouter();
+  const t = useT();
   const [idx, setIdx] = useState(0);
   const q = useQuery({
     queryKey: ["room", id],
@@ -60,7 +63,7 @@ export default function RoomScreen() {
         <Text style={{ color: c.text, fontSize: 22, fontWeight: "800" }}>{r.properties?.name} · Room {r.room_number}</Text>
         <Text style={{ color: c.muted }}>{r.properties?.myr_address || r.properties?.address}, {r.properties?.myr_city || r.properties?.city}</Text>
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          {occ && <Pill t={`For ${occ}`} />}{size && <Pill t={size} />}
+          {occ && <Pill t={`${t("For")} ${t(occ)}`} />}{size && <Pill t={t(size)} />}
         </View>
         <Card>
           <Text style={{ color: c.primary, fontSize: 28, fontWeight: "800" }}>{inr(r.rent_amount)}<Text style={{ color: c.muted, fontSize: 14, fontWeight: "500" }}> / month</Text></Text>

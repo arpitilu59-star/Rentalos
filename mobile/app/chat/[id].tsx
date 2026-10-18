@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Text, TextInput, View, Pressable } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, View, Pressable } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { useLocalSearchParams, Stack } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as WebBrowser from "expo-web-browser";

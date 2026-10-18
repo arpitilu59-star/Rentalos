@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { ScrollView, Switch, View } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";

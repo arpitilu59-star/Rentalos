@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View, Pressable } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View, Pressable } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { supabase } from "@/lib/supabase";
 import { useColors, R } from "@/theme";
+import { LangPicker } from "@/components/LangPicker";
 import { Button, ErrorText } from "@/components/ui";
 
 export default function Login() {
@@ -46,6 +48,7 @@ export default function Login() {
           </View>
           <Text style={{ color: c.text, fontSize: 26, fontWeight: "800", marginTop: 12 }}>Rentalos</Text>
           <Text style={{ color: c.muted, marginTop: 4 }}>Rooms, rent aur roommates — ek jagah</Text>
+          <View style={{ marginTop: 10 }}><LangPicker /></View>
         </View>
         {mode === "up" && <TextInput style={input} placeholder="Full name" placeholderTextColor={c.muted} value={name} onChangeText={setName} />}
         <TextInput style={input} placeholder="Email" placeholderTextColor={c.muted} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />

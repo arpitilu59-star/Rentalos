@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Linking, ScrollView, Text, TextInput, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";

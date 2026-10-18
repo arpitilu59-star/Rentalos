@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { FlatList, Image, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "@/components/Text";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { Card, Chip, Empty, ErrorText } from "@/components/ui";
 import { useColors, inr, R } from "@/theme";
 import * as Location from "expo-location";
+import { useT } from "@/lib/i18n";
 import { Heart } from "@/components/Heart";
 
 const km = (a: number, b: number, c: number, d: number) => { const t = (x: number) => (x * Math.PI) / 180; const h = Math.sin(t(c - a) / 2) ** 2 + Math.cos(t(a)) * Math.cos(t(c)) * Math.sin(t(d - b) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
@@ -21,6 +23,7 @@ export const SIZES = [["single_room", "Single room"], ["shared_room", "Shared ro
 
 export default function Explore() {
   const c = useColors();
+  const t = useT();
   const router = useRouter();
   const [city, setCity] = useState("");
   const [applied, setApplied] = useState("");
@@ -84,7 +87,7 @@ export default function Explore() {
                     <Text style={{ color: c.text, fontWeight: "700", fontSize: 16, flex: 1 }} numberOfLines={1}>{r.properties?.name} · Room {r.room_number}</Text>
                     <Text style={{ color: c.primary, fontWeight: "800", fontSize: 16 }}>{inr(r.rent_amount)}</Text>
                   </View>
-                  <Text style={{ color: c.muted, marginTop: 3 }}>{r.properties?.myr_city || r.properties?.city}{r.occupant_type ? ` · ${OCC.find(([k]) => k === r.occupant_type)?.[1] ?? "Anyone"}` : ""}{r.room_size ? ` · ${SIZES.find(([k]) => k === r.room_size)?.[1] ?? ""}` : ""}</Text>
+                  <Text style={{ color: c.muted, marginTop: 3 }}>{r.properties?.myr_city || r.properties?.city}{r.occupant_type ? ` · ${t(OCC.find(([k]) => k === r.occupant_type)?.[1] ?? "Anyone")}` : ""}{r.room_size ? ` · ${t(SIZES.find(([k]) => k === r.room_size)?.[1] ?? "")}` : ""}</Text>
                   {distOf(r) != null && <Text style={{ color: c.muted, marginTop: 4 }}>📍 {distOf(r)!.toFixed(1)} km door</Text>}
                   {r.properties?.verification_status === "verified" && <Text style={{ color: c.primary, marginTop: 6, fontWeight: "600", fontSize: 12 }}>✔ Verified property</Text>}
                 </View>

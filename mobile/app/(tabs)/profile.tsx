@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Linking, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Linking, ScrollView, Switch, View } from "react-native";
+import { useT } from "@/lib/i18n";
+import { Text, TextInput } from "@/components/Text";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { WEB } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Card, screen } from "@/components/ui";
 import { api } from "@/lib/api";
+import { LangPicker } from "@/components/LangPicker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors, R } from "@/theme";
 import { biometricAvailable, getBiometricOn, setBiometricOn, unlock } from "@/lib/security";
@@ -13,6 +16,7 @@ import { isVibeMuted, setVibeMuted, playVibe } from "@/lib/vibe";
 
 export default function Profile() {
   const c = useColors();
+  const t = useT();
   const router = useRouter();
   const { session } = useAuth();
   const [bio, setBio] = useState(false);
@@ -25,7 +29,7 @@ export default function Profile() {
   const [del, setDel] = useState(false);
   const [delText, setDelText] = useState("");
   useEffect(() => { if (home.data?.name) setName((n) => n || home.data!.name!); }, [home.data?.name]);
-  const saveName = async () => { setSaving(true); try { await api("profile/name", { name }); await qc.invalidateQueries({ queryKey: ["home"] }); Alert.alert("Naam save ho gaya"); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } setSaving(false); };
+  const saveName = async () => { setSaving(true); try { await api("profile/name", { name }); await qc.invalidateQueries({ queryKey: ["home"] }); Alert.alert(t("Naam save ho gaya")); } catch (e) { Alert.alert(t("Error"), e instanceof Error ? e.message : t("Try again")); } setSaving(false); };
   useEffect(() => { (async () => { setBioOk(await biometricAvailable()); setBio(await getBiometricOn()); setSound(!(await isVibeMuted())); })(); }, []);
 
   const row = (label: string, sub: string, value: boolean, on: (v: boolean) => void, disabled?: boolean) => (
@@ -53,6 +57,11 @@ export default function Profile() {
         }, !bioOk)}
         {row("Welcome sound", "App kholte hi halki si vibe tone", sound, async (v) => { setSound(v); await setVibeMuted(!v); if (v) void playVibe(true); })}
       </Card>
+      <Card style={{ gap: 8 }}>
+        <Text style={{ color: c.muted, fontSize: 12, fontWeight: "700" }}>भाषा / LANGUAGE</Text>
+        <LangPicker />
+      </Card>
+      <Button kind="ghost" title="Notification settings" onPress={() => router.push("/notification-settings")} />
       <Button kind="ghost" title="Rent & bills" onPress={() => router.push("/bills")} />
       <Button kind="ghost" title="Documents & receipts" onPress={() => router.push("/documents")} />
       <Button kind="ghost" title="Meter reading bhejein" onPress={() => router.push("/meter")} />
@@ -62,7 +71,7 @@ export default function Profile() {
       <Button kind="ghost" title="My roommate profile" onPress={() => router.push("/roommate-profile")} />
       <Button kind="ghost" title="Open full website" onPress={() => Linking.openURL(WEB)} />
       <Button kind="ghost" title="Privacy policy" onPress={() => Linking.openURL(`${WEB}/privacy`)} />
-      <Button kind="ghost" title="Delete my account" onPress={() => Alert.prompt ? Alert.prompt("Account delete karein?", "Ye wapas nahi ho sakta. Confirm karne ke liye DELETE likhein.", async (t) => { try { await api("account/delete", { confirm: t }); await supabase.auth.signOut(); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } }) : setDel(true)} />
+      <Button kind="ghost" title="Delete my account" onPress={() => Alert.prompt ? Alert.prompt(t("Account delete karein?"), t("Ye wapas nahi ho sakta. Confirm karne ke liye DELETE likhein."), async (t) => { try { await api("account/delete", { confirm: t }); await supabase.auth.signOut(); } catch (e) { Alert.alert("Error", e instanceof Error ? e.message : "Try again"); } }) : setDel(true)} />
       {del && (
         <Card style={{ gap: 8 }}>
           <Text style={{ color: c.danger, fontWeight: "700" }}>Account permanently delete hoga.</Text>
@@ -73,7 +82,7 @@ export default function Profile() {
           </View>
         </Card>
       )}
-      <Button kind="danger" title="Sign out" onPress={() => Alert.alert("Sign out?", "", [{ text: "Cancel", style: "cancel" }, { text: "Sign out", style: "destructive", onPress: () => supabase.auth.signOut() }])} />
+      <Button kind="danger" title="Sign out" onPress={() => Alert.alert(t("Sign out?"), "", [{ text: t("Cancel"), style: "cancel" }, { text: t("Sign out"), style: "destructive", onPress: () => supabase.auth.signOut() }])} />
     </ScrollView>
   );
 }
