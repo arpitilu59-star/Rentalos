@@ -179,6 +179,51 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       }
     }
 
+    if (path.startsWith("/api/app/l/")) {
+      const L = await import("./mobile-landlord.server");
+      const route = path.slice("/api/app/l/".length);
+      if (route === "claim") return json(await L.claimLandlord(me));
+      if (route === "me") return json(await L.landlordMe(me));
+      // Everything below is landlord-only: tenant accounts are refused here.
+      const { getAdmin } = await import("./whatsapp/db");
+      if (!(await L.isLandlord(await getAdmin(), me)))
+        return json({ error: "Ye RentDesk landlord app hai. Tenant account se yahan kaam nahi hota — Rentalos app use karein." }, 403);
+      switch (route) {
+        case "home": return json(await L.landlordHome(me));
+        case "profile/save": return json(await L.saveProfile(me, body));
+        case "properties": return json(await L.listProperties(me));
+        case "property/save": return json(await L.saveProperty(me, body));
+        case "property/delete": return json(await L.deleteProperty(me, body));
+        case "room/save": return json(await L.saveRoom(me, body));
+        case "room/delete": return json(await L.deleteRoom(me, body));
+        case "terms": return json(await L.getTerms(me, body));
+        case "terms/publish": return json(await L.publishTerms(me, body));
+        case "photos": return json(await L.listPhotos(me, body));
+        case "photo/add": return json(await L.addPhoto(me, body));
+        case "photo/delete": return json(await L.deletePhoto(me, body));
+        case "listing": return json(await L.getListing(me, body));
+        case "listing/save": return json(await L.saveListing(me, body));
+        case "listing/publish": return json(await L.publishListing(me, body));
+        case "requests": return json(await L.listRequests(me));
+        case "request/decide": return json(await L.decideRequest(me, body));
+        case "tenants": return json(await L.listTenants(me));
+        case "tenant/save": return json(await L.saveTenant(me, body));
+        case "tenant/moveout": return json(await L.moveOut(me, body));
+        case "bills": return json(await L.listBills(me, body));
+        case "bill/draft": return json(await L.billDraft(me, body));
+        case "bill/create": return json(await L.createBill(me, body));
+        case "bill/paid": return json(await L.markPaid(me, body));
+        case "payments": return json(await L.listPendingPayments(me));
+        case "payment/decide": return json(await L.decidePayment(me, body));
+        case "meters": return json(await L.listMeters(me));
+        case "meter/decide": return json(await L.decideMeter(me, body));
+        case "meter/add": return json(await L.addMeterReading(me, body));
+        case "tickets": return json(await L.landlordTickets(me));
+        case "ticket/status": return json(await L.setTicketStatus(me, body));
+      }
+      return json({ error: "Not found" }, 404);
+    }
+
     if (path.startsWith("/api/app/roommate/")) {
       const c = await import("./roommate-chat.core.server");
       switch (path.slice("/api/app/roommate/".length)) {
