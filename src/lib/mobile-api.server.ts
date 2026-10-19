@@ -156,6 +156,7 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         case "room/terms": return json(await t.roomTerms(uuid(body.room_id)));
         case "booking/create": return json(await t.createBookingFromApp(me, body));
         case "booking/list": return json(await t.myBookings(me));
+        case "booking/reaccept": return json(await t.reacceptBooking(me, body));
         case "booking/cancel": return json(await t.cancelBooking(me, uuid(body.booking_id)));
         case "bills": return json(await t.myBills(me));
         case "pay/info": return json(await t.payInfo(me, uuid(body.bill_id)));

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Linking, ScrollView, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, View } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Text, TextInput } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -22,6 +23,8 @@ export default function StayScreen() {
   const q = useQuery({ queryKey: ["stay"], queryFn: () => api<{ stays: Stay[] }>("stay") });
   const [notice, setNotice] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
   const [reason, setReason] = useState("");
   const send = useMutation({
     mutationFn: (tenant_id: string) => api("stay/notice", { tenant_id, move_out_date: date, reason }),
@@ -84,7 +87,11 @@ export default function StayScreen() {
               {s.notice ? (
                 <Text style={{ color: c.warn, fontWeight: "700" }}>Notice bheja gaya ({d(s.notice.at)}){s.notice.moveOut ? ` — move-out ${d(s.notice.moveOut)}` : ""}. Owner aapse baat karega.</Text>
               ) : notice === s.tenant_id ? (<>
-                <TextInput value={date} onChangeText={setDate} placeholder="Move-out date (YYYY-MM-DD)" placeholderTextColor={c.muted} style={input} />
+                <Pressable onPress={() => setShowPicker(true)} style={[input, { justifyContent: "center" }]}>
+                  <Text style={{ color: date ? c.text : c.muted }}>{date ? d(date) : "Move-out date chunein"}</Text>
+                </Pressable>
+                {showPicker ? <DateTimePicker value={date ? new Date(date) : new Date(Date.now() + 30 * 864e5)} mode="date" minimumDate={new Date()}
+                  onChange={(e, v) => { setShowPicker(Platform.OS === "ios"); if (e.type !== "dismissed" && v) setDate(iso(v)); }} /> : null}
                 <TextInput value={reason} onChangeText={setReason} placeholder="Wajah (optional)" placeholderTextColor={c.muted} style={input} />
                 <ErrorText error={send.error} />
                 <View style={{ flexDirection: "row", gap: 8 }}>

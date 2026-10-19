@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, Image, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, View } from "react-native";
 import { Text, TextInput } from "@/components/Text";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { SkeletonList } from "@/components/Skeleton";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { Card, Chip, Empty, ErrorText } from "@/components/ui";
@@ -41,13 +42,16 @@ export default function Explore() {
   const distOf = (r: RoomRow) => { const p = r.properties; const la = p?.myr_lat ?? p?.latitude, ln = p?.myr_lng ?? p?.longitude; return me && la != null && ln != null ? km(me.lat, me.lng, la, ln) : null; };
   useEffect(() => { const t = setTimeout(() => setApplied(city.trim()), 400); return () => clearTimeout(t); }, [city]);
 
-  const q = useQuery({
+  const PAGE = 20;
+  const q = useInfiniteQuery({
     queryKey: ["rooms", applied, occ, size],
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (last: RoomRow[], all) => (last.length === PAGE ? all.length * PAGE : undefined),
+    queryFn: async ({ pageParam }) => {
       let s = supabase
         .from("rooms")
         .select("id, room_number, rent_amount, occupant_type, room_size, myr_photos, properties!inner(name, myr_city, city, myr_cover_photos, verification_status, myr_lat, myr_lng, latitude, longitude)")
-        .eq("is_public", true).eq("myr_available", true).order("rent_amount", { ascending: true }).limit(40);
+        .eq("is_public", true).eq("myr_available", true).order("rent_amount", { ascending: true }).range(pageParam, pageParam + PAGE - 1);
       if (applied) { const p = applied.replace(/[^A-Za-z0-9 ]/g, ""); s = s.or(`myr_city.ilike.%${p}%,city.ilike.%${p}%`, { foreignTable: "properties" }); }
       if (occ) s = s.in("occupant_type", [occ, "anyone"]);
       if (size) s = s.eq("room_size", size);
@@ -57,6 +61,7 @@ export default function Explore() {
     },
   });
 
+  const rooms = q.data?.pages.flat() ?? [];
   return (
     <View style={{ flex: 1 }}>
       <View style={{ padding: 16, paddingBottom: 6, gap: 10 }}>
@@ -70,12 +75,15 @@ export default function Explore() {
       </View>
       <ErrorText error={q.error ?? (locErr ? new Error(locErr) : null)} />
       <FlatList
-        data={me ? [...(q.data ?? [])].sort((a, b) => (distOf(a) ?? 1e9) - (distOf(b) ?? 1e9)) : (q.data ?? [])}
+        data={me ? [...rooms].sort((a, b) => (distOf(a) ?? 1e9) - (distOf(b) ?? 1e9)) : rooms}
         keyExtractor={(r) => r.id}
         contentContainerStyle={{ padding: 16, gap: 14 }}
         refreshing={q.isRefetching}
         onRefresh={() => q.refetch()}
-        ListEmptyComponent={q.isLoading ? <Empty text="Loading rooms…" /> : <Empty text="Koi room nahi mila. Filter ya city badal kar dekhein." />}
+        onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) void q.fetchNextPage(); }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={c.primary} style={{ padding: 16 }} /> : null}
+        ListEmptyComponent={q.isLoading ? <SkeletonList /> : <Empty text="Koi room nahi mila. Filter ya city badal kar dekhein." />}
         renderItem={({ item: r }) => {
           const img = cover(r);
           return (

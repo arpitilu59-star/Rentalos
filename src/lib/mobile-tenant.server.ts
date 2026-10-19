@@ -121,11 +121,37 @@ export async function myBookings(me: string) {
   const a = await admin();
   const { data } = await a
     .from("bookings")
-    .select("id, status, created_at, rooms(room_number, rent_amount, properties(name, myr_city, city))")
+    .select("id, status, created_at, property_id, rooms(room_number, rent_amount, myr_deposit, properties(name, myr_city, city, terms_summary, current_terms_version))")
     .eq("tenant_user_id", me)
     .order("created_at", { ascending: false })
     .limit(50);
-  return { bookings: data ?? [] };
+  const bookings = [];
+  for (const b of (data ?? []) as any[]) {
+    let needsReaccept = false;
+    let terms: unknown = null;
+    let version: number | null = null;
+    if (["pending", "accepted"].includes(b.status)) {
+      const { data: st } = await a.rpc("terms_reaccept_status", { _booking: b.id });
+      needsReaccept = !!(st as { needs?: boolean } | null)?.needs;
+      if (needsReaccept && b.rooms?.properties?.terms_summary) {
+        const p = TermsSchema.safeParse(b.rooms.properties.terms_summary);
+        if (p.success) { terms = p.data; version = (b.rooms.properties.current_terms_version as number | null) ?? null; }
+      }
+    }
+    const { terms_summary: _t, current_terms_version: _v, ...prop } = b.rooms?.properties ?? {};
+    bookings.push({ id: b.id, status: b.status, created_at: b.created_at, rooms: b.rooms ? { ...b.rooms, properties: prop } : null, needsReaccept, terms, version });
+  }
+  return { bookings, acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })) };
+}
+
+/** Tenant accepts a NEWER version of the terms for an existing booking (same rules as the web). */
+export async function reacceptBooking(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const acks = (typeof body.acknowledgements === "object" && body.acknowledgements ? body.acknowledgements : {}) as Record<string, boolean>;
+  if (missingAcks(acks).length) throw new Error("Please tick every acknowledgement before continuing.");
+  const { error } = await a.rpc("record_terms_reacceptance", { _user: me, _booking: uuid(body.booking_id), _acks: acks, _listened: body.listened === true });
+  if (error) throw new Error(cleanDb(error.message) || "Couldn't record the terms. Please try again.");
+  return { ok: true };
 }
 
 export async function cancelBooking(me: string, id: string) {

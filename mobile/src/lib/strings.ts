@@ -131,6 +131,9 @@ export const STRINGS: Record<string, [string | null, string]> = {
   "NOTIFICATIONS": [null, "नोटिफ़िकेशन"], "new": [null, "नई"], "Nahi": ["No", "नहीं"], "Haan, cancel": ["Yes, cancel", "हाँ, रद्द करें"], "units": [null, "यूनिट"], "UTR": [null, "UTR"],
   "Awaiting": [null, "इंतज़ार"], "approved": [null, "मंज़ूर"], "rejected": [null, "अस्वीकृत"], "pending": [null, "लंबित"], "accepted": [null, "स्वीकृत"], "verified": [null, "वेरिफ़ाइड"], "Rooms": [null, "कमरे"],
   "First name": [null, "पहला नाम"], "Student / Software engineer…": [null, "छात्र / सॉफ़्टवेयर इंजीनियर…"], "e.g. Jaipur": [null, "जैसे जयपुर"], "match": [null, "मैच"],
+  "Terms badal gaye — dobara accept karein": ["Terms changed — please accept again", "शर्तें बदल गई हैं — दोबारा स्वीकार करें"], "Naye terms dekhein": ["View new terms", "नई शर्तें देखें"], "Naye terms accept karein": ["Accept new terms", "नई शर्तें स्वीकार करें"],
+  "Aapne pehle jo terms accept kiye the woh badalte nahi — ye naya version alag se record hota hai.": ["The terms you accepted earlier don't change — this new version is recorded separately.", "आपने पहले जो शर्तें मानी थीं वे नहीं बदलतीं — यह नया वर्ज़न अलग से दर्ज होता है।"],
+  "Move-out date chunein": ["Choose move-out date", "मूव-आउट तारीख चुनें"],
   // notification settings screen
   "Push notifications": [null, "पुश नोटिफ़िकेशन"], "Allow notifications on this phone": [null, "इस फ़ोन पर नोटिफ़िकेशन की अनुमति दें"], "WHAT TO NOTIFY ME ABOUT": [null, "किस बारे में बताएँ"],
   "Bill, payment and meter updates": [null, "बिल, भुगतान और मीटर अपडेट"], "Bookings": [null, "बुकिंग"], "Booking requests and decisions": [null, "बुकिंग रिक्वेस्ट और फ़ैसले"], "Maintenance updates": [null, "मरम्मत अपडेट"], "Status of your complaints": [null, "आपकी शिकायतों की स्थिति"],
