@@ -24,12 +24,28 @@ function Gate() {
   }, [session, loading, segments, router]);
 
   if (!configured) {
-    return <View style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: c.bg }}>
-      <Text style={{ color: c.text, fontSize: 16 }}>App configured nahi hai. .env.example ko .env naam se copy karke EXPO_PUBLIC_SUPABASE_URL aur EXPO_PUBLIC_SUPABASE_ANON_KEY bharein, phir restart karein.</Text>
-    </View>;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: c.bg }}>
+        <Text style={{ color: c.text, fontSize: 16 }}>
+          App configured nahi hai. .env.example ko .env naam se copy karke EXPO_PUBLIC_SUPABASE_URL
+          aur EXPO_PUBLIC_SUPABASE_ANON_KEY bharein, phir restart karein.
+        </Text>
+      </View>
+    );
   }
-  if (loading) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.bg }}><ActivityIndicator color={c.primary} size="large" /></View>;
-  const head = { headerStyle: { backgroundColor: c.bg }, headerTintColor: c.text, contentStyle: { backgroundColor: c.bg } };
+  if (loading)
+    return (
+      <View
+        style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.bg }}
+      >
+        <ActivityIndicator color={c.primary} size="large" />
+      </View>
+    );
+  const head = {
+    headerStyle: { backgroundColor: c.bg },
+    headerTintColor: c.text,
+    contentStyle: { backgroundColor: c.bg },
+  };
   return (
     <Stack screenOptions={head}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -41,7 +57,13 @@ function Gate() {
       <Stack.Screen name="photos" options={{ title: "Live photos" }} />
       <Stack.Screen name="tenant-form" options={{ title: "Tenant" }} />
       <Stack.Screen name="bill-new" options={{ title: "Naya bill" }} />
-      <Stack.Screen name="profile" options={{ title: "Mera profile" }} />
+      <Stack.Screen name="meter-add" options={{ title: "Meter reading" }} />
+      <Stack.Screen name="subscription" options={{ title: "Plan & features" }} />
+      <Stack.Screen name="verification" options={{ title: "Verification" }} />
+      <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Stack.Screen name="deposit-form" options={{ title: "Deposit" }} />
+      <Stack.Screen name="move-form" options={{ title: "Move-in / Move-out" }} />
     </Stack>
   );
 }

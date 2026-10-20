@@ -8,5 +8,10 @@ const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 export const configured = Boolean(url && key);
 
 export const supabase = createClient(url || "https://invalid.local", key || "invalid", {
-  auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
 });

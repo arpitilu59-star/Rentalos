@@ -4,7 +4,7 @@ const BASE = (process.env.EXPO_PUBLIC_API_URL ?? "https://www.rentalos.in").repl
 export const WEB = BASE;
 
 /** Calls the Rentalos server (/api/app/*) with the signed-in user's token. Throws a readable Error. */
-export async function api<T = any>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+export async function api<T = unknown>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Please sign in again.");

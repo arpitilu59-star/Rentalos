@@ -5,7 +5,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
 
 async function userFromRequest(request: Request): Promise<string | null> {
   const h = request.headers.get("authorization") ?? "";
@@ -19,7 +22,8 @@ async function userFromRequest(request: Request): Promise<string | null> {
   return error || !data.user ? null : data.user.id;
 }
 
-const str = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const str = (v: unknown, max: number): string =>
+  typeof v === "string" ? v.trim().slice(0, max) : "";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = (v: unknown): string => {
   const s = str(v, 40);
@@ -34,7 +38,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
     if (path === "/api/app/push/dispatch") {
       const secret = process.env.PUSH_DISPATCH_SECRET || process.env.WHATSAPP_DISPATCH_SECRET;
       if (!secret) return json({ error: "Push dispatch not configured" }, 500);
-      if (request.method !== "POST" || request.headers.get("authorization") !== `Bearer ${secret}`) return json({ error: "Unauthorized" }, 401);
+      if (request.method !== "POST" || request.headers.get("authorization") !== `Bearer ${secret}`)
+        return json({ error: "Unauthorized" }, 401);
       const { dispatchPendingPush } = await import("./push.server");
       return json(await dispatchPendingPush());
     }
@@ -50,7 +55,12 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       if (!isExpoToken(token)) return json({ error: "Invalid push token." }, 400);
       const { getAdmin } = await import("./whatsapp/db");
       const admin = await getAdmin();
-      await admin.from("push_tokens").upsert({ user_id: me, token, platform, last_seen_at: new Date().toISOString() }, { onConflict: "token" });
+      await admin
+        .from("push_tokens")
+        .upsert(
+          { user_id: me, token, platform, last_seen_at: new Date().toISOString() },
+          { onConflict: "token" },
+        );
       return json({ ok: true });
     }
 
@@ -60,13 +70,19 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       const admin = await getAdmin();
       const { data: u } = await admin.auth.admin.getUserById(me);
       const email = u?.user?.email?.toLowerCase() ?? null;
-      const { data: prof } = await admin.from("profiles").select("mobile, full_name").eq("id", me).maybeSingle();
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("mobile, full_name")
+        .eq("id", me)
+        .maybeSingle();
       const filters = [`tenant_user_id.eq.${me}`];
       if (prof?.mobile) filters.push(`phone.eq.${prof.mobile}`);
       if (email) filters.push(`email.ilike.${email}`);
       const { data: tenants } = await admin
         .from("tenants")
-        .select("id, name, rent_share, active, rooms(room_number, rent_amount, properties(name, myr_city, city))")
+        .select(
+          "id, name, rent_share, active, rooms(room_number, rent_amount, properties(name, myr_city, city))",
+        )
         .or(filters.join(","))
         .eq("active", true);
       const ids = (tenants ?? []).map((t: { id: string }) => t.id);
@@ -78,20 +94,31 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
             .order("due_date", { ascending: true })
             .limit(60)
         : { data: [] };
-      const unpaid = ((bills ?? []) as Array<{ total_amount: number | null; amount_paid: number | null; due_date: string; status: string | null }>).filter(
-        (b) => (b.total_amount ?? 0) - (b.amount_paid ?? 0) > 0 && b.status !== "paid",
-      );
+      const unpaid = (
+        (bills ?? []) as Array<{
+          total_amount: number | null;
+          amount_paid: number | null;
+          due_date: string;
+          status: string | null;
+        }>
+      ).filter((b) => (b.total_amount ?? 0) - (b.amount_paid ?? 0) > 0 && b.status !== "paid");
       const { data: pending } = await admin
         .from("bookings")
-        .select("id, status, created_at, rooms(room_number, rent_amount, properties(name, myr_city, city))")
+        .select(
+          "id, status, created_at, rooms(room_number, rent_amount, properties(name, myr_city, city))",
+        )
         .eq("tenant_user_id", me)
         .in("status", ["pending", "rejected"])
         .order("created_at", { ascending: false })
         .limit(10);
       const { data: tv } = await admin.rpc("tenant_verified", { _uid: me });
-      const tenantName = ((tenants ?? []) as Array<{ name?: string | null }>).map((t) => t.name).find((n) => !!n && n.trim().length > 1) ?? null;
+      const tenantName =
+        ((tenants ?? []) as Array<{ name?: string | null }>)
+          .map((t) => t.name)
+          .find((n) => !!n && n.trim().length > 1) ?? null;
       return json({
-        name: tenantName ?? (prof?.full_name as string | null) ?? (email ? email.split("@")[0] : null),
+        name:
+          tenantName ?? (prof?.full_name as string | null) ?? (email ? email.split("@")[0] : null),
         verified: tv === true,
         tenancies: tenants ?? [],
         outstanding: unpaid.reduce((n, b) => n + ((b.total_amount ?? 0) - (b.amount_paid ?? 0)), 0),
@@ -104,8 +131,10 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       const { getAdmin } = await import("./whatsapp/db");
       const admin = await getAdmin();
       if (body.save === true) {
-        const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
-        const pick = <T extends string>(v: unknown, ok: readonly T[]): T | null => (ok.includes(v as T) ? (v as T) : null);
+        const num = (v: unknown) =>
+          typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
+        const pick = <T extends string>(v: unknown, ok: readonly T[]): T | null =>
+          ok.includes(v as T) ? (v as T) : null;
         const age = num(body.age);
         const row = {
           user_id: me,
@@ -122,10 +151,16 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           budget_max: num(body.budget_max),
           looking_for_roommate: body.looking_for_roommate === true,
         };
-        const { error } = await admin.from("myr_user_profiles").upsert(row, { onConflict: "user_id" });
+        const { error } = await admin
+          .from("myr_user_profiles")
+          .upsert(row, { onConflict: "user_id" });
         if (error) return json({ error: "Couldn't save your profile." }, 400);
       }
-      const { data: mine } = await admin.from("myr_user_profiles").select("*").eq("user_id", me).maybeSingle();
+      const { data: mine } = await admin
+        .from("myr_user_profiles")
+        .select("*")
+        .eq("user_id", me)
+        .maybeSingle();
       return json({ profile: mine ?? null });
     }
 
@@ -133,11 +168,17 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       const { getAdmin } = await import("./whatsapp/db");
       const { scoreMatch } = await import("./myr-roommate.functions");
       const admin = await getAdmin();
-      const { data: mine } = await admin.from("myr_user_profiles").select("*").eq("user_id", me).maybeSingle();
+      const { data: mine } = await admin
+        .from("myr_user_profiles")
+        .select("*")
+        .eq("user_id", me)
+        .maybeSingle();
       if (!mine || !mine.looking_for_roommate) return json({ matches: [], profile: mine ?? null });
       let q = admin
         .from("myr_user_profiles")
-        .select("user_id, display_name, age, gender, city, occupation, bio, smoking, sleep_schedule, diet, budget_min, budget_max")
+        .select(
+          "user_id, display_name, age, gender, city, occupation, bio, smoking, sleep_schedule, diet, budget_min, budget_max",
+        )
         .eq("looking_for_roommate", true)
         .neq("user_id", me);
       if (mine.city) q = q.eq("city", mine.city);
@@ -153,29 +194,52 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
     {
       const t = await import("./mobile-tenant.server");
       switch (path.slice("/api/app/".length)) {
-        case "room/terms": return json(await t.roomTerms(uuid(body.room_id)));
-        case "booking/create": return json(await t.createBookingFromApp(me, body));
-        case "booking/list": return json(await t.myBookings(me));
-        case "booking/reaccept": return json(await t.reacceptBooking(me, body));
-        case "booking/cancel": return json(await t.cancelBooking(me, uuid(body.booking_id)));
-        case "bills": return json(await t.myBills(me));
-        case "pay/info": return json(await t.payInfo(me, uuid(body.bill_id)));
-        case "pay/submit": return json(await t.submitProof(me, body));
-        case "room/video": return json(await t.roomVideo(uuid(body.room_id)));
-        case "docs": return json(await t.myDocuments(me));
-        case "notif/read": return json(await t.markNotifRead(me, body.id ? uuid(body.id) : null));
-        case "kyc": return json(await t.kycList(me));
-        case "kyc/upload": return json(await t.kycUpload(me, body));
-        case "meter": return json(await t.meterOverview(me));
-        case "meter/submit": return json(await t.meterSubmit(me, body));
-        case "profile/name": return json(await t.setMyName(me, str(body.name, 80)));
-        case "stay": return json(await t.myStay(me));
-        case "stay/notice": return json(await t.requestNotice(me, body));
-        case "account/delete": return json(await t.deleteAccount(me, str(body.confirm, 10)));
-        case "notif/prefs": return json(await t.getPrefs(me));
-        case "notif/prefs/save": return json(await t.savePrefs(me, body));
-        case "tickets": return json(await t.listTickets(me));
-        case "tickets/create": return json(await t.createTicket(me, body));
+        case "room/terms":
+          return json(await t.roomTerms(uuid(body.room_id)));
+        case "booking/create":
+          return json(await t.createBookingFromApp(me, body));
+        case "booking/list":
+          return json(await t.myBookings(me));
+        case "booking/reaccept":
+          return json(await t.reacceptBooking(me, body));
+        case "booking/cancel":
+          return json(await t.cancelBooking(me, uuid(body.booking_id)));
+        case "bills":
+          return json(await t.myBills(me));
+        case "pay/info":
+          return json(await t.payInfo(me, uuid(body.bill_id)));
+        case "pay/submit":
+          return json(await t.submitProof(me, body));
+        case "room/video":
+          return json(await t.roomVideo(uuid(body.room_id)));
+        case "docs":
+          return json(await t.myDocuments(me));
+        case "notif/read":
+          return json(await t.markNotifRead(me, body.id ? uuid(body.id) : null));
+        case "kyc":
+          return json(await t.kycList(me));
+        case "kyc/upload":
+          return json(await t.kycUpload(me, body));
+        case "meter":
+          return json(await t.meterOverview(me));
+        case "meter/submit":
+          return json(await t.meterSubmit(me, body));
+        case "profile/name":
+          return json(await t.setMyName(me, str(body.name, 80)));
+        case "stay":
+          return json(await t.myStay(me));
+        case "stay/notice":
+          return json(await t.requestNotice(me, body));
+        case "account/delete":
+          return json(await t.deleteAccount(me, str(body.confirm, 10)));
+        case "notif/prefs":
+          return json(await t.getPrefs(me));
+        case "notif/prefs/save":
+          return json(await t.savePrefs(me, body));
+        case "tickets":
+          return json(await t.listTickets(me));
+        case "tickets/create":
+          return json(await t.createTicket(me, body));
       }
     }
 
@@ -187,39 +251,102 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       // Everything below is landlord-only: tenant accounts are refused here.
       const { getAdmin } = await import("./whatsapp/db");
       if (!(await L.isLandlord(await getAdmin(), me)))
-        return json({ error: "Ye RentDesk landlord app hai. Tenant account se yahan kaam nahi hota — Rentalos app use karein." }, 403);
+        return json(
+          {
+            error:
+              "Ye RentDesk landlord app hai. Tenant account se yahan kaam nahi hota — Rentalos app use karein.",
+          },
+          403,
+        );
       switch (route) {
-        case "home": return json(await L.landlordHome(me));
-        case "profile/save": return json(await L.saveProfile(me, body));
-        case "properties": return json(await L.listProperties(me));
-        case "property/save": return json(await L.saveProperty(me, body));
-        case "property/delete": return json(await L.deleteProperty(me, body));
-        case "room/save": return json(await L.saveRoom(me, body));
-        case "room/delete": return json(await L.deleteRoom(me, body));
-        case "terms": return json(await L.getTerms(me, body));
-        case "terms/publish": return json(await L.publishTerms(me, body));
-        case "photos": return json(await L.listPhotos(me, body));
-        case "photo/add": return json(await L.addPhoto(me, body));
-        case "photo/delete": return json(await L.deletePhoto(me, body));
-        case "listing": return json(await L.getListing(me, body));
-        case "listing/save": return json(await L.saveListing(me, body));
-        case "listing/publish": return json(await L.publishListing(me, body));
-        case "requests": return json(await L.listRequests(me));
-        case "request/decide": return json(await L.decideRequest(me, body));
-        case "tenants": return json(await L.listTenants(me));
-        case "tenant/save": return json(await L.saveTenant(me, body));
-        case "tenant/moveout": return json(await L.moveOut(me, body));
-        case "bills": return json(await L.listBills(me, body));
-        case "bill/draft": return json(await L.billDraft(me, body));
-        case "bill/create": return json(await L.createBill(me, body));
-        case "bill/paid": return json(await L.markPaid(me, body));
-        case "payments": return json(await L.listPendingPayments(me));
-        case "payment/decide": return json(await L.decidePayment(me, body));
-        case "meters": return json(await L.listMeters(me));
-        case "meter/decide": return json(await L.decideMeter(me, body));
-        case "meter/add": return json(await L.addMeterReading(me, body));
-        case "tickets": return json(await L.landlordTickets(me));
-        case "ticket/status": return json(await L.setTicketStatus(me, body));
+        case "home":
+          return json(await L.landlordHome(me));
+        case "profile/save":
+          return json(await L.saveProfile(me, body));
+        case "settings":
+          return json(await L.getBillingDefaults(me));
+        case "settings/save":
+          return json(await L.saveBillingDefaults(me, body));
+        case "deposits":
+          return json(await L.listDeposits(me));
+        case "deposit/create":
+          return json(await L.createDeposit(me, body));
+        case "deposit/settle":
+          return json(await L.settleDeposit(me, body));
+        case "moves":
+          return json(await L.listMoves(me));
+        case "move/create":
+          return json(await L.createMove(me, body));
+        case "properties":
+          return json(await L.listProperties(me));
+        case "property/save":
+          return json(await L.saveProperty(me, body));
+        case "property/delete":
+          return json(await L.deleteProperty(me, body));
+        case "room/save":
+          return json(await L.saveRoom(me, body));
+        case "room/delete":
+          return json(await L.deleteRoom(me, body));
+        case "terms":
+          return json(await L.getTerms(me, body));
+        case "terms/publish":
+          return json(await L.publishTerms(me, body));
+        case "photos":
+          return json(await L.listPhotos(me, body));
+        case "photo/add":
+          return json(await L.addPhoto(me, body));
+        case "photo/delete":
+          return json(await L.deletePhoto(me, body));
+        case "listing":
+          return json(await L.getListing(me, body));
+        case "listing/save":
+          return json(await L.saveListing(me, body));
+        case "listing/publish":
+          return json(await L.publishListing(me, body));
+        case "requests":
+          return json(await L.listRequests(me));
+        case "request/decide":
+          return json(await L.decideRequest(me, body));
+        case "tenants":
+          return json(await L.listTenants(me));
+        case "tenant/save":
+          return json(await L.saveTenant(me, body));
+        case "tenant/moveout":
+          return json(await L.moveOut(me, body));
+        case "tenant/moveout-check":
+          return json(await L.moveOutCheck(me, body));
+        case "subscription":
+          return json(await L.subscriptionInfo(me));
+        case "verification":
+          return json(await L.verificationStatus(me));
+        case "bills":
+          return json(await L.listBills(me, body));
+        case "bill/draft":
+          return json(await L.billDraft(me, body));
+        case "bill/create":
+          return json(await L.createBill(me, body));
+        case "bill/paid":
+          return json(await L.markPaid(me, body));
+        case "payments":
+          return json(await L.listPendingPayments(me));
+        case "payment/decide":
+          return json(await L.decidePayment(me, body));
+        case "meters":
+          return json(await L.listMeters(me));
+        case "meter/decide":
+          return json(await L.decideMeter(me, body));
+        case "meter/add":
+          return json(await L.addMeterReading(me, body));
+        case "meter/overview":
+          return json(await L.meterOverview(me));
+        case "meter/context":
+          return json(await L.meterContext(me, body));
+        case "meter/ocr":
+          return json(await L.meterOcr(me, body));
+        case "tickets":
+          return json(await L.landlordTickets(me));
+        case "ticket/status":
+          return json(await L.setTicketStatus(me, body));
       }
       return json({ error: "Not found" }, 404);
     }
@@ -243,7 +370,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         }
         case "respond": {
           const d = body.decision;
-          if (d !== "accept" && d !== "decline" && d !== "block") return json({ error: "Invalid decision." }, 400);
+          if (d !== "accept" && d !== "decline" && d !== "block")
+            return json({ error: "Invalid decision." }, 400);
           return json(await c.respond(me, uuid(body.threadId), d));
         }
         case "call":
