@@ -358,6 +358,11 @@ export default function Terms() {
 
       <ErrorText error={save.error} />
       <Button title="Terms publish karein" busy={save.isPending} onPress={() => save.mutate()} />
+      <Button
+        kind="ghost"
+        title="Purane versions dekhein"
+        onPress={() => router.push({ pathname: "/terms-history", params: { propertyId } } as never)}
+      />
       <View style={{ height: 24 }} />
     </ScrollView>
   );

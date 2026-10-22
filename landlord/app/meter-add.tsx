@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Alert, Image, Platform, Pressable, ScrollView, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { Text } from "@/components/Text";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -141,7 +142,12 @@ function Entry({ roomId, onChangeRoom }: { roomId: string; onChangeRoom: () => v
   const [pick, setPick] = useState(false);
   const [reason, setReason] = useState("");
   const [confirmHigh, setConfirmHigh] = useState(false);
-  const [photo, setPhoto] = useState<{ uri: string; b64: string } | null>(null);
+  const [photo, setPhoto] = useState<{
+    uri: string;
+    b64: string;
+    lat?: number;
+    lng?: number;
+  } | null>(null);
   const [ocr, setOcr] = useState(false);
   const [ocrNote, setOcrNote] = useState("");
   const d = q.data;
@@ -168,8 +174,23 @@ function Entry({ roomId, onChangeRoom }: { roomId: string; onChangeRoom: () => v
       base64: true,
       mediaTypes: ["images"],
     });
-    if (!r.canceled && r.assets[0]?.base64)
-      setPhoto({ uri: r.assets[0].uri, b64: r.assets[0].base64 });
+    if (!r.canceled && r.assets[0]?.base64) {
+      let lat: number | undefined;
+      let lng: number | undefined;
+      try {
+        const lp = await Location.requestForegroundPermissionsAsync();
+        if (lp.status === "granted") {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        }
+      } catch {
+        /* location is optional */
+      }
+      setPhoto({ uri: r.assets[0].uri, b64: r.assets[0].base64, lat, lng });
+    }
   };
   const runOcr = useMutation({
     mutationFn: () =>
@@ -205,6 +226,8 @@ function Entry({ roomId, onChangeRoom }: { roomId: string; onChangeRoom: () => v
         reason,
         confirm_high: confirmHigh,
         photo_path,
+        photo_lat: photo?.lat,
+        photo_lng: photo?.lng,
         ai_detected: ocr,
       });
     },

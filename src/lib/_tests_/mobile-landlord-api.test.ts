@@ -367,3 +367,183 @@ describe("deposits", () => {
     await expect(settleDeposit(ME, { id, amount_deducted: 0 })).rejects.toThrow(/pehle hi/);
   });
 });
+
+describe("bill PDF + manual WhatsApp", () => {
+  const bill = (over: any = {}) => ({
+    id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    owner_id: ME,
+    room_id: R1,
+    tenant_id: T1,
+    rent_period_start: "2026-10-01",
+    rent_period_end: "2026-10-31",
+    rent_amount: 6000,
+    elec_period_start: null,
+    elec_period_end: null,
+    prev_reading: 100,
+    curr_reading: 140,
+    units_consumed: 40,
+    electricity_amount: 400,
+    persons: 1,
+    water_amount: 100,
+    cleaning_amount: 50,
+    other_charges: 0,
+    previous_dues: 0,
+    total_amount: 6550,
+    amount_paid: 0,
+    due_date: "2026-11-05",
+    status: "pending",
+    tenants: { name: "Ravi", phone: "98765 43210" },
+    rooms: { room_number: "101" },
+    ...over,
+  });
+  it("builds a real PDF and a wa.me link with +91 and the bill text", async () => {
+    const { billPdf } = await L();
+    db.bills.push(bill());
+    const r: any = await billPdf(ME, { bill_id: db.bills[0].id });
+    expect(r.pdf_url).toBe("https://signed");
+    expect(r.whatsapp_url).toMatch(/^https:\/\/wa\.me\/919876543210\?text=/);
+    expect(decodeURIComponent(r.whatsapp_url)).toContain("Total: ₹6,550");
+    expect(decodeURIComponent(r.whatsapp_url)).toContain("Bill PDF: https://signed");
+  });
+  it("refuses another landlord's bill and a bad phone number", async () => {
+    const { billPdf, billWhatsApp, waDigits } = await L();
+    db.bills.push(bill());
+    await expect(billPdf(OTHER, { bill_id: db.bills[0].id })).rejects.toThrow(/not found/);
+    db.bills[0].tenants = { name: "Ravi", phone: "123" };
+    await expect(billWhatsApp(ME, { bill_id: db.bills[0].id })).rejects.toThrow(/phone/);
+    expect(waDigits("+91 98765-43210")).toBe("919876543210");
+    expect(waDigits("09876543210")).toBe("919876543210");
+  });
+});
+
+describe("bill actions, statement, partner import", () => {
+  const B = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const mk = (o: any = {}) => ({
+    id: B,
+    owner_id: ME,
+    tenant_id: T1,
+    total_amount: 1000,
+    amount_paid: 0,
+    status: "pending",
+    rent_period_start: "2026-10-01",
+    ...o,
+  });
+  it("caps partial payment at the balance and refuses double 'paid'", async () => {
+    const { markPaid } = await L();
+    db.bills.push(mk());
+    await expect(markPaid(ME, { bill_id: B, amount: 1500 })).rejects.toThrow(/zyada/);
+    await expect(markPaid(ME, { bill_id: B, amount: 400 })).resolves.toMatchObject({
+      status: "partial",
+    });
+    await expect(markPaid(ME, { bill_id: B, amount: 600 })).resolves.toMatchObject({
+      status: "paid",
+    });
+    await expect(markPaid(ME, { bill_id: B, amount: 1 })).rejects.toThrow(/pehle hi/);
+  });
+  it("deletes only untouched bills of the owner", async () => {
+    const { billDelete } = await L();
+    db.bills.push(mk({ amount_paid: 200 }));
+    await expect(billDelete(ME, { bill_id: B })).rejects.toThrow(/payment/);
+    db.bills[0].amount_paid = 0;
+    await expect(billDelete(OTHER, { bill_id: B })).rejects.toThrow(/not found/);
+    await expect(billDelete(ME, { bill_id: B })).resolves.toEqual({ ok: true });
+    expect(db.bills).toHaveLength(0);
+  });
+  it("validates the reminder-pause date", async () => {
+    const { billPauseReminders } = await L();
+    db.bills.push(mk());
+    await expect(billPauseReminders(ME, { bill_id: B, until: "2020-01-01" })).rejects.toThrow(
+      /aage/,
+    );
+    await expect(billPauseReminders(ME, { bill_id: B, until: "bad" })).rejects.toThrow(/YYYY/);
+    await billPauseReminders(ME, { bill_id: B, until: "2099-01-01" });
+    expect(db.bills[0].reminders_paused_until).toBe("2099-01-01");
+  });
+  it("totals a tenant statement", async () => {
+    const { tenantStatement } = await L();
+    db.tenants.push({ id: T1, owner_id: ME, name: "Ravi", active: true });
+    db.bills.push(mk({ amount_paid: 300 }));
+    await expect(tenantStatement(ME, { tenant_id: T1 })).resolves.toMatchObject({
+      billed: 1000,
+      paid: 300,
+      due: 700,
+    });
+  });
+  it("partner import is blocked without the entitlement and validates rows", async () => {
+    const { partnerImport } = await L();
+    const csv =
+      "property_external_ref_id,property_name,room_external_ref_id,room_number,rent_amount\nA,Blk,A1,101,8500\nA,Blk,,102,x";
+    entitled = false;
+    await expect(partnerImport(ME, { csv })).rejects.toThrow(/SUBSCRIPTION/);
+    entitled = true;
+    db.partner_org_members = [{ user_id: ME, org_id: "o1" }];
+    await expect(partnerImport(ME, { csv, dry_run: true })).resolves.toMatchObject({
+      valid_rows: 1,
+    });
+  });
+});
+
+describe("gender fit, parking honesty, meter location", () => {
+  it("refuses a female tenant in a Boys room and accepts a male one; asks for gender", async () => {
+    const { saveTenant } = await L();
+    db.rooms.push(completeRoom({ capacity: 3 }));
+    const base = { name: "Asha", phone: "9876543210", room_id: R1 };
+    await expect(saveTenant(ME, { ...base, gender: "female" })).rejects.toThrow(/Boys room/);
+    await expect(saveTenant(ME, base)).rejects.toThrow(/Boys room/);
+    await expect(saveTenant(ME, { ...base, gender: "male" })).resolves.toHaveProperty("id");
+    expect(db.tenants[0].gender).toBe("male");
+  });
+  it("applies the same rule when moving a tenant into a Girls room", async () => {
+    const { saveTenant } = await L();
+    db.rooms.push(
+      completeRoom({ capacity: 3 }),
+      completeRoom({ id: R2, room_number: "102", occupant_type: "girls", capacity: 3 }),
+    );
+    db.tenants.push({
+      id: T1,
+      owner_id: ME,
+      room_id: R1,
+      name: "Ravi",
+      active: true,
+      gender: "male",
+    });
+    await expect(
+      saveTenant(ME, { id: T1, name: "Ravi", phone: "9876543210", room_id: R2 }),
+    ).rejects.toThrow(/Girls room/);
+  });
+  it("never records street/nearby parking as landlord-owned", async () => {
+    const { parkingFields } = await L();
+    const street = parkingFields({
+      parking_kind: "street",
+      parking_covered: true,
+      parking_reserved: true,
+    });
+    expect(street.parking_covered).toBeNull();
+    expect(street.parking_reserved).toBeNull();
+    expect(
+      parkingFields({ parking_kind: "none", parking_vehicle: "both", parking_paid: true }),
+    ).toMatchObject({
+      parking_vehicle: null,
+      parking_paid: null,
+    });
+    expect(() => parkingFields({ parking_kind: "nearby" })).toThrow(/doori/);
+    expect(
+      parkingFields({ parking_kind: "dedicated", parking_covered: true }).parking_covered,
+    ).toBe(true);
+  });
+  it("stores meter photo location only with a photo and valid coordinates", async () => {
+    const { addMeterReading } = await L();
+    db.rooms.push(completeRoom());
+    db.tenants.push({ id: T1, owner_id: ME, room_id: R1, active: true });
+    await addMeterReading(ME, {
+      room_id: R1,
+      reading: "10.5",
+      date: today,
+      photo_path: `${ME}/x.jpg`,
+      photo_lat: 26.9,
+      photo_lng: 75.8,
+    });
+    expect(db.meter_readings[0]).toMatchObject({ photo_lat: 26.9, photo_lng: 75.8 });
+    expect(db.meter_readings[0]).not.toBeUndefined();
+  });
+});

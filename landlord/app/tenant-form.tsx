@@ -26,6 +26,7 @@ type T = {
   phone: string | null;
   email?: string | null;
   persons?: number;
+  gender?: string | null;
   move_in_date: string | null;
   rent_share: number | null;
   initial_reading?: number | null;
@@ -58,6 +59,7 @@ export default function TenantForm() {
   const [room, setRoom] = useState<string | null>(null);
   const [rent, setRent] = useState("");
   const [persons, setPersons] = useState("1");
+  const [gender, setGender] = useState<string | null>(null);
   const [reading, setReading] = useState("");
   const [moveIn, setMoveIn] = useState(d2(new Date()));
   const [pick, setPick] = useState(false);
@@ -69,6 +71,7 @@ export default function TenantForm() {
     setRoom(initial.rooms?.id ?? null);
     setRent(initial.rent_share != null ? String(initial.rent_share) : "");
     setPersons(String(initial.persons ?? 1));
+    setGender(initial.gender ?? null);
     setReading(initial.initial_reading ? String(initial.initial_reading) : "");
     if (initial.move_in_date) setMoveIn(initial.move_in_date.slice(0, 10));
   }, [initial?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -88,6 +91,7 @@ export default function TenantForm() {
         room_id: room,
         rent_share: rent,
         persons,
+        gender,
         initial_reading: reading,
         move_in_date: moveIn,
       }),
@@ -103,6 +107,17 @@ export default function TenantForm() {
       keyboardShouldPersistTaps="handled"
     >
       <Field label="Tenant ka naam" value={name} onChange={guard.wrap(setName)} required />
+      <Choice
+        label="Gender"
+        value={gender}
+        onChange={guard.wrap(setGender)}
+        options={[
+          ["male", "Male"],
+          ["female", "Female"],
+          ["other", "Other"],
+        ]}
+        hint="Boys/Girls rooms mein sahi gender zaroori hai."
+      />
       <Field
         label="Mobile number"
         value={phone}

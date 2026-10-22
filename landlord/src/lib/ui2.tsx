@@ -65,12 +65,14 @@ export function Choice<T extends string>({
   options,
   onChange,
   required,
+  hint,
 }: {
   label: string;
   value: T | null | undefined;
   options: Array<[T, string]>;
   onChange: (v: T) => void;
   required?: boolean;
+  hint?: string;
 }) {
   const c = useColors();
   return (
@@ -101,6 +103,7 @@ export function Choice<T extends string>({
           </Pressable>
         ))}
       </View>
+      {hint ? <Text style={{ color: c.muted, fontSize: 12 }}>{hint}</Text> : null}
     </View>
   );
 }

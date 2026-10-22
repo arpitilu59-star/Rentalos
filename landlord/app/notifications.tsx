@@ -18,13 +18,29 @@ type N = {
   read_at: string | null;
 };
 
-/** Where a notification should take the landlord (best effort; everything else just opens the matching tab). */
+/** Web link → app screen (exact when the link says so, keyword fallback otherwise). */
+const LINKS: Array<[RegExp, string]> = [
+  [/^\/meters?\b/, "/money?tab=meters"],
+  [/payment-verify|^\/verify$/, "/money?tab=verify"],
+  [/^\/bills/, "/money?tab=bills"],
+  [/^\/deposits/, "/money?tab=deposits"],
+  [/^\/bookings|^\/admin\/bookings/, "/requests?tab=book"],
+  [/^\/maintenance/, "/requests?tab=tickets"],
+  [/^\/tenants|^\/moves/, "/tenants"],
+  [/^\/rooms|^\/properties|^\/rental-terms/, "/rooms"],
+  [/^\/subscription/, "/subscription"],
+  [/verify-identity|^\/verifications/, "/verification"],
+];
 function target(n: N): string {
-  const t = `${n.title} ${n.link ?? ""}`.toLowerCase();
-  if (/book|request/.test(t)) return "/requests";
-  if (/payment|proof|bill|rent|deposit|meter/.test(t)) return "/money";
-  if (/ticket|maintenance|complaint/.test(t)) return "/requests";
-  if (/tenant/.test(t)) return "/tenants";
+  const l = (n.link ?? "").toLowerCase();
+  for (const [re, to] of LINKS) if (re.test(l)) return to;
+  const t = `${n.title} ${n.body ?? ""}`.toLowerCase();
+  if (/meter/.test(t)) return "/money?tab=meters";
+  if (/payment|proof/.test(t)) return "/money?tab=verify";
+  if (/bill|rent|deposit/.test(t)) return "/money?tab=bills";
+  if (/book|request/.test(t)) return "/requests?tab=book";
+  if (/ticket|maintenance|complaint/.test(t)) return "/requests?tab=tickets";
+  if (/tenant|move/.test(t)) return "/tenants";
   return "/";
 }
 

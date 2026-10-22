@@ -327,6 +327,26 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await L.createBill(me, body));
         case "bill/paid":
           return json(await L.markPaid(me, body));
+        case "bill":
+          return json(await L.billDetail(me, body));
+        case "bill/pdf":
+          return json(await L.billPdf(me, body));
+        case "bill/pause":
+          return json(await L.billPauseReminders(me, body));
+        case "bill/delete":
+          return json(await L.billDelete(me, body));
+        case "tenant/statement":
+          return json(await L.tenantStatement(me, body));
+        case "terms/history":
+          return json(await L.termsHistory(me, body));
+        case "whatsapp":
+          return json(await L.whatsappStatus(me));
+        case "partner":
+          return json(await L.partnerStatus(me));
+        case "partner/import":
+          return json(await L.partnerImport(me, body));
+        case "bill/whatsapp":
+          return json(await L.billWhatsApp(me, body));
         case "payments":
           return json(await L.listPendingPayments(me));
         case "payment/decide":

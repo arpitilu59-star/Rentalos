@@ -56,6 +56,10 @@ function Gate() {
       <Stack.Screen name="terms/[propertyId]" options={{ title: "Rental terms" }} />
       <Stack.Screen name="photos" options={{ title: "Live photos" }} />
       <Stack.Screen name="tenant-form" options={{ title: "Tenant" }} />
+      <Stack.Screen name="bill/[id]" options={{ title: "Bill" }} />
+      <Stack.Screen name="tenant-statement" options={{ title: "Tenant statement" }} />
+      <Stack.Screen name="terms-history" options={{ title: "Terms versions" }} />
+      <Stack.Screen name="partner-import" options={{ title: "Partner import" }} />
       <Stack.Screen name="bill-new" options={{ title: "Naya bill" }} />
       <Stack.Screen name="meter-add" options={{ title: "Meter reading" }} />
       <Stack.Screen name="subscription" options={{ title: "Plan & features" }} />

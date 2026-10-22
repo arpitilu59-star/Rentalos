@@ -13,6 +13,16 @@ export default function Profile() {
   const c = useColors();
   const qc = useQueryClient();
   const router = useRouter();
+  const wa = useQuery({
+    queryKey: ["wa-status"],
+    queryFn: () =>
+      api<{
+        linked: boolean;
+        opted_in: boolean;
+        phone_masked: string | null;
+        live_delivery: boolean;
+      }>("l/whatsapp"),
+  });
   const me = useQuery({
     queryKey: ["me"],
     queryFn: () =>
@@ -118,6 +128,32 @@ export default function Profile() {
           Live photos: {me.data?.canLivePhotos ? "chalu ✓" : "plan upgrade par"}
         </Text>
       </Card>
+      <Card style={{ gap: 4 }}>
+        <Text style={{ color: c.text, fontWeight: "700" }}>WhatsApp</Text>
+        {wa.data ? (
+          <>
+            <Text style={{ color: c.muted, fontSize: 13 }}>
+              {wa.data.linked ? `Linked ✓ ${wa.data.phone_masked ?? ""}` : "Abhi linked nahi hai"}
+              {wa.data.linked ? (wa.data.opted_in ? " · opted in" : " · opt-in off") : ""}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 12 }}>
+              {wa.data.live_delivery
+                ? "Automatic messages live hain."
+                : "Automatic delivery abhi band hai (server par WhatsApp configured nahi). Bill se manual WhatsApp bhej sakte hain."}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 12 }}>
+              Number link/verify karna website ke Settings se hota hai.
+            </Text>
+          </>
+        ) : (
+          <Text style={{ color: c.muted, fontSize: 13 }}>Load ho raha hai…</Text>
+        )}
+      </Card>
+      <Button
+        kind="ghost"
+        title="Partner CSV import"
+        onPress={() => router.push("/partner-import" as never)}
+      />
       <Button
         kind="ghost"
         title="Plan & features"

@@ -5,6 +5,7 @@
  * before a room can be published.
  */
 import { TermsSchema, completeness, NS, type Terms } from "./terms/schema";
+import { z } from "zod";
 import { anniversaryRange } from "./db";
 
 const str = (v: unknown, max: number): string =>
@@ -35,12 +36,12 @@ async function admin() {
 }
 async function entitled(
   me: string,
-  f: "payment_verification" | "live_feed_video",
+  f: "payment_verification" | "live_feed_video" | "partner_import",
 ): Promise<boolean> {
   const { hasEntitlement } = await import("./subscription/entitlements");
   return hasEntitlement(me, f);
 }
-async function need(me: string, f: "payment_verification" | "live_feed_video") {
+async function need(me: string, f: "payment_verification" | "live_feed_video" | "partner_import") {
   const { requireEntitlement } = await import("./subscription/entitlements");
   await requireEntitlement(me, f);
 }
@@ -237,7 +238,7 @@ export async function listProperties(me: string) {
     a
       .from("rooms")
       .select(
-        "id, property_id, room_number, rent_amount, capacity, occupant_type, room_size, is_public, myr_available, myr_deposit, myr_amenities, myr_description",
+        "id, property_id, room_number, rent_amount, capacity, occupant_type, room_size, is_public, myr_available, myr_deposit, myr_amenities, myr_description, parking_kind, parking_vehicle, parking_covered, parking_reserved, parking_paid, parking_distance_m, parking_notes",
       )
       .eq("owner_id", me)
       .order("room_number"),
@@ -316,6 +317,31 @@ export async function deleteProperty(me: string, body: Record<string, unknown>) 
 }
 
 const OCC = ["boys", "girls", "family", "anyone"];
+const PARK_KINDS = ["dedicated", "shared", "nearby", "street", "none", "unspecified"];
+const PARK_VEH = ["two_wheeler", "four_wheeler", "both"];
+
+/** Same honesty rules as the DB constraints: public/nearby/none parking can never be shown as landlord-provided. */
+export function parkingFields(body: Record<string, unknown>) {
+  const kind = PARK_KINDS.includes(str(body.parking_kind, 20))
+    ? str(body.parking_kind, 20)
+    : "unspecified";
+  const owned = kind === "dedicated" || kind === "shared";
+  const dist = num(body.parking_distance_m);
+  if (kind === "nearby" && (dist == null || dist < 0 || dist > 5000))
+    throw new Error("Nearby parking ki doori 0 se 5000 meter ke beech likhein.");
+  const vehicle = PARK_VEH.includes(str(body.parking_vehicle, 20))
+    ? str(body.parking_vehicle, 20)
+    : null;
+  return {
+    parking_kind: kind,
+    parking_vehicle: kind === "none" || kind === "unspecified" ? null : vehicle,
+    parking_covered: owned ? body.parking_covered === true : null,
+    parking_reserved: owned ? body.parking_reserved === true : null,
+    parking_paid: kind === "none" || kind === "unspecified" ? null : body.parking_paid === true,
+    parking_distance_m: kind === "nearby" ? Math.round(dist as number) : null,
+    parking_notes: kind === "unspecified" ? null : str(body.parking_notes, 200) || null,
+  };
+}
 const SIZES = ["single_room", "shared_room", "1rk", "1bhk", "2bhk", "3bhk", "4bhk_plus"];
 
 export async function saveRoom(me: string, body: Record<string, unknown>) {
@@ -342,6 +368,7 @@ export async function saveRoom(me: string, body: Record<string, unknown>) {
     capacity: Math.min(50, Math.max(1, Math.round(num(body.capacity) ?? 1))),
     occupant_type: OCC.includes(str(body.occupant_type, 20)) ? str(body.occupant_type, 20) : null,
     room_size: str(body.room_size, 20) || null,
+    ...parkingFields(body),
   };
   if (body.id) {
     const id = uuid(body.id);
@@ -1006,11 +1033,14 @@ export async function saveTenant(me: string, body: Record<string, unknown>) {
   const room_id = uuid(body.room_id);
   const { data: room } = await a
     .from("rooms")
-    .select("id, capacity, rent_amount")
+    .select("id, capacity, rent_amount, occupant_type")
     .eq("id", room_id)
     .eq("owner_id", me)
     .maybeSingle();
   if (!room) throw new Error("Room not found.");
+  const gender = ["male", "female", "other"].includes(str(body.gender, 10))
+    ? str(body.gender, 10)
+    : null;
   const payload: Record<string, unknown> = {
     name,
     phone,
@@ -1020,12 +1050,19 @@ export async function saveTenant(me: string, body: Record<string, unknown>) {
     move_in_date: iso(body.move_in_date) ?? d2(new Date()),
     rent_share: num(body.rent_share) ?? room.rent_amount ?? null,
     initial_reading: num(body.initial_reading) ?? 0,
+    ...(gender ? { gender } : {}),
+  };
+  const needsFit = (g: string | null) => {
+    if (room.occupant_type === "boys" && g !== "male")
+      throw new Error("Ye Boys room hai. Tenant ka gender Male hona chahiye.");
+    if (room.occupant_type === "girls" && g !== "female")
+      throw new Error("Ye Girls room hai. Tenant ka gender Female hona chahiye.");
   };
   if (body.id) {
     const id = uuid(body.id);
     const { data: own } = await a
       .from("tenants")
-      .select("id, room_id, active")
+      .select("id, room_id, active, gender")
       .eq("id", id)
       .eq("owner_id", me)
       .maybeSingle();
@@ -1039,6 +1076,8 @@ export async function saveTenant(me: string, body: Record<string, unknown>) {
       if ((occ ?? 0) >= (room.capacity ?? 1))
         throw new Error("Naya room full hai. Tenant ko wahan shift nahi kar sakte.");
     }
+    if (own.room_id !== room_id || gender)
+      needsFit(gender ?? (own as { gender?: string | null }).gender ?? null);
     const { error } = await a.from("tenants").update(payload).eq("id", id);
     if (error) throw new Error(cleanDb(error.message));
     return { id };
@@ -1049,6 +1088,7 @@ export async function saveTenant(me: string, body: Record<string, unknown>) {
     .eq("room_id", room_id)
     .eq("active", true);
   if ((count ?? 0) >= (room.capacity ?? 1)) throw new Error("Room full hai.");
+  needsFit(gender);
   const { data: code } = await a.rpc("generate_tenant_code");
   const { data, error } = await a
     .from("tenants")
@@ -1293,12 +1333,15 @@ export async function markPaid(me: string, body: Record<string, unknown>) {
   const id = uuid(body.bill_id);
   const { data: b } = await a
     .from("bills")
-    .select("id, owner_id, total_amount, amount_paid")
+    .select("id, owner_id, total_amount, amount_paid, status")
     .eq("id", id)
     .maybeSingle();
   if (!b || b.owner_id !== me) throw new Error("Bill not found.");
   const amt = num(body.amount) ?? Number(b.total_amount) - Number(b.amount_paid ?? 0);
   if (amt <= 0) throw new Error("Amount sahi likhein.");
+  if (b.status === "paid") throw new Error("Ye bill pehle hi paid hai.");
+  if (amt > Number(b.total_amount) - Number(b.amount_paid ?? 0) + 0.001)
+    throw new Error("Amount baaki rakam se zyada hai.");
   const method = ["cash", "upi", "bank", "other"].includes(str(body.method, 10))
     ? str(body.method, 10)
     : "cash";
@@ -1609,6 +1652,12 @@ export async function addMeterReading(me: string, body: Record<string, unknown>)
   if (!chk.ok) throw new Error(chk.errors[0]);
   const photo = str(body.photo_path, 300) || null;
   if (photo && !photo.startsWith(`${me}/`)) throw new Error("Invalid photo.");
+  const lat = num(body.photo_lat);
+  const lng = num(body.photo_lng);
+  const geo =
+    photo && lat != null && lng != null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+      ? { photo_lat: lat, photo_lng: lng }
+      : {};
   const parts: string[] = [];
   if (chk.needsReason)
     parts.push(`Exception: lower than previous (${ctx.last?.reading}) — ${str(body.reason, 300)}`);
@@ -1623,6 +1672,7 @@ export async function addMeterReading(me: string, body: Record<string, unknown>)
       photo_path: photo,
       ai_detected: body.ai_detected === true,
       notes: parts.length ? parts.join(" | ") : null,
+      ...geo,
     })
     .select("id")
     .single();
@@ -1933,4 +1983,344 @@ export async function verificationStatus(me: string) {
       .limit(10),
   ]);
   return { properties: props ?? [], requests: mine ?? [] };
+}
+
+// ---------------------------------------------------------------- bill detail, PDF, manual WhatsApp
+
+const rupees = (n: number) =>
+  "₹" + (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const dmyText = (d: string | null | undefined) =>
+  d
+    ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "-";
+
+async function loadOwnBill(me: string, id: string) {
+  const a = await admin();
+  const { data: b } = await a
+    .from("bills")
+    .select("*, tenants(name, phone, email), rooms(room_number)")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!b) throw new Error("Bill not found.");
+  const { data: profile } = await a.from("profiles").select("*").eq("id", me).maybeSingle();
+  return { a, b, profile };
+}
+
+function waMessage(b: any, profile: any, pdfUrl: string | null) {
+  const from = profile?.business_name || profile?.full_name || "";
+  const bal = Number(b.total_amount) - Number(b.amount_paid ?? 0);
+  const pay = profile?.upi_id
+    ? `\n\n💳 UPI: ${profile.upi_id}`
+    : profile?.bank_details
+      ? `\n\n💳 Bank details:\n${profile.bank_details}`
+      : "";
+  return (
+    `Hello ${b.tenants?.name ?? ""},\n\n` +
+    `🏠 Room ${b.rooms?.room_number ?? ""} — ${dmyText(b.rent_period_start)} – ${dmyText(b.rent_period_end)}\n` +
+    `Rent: ${rupees(b.rent_amount)}\n` +
+    `⚡ Electricity: ${rupees(b.electricity_amount)} (${b.units_consumed} units)\n` +
+    `💧 Water: ${rupees(b.water_amount)}\n🧹 Cleaning: ${rupees(b.cleaning_amount)}\n` +
+    (Number(b.other_charges) > 0 ? `Other: ${rupees(b.other_charges)}\n` : "") +
+    (Number(b.previous_dues) > 0 ? `📌 Previous dues: ${rupees(b.previous_dues)}\n` : "") +
+    `\n💰 Total: ${rupees(b.total_amount)}` +
+    (Number(b.amount_paid) > 0
+      ? `\n✅ Paid: ${rupees(b.amount_paid)}\n🔴 Balance: ${rupees(bal)}`
+      : "") +
+    `\n📆 Due: ${dmyText(b.due_date)}` +
+    pay +
+    (pdfUrl ? `\n\n📄 Bill PDF: ${pdfUrl}` : "") +
+    `\n\nThank you${from ? `,\n${from}` : "."}`
+  );
+}
+
+/** Indian mobile → wa.me digits (adds 91 for 10-digit numbers). null if unusable. */
+export function waDigits(phone: string | null | undefined): string | null {
+  const d = String(phone ?? "").replace(/\D/g, "");
+  if (d.length === 10) return "91" + d;
+  if (d.length === 12 && d.startsWith("91")) return d;
+  if (d.length === 11 && d.startsWith("0")) return "91" + d.slice(1);
+  return d.length >= 11 && d.length <= 15 ? d : null;
+}
+
+export async function billDetail(me: string, body: Record<string, unknown>) {
+  const { a, b, profile } = await loadOwnBill(me, uuid(body.bill_id));
+  const { data: payments } = await a
+    .from("payments")
+    .select("id, amount, method, note, paid_on, verification_status, created_at")
+    .eq("bill_id", b.id)
+    .order("created_at", { ascending: false });
+  return {
+    bill: b,
+    payments: payments ?? [],
+    whatsapp_ready: !!waDigits(b.tenants?.phone),
+    has_upi: !!profile?.upi_id,
+  };
+}
+
+/** Builds the PDF on the server, stores it privately, returns a 24h signed link + ready-to-open WhatsApp link. */
+export async function billPdf(me: string, body: Record<string, unknown>) {
+  const { a, b, profile } = await loadOwnBill(me, uuid(body.bill_id));
+  const { generateBillPdfBytes } = await import("./pdf");
+  const bytes = await generateBillPdfBytes(b as any, profile as any);
+  const path = `${me}/${b.id}-${Date.now()}.pdf`;
+  const up = await a.storage.from("bill-pdfs").upload(path, bytes, {
+    contentType: "application/pdf",
+    upsert: true,
+  });
+  if (up.error) throw new Error("PDF save nahi hua. Dobara try karein.");
+  const signed = await a.storage.from("bill-pdfs").createSignedUrl(path, 60 * 60 * 24);
+  if (signed.error || !signed.data) throw new Error("PDF link nahi bana. Dobara try karein.");
+  const url = signed.data.signedUrl;
+  const digits = waDigits(b.tenants?.phone);
+  const message = waMessage(b, profile, url);
+  return {
+    pdf_url: url,
+    file_name: `Bill-Room${b.rooms?.room_number ?? ""}-${b.rent_period_start}.pdf`,
+    message,
+    whatsapp_url: digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : null,
+  };
+}
+
+/** WhatsApp text-only (no PDF generation) — manual send via the owner's own WhatsApp. */
+export async function billWhatsApp(me: string, body: Record<string, unknown>) {
+  const { b, profile } = await loadOwnBill(me, uuid(body.bill_id));
+  const digits = waDigits(b.tenants?.phone);
+  if (!digits) throw new Error("Tenant ka phone number sahi nahi hai.");
+  const message = waMessage(b, profile, null);
+  return { message, whatsapp_url: `https://wa.me/${digits}?text=${encodeURIComponent(message)}` };
+}
+
+// ---------------------------------------------------------------- bill: pause reminders / delete
+
+export async function billPauseReminders(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const id = uuid(body.bill_id);
+  const until = str(body.until, 10);
+  if (until && !/^\d{4}-\d{2}-\d{2}$/.test(until)) throw new Error("Date YYYY-MM-DD mein likhein.");
+  if (until && until < new Date().toISOString().slice(0, 10))
+    throw new Error("Date aaj ya aage ki rakhein.");
+  const { data: b } = await a
+    .from("bills")
+    .select("id")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!b) throw new Error("Bill not found.");
+  await a
+    .from("bills")
+    .update({ reminders_paused_until: until || null })
+    .eq("id", id);
+  return { ok: true };
+}
+
+/** Only a bill with no money recorded can be deleted — keeps the ledger honest. */
+export async function billDelete(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const id = uuid(body.bill_id);
+  const { data: b } = await a
+    .from("bills")
+    .select("id, amount_paid")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!b) throw new Error("Bill not found.");
+  const { data: pays } = await a.from("payments").select("id").eq("bill_id", id).limit(1);
+  if (Number(b.amount_paid ?? 0) > 0 || (pays ?? []).length)
+    throw new Error("Is bill par payment record hai, isliye delete nahi ho sakta.");
+  await a.from("bills").delete().eq("id", id);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- tenant statement
+
+export async function tenantStatement(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const id = uuid(body.tenant_id);
+  const { data: t } = await a
+    .from("tenants")
+    .select("id, name, phone, active, rent_share, move_in_date, rooms(room_number)")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!t) throw new Error("Tenant not found.");
+  const { data: bills } = await a
+    .from("bills")
+    .select("id, rent_period_start, due_date, total_amount, amount_paid, status")
+    .eq("tenant_id", id)
+    .eq("owner_id", me)
+    .order("rent_period_start", { ascending: false })
+    .limit(60);
+  const rows = bills ?? [];
+  const billed = rows.reduce((s: number, r: any) => s + Number(r.total_amount), 0);
+  const paid = rows.reduce((s: number, r: any) => s + Number(r.amount_paid ?? 0), 0);
+  return { tenant: t, bills: rows, billed, paid, due: Math.max(0, billed - paid) };
+}
+
+// ---------------------------------------------------------------- terms history
+
+export async function termsHistory(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const pid = uuid(body.property_id);
+  const { data: p } = await a
+    .from("properties")
+    .select("id, name, current_terms_version")
+    .eq("id", pid)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!p) throw new Error("Property not found.");
+  const { data: vs } = await a
+    .from("rental_terms_versions")
+    .select("version, completeness, change_note, created_at")
+    .eq("property_id", pid)
+    .order("version", { ascending: false })
+    .limit(30);
+  const { data: acc } = await a
+    .from("booking_terms_acceptances")
+    .select("terms_version")
+    .eq("property_id", pid)
+    .eq("landlord_id", me);
+  const { data: re } = await a
+    .from("booking_terms_reacceptances")
+    .select("terms_version")
+    .eq("property_id", pid)
+    .eq("landlord_id", me);
+  const counts: Record<number, number> = {};
+  for (const r of [...(acc ?? []), ...(re ?? [])] as any[])
+    if (r.terms_version != null) counts[r.terms_version] = (counts[r.terms_version] ?? 0) + 1;
+  return {
+    property: p,
+    versions: (vs ?? []).map((v: any) => ({ ...v, acceptances: counts[v.version] ?? 0 })),
+  };
+}
+
+// ---------------------------------------------------------------- WhatsApp link status (read-only)
+
+export async function whatsappStatus(me: string) {
+  const a = await admin();
+  const { data } = await a
+    .from("whatsapp_links")
+    .select("phone_e164, verified, opted_in")
+    .eq("user_id", me)
+    .maybeSingle();
+  const { isMetaConfigured } = await import("./whatsapp/meta-client");
+  return {
+    linked: !!data?.verified,
+    opted_in: !!data?.opted_in,
+    phone_masked: data?.phone_e164 ? String(data.phone_e164).replace(/\d(?=\d{3})/g, "•") : null,
+    live_delivery: isMetaConfigured(),
+  };
+}
+
+// ---------------------------------------------------------------- partner CSV import (verified partner orgs only)
+
+const PartnerRow = z.object({
+  property_external_ref_id: z.string().trim().min(1),
+  property_name: z.string().trim().min(1),
+  city: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  room_external_ref_id: z.string().trim().min(1),
+  room_number: z.string().trim().min(1),
+  rent_amount: z.number().nonnegative().max(10_000_000),
+  description: z.string().optional(),
+  amenities: z.array(z.string()).optional(),
+});
+
+export async function partnerStatus(me: string) {
+  const a = await admin();
+  const { data: m } = await a
+    .from("partner_org_members")
+    .select("org_id, partner_organizations(id, name, verified)")
+    .eq("user_id", me)
+    .maybeSingle();
+  const org = (m as any)?.partner_organizations ?? null;
+  return { org, allowed: !!org && (await entitled(me, "partner_import")) };
+}
+
+export async function partnerImport(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  await need(me, "partner_import");
+  const { data: m } = await a
+    .from("partner_org_members")
+    .select("org_id")
+    .eq("user_id", me)
+    .maybeSingle();
+  if (!m) throw new Error("Aapka account kisi partner organization se linked nahi hai.");
+  const Papa = (await import("papaparse")).default;
+  const parsed = Papa.parse<Record<string, string>>(str(body.csv, 400_000), {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h: string) => h.trim(),
+  });
+  const errors: string[] = [];
+  const rows: z.infer<typeof PartnerRow>[] = [];
+  parsed.data.slice(0, 500).forEach((r, i) => {
+    const res = PartnerRow.safeParse({
+      ...r,
+      rent_amount: Number(String(r.rent_amount ?? "").replace(/[^\d.]/g, "")),
+      amenities: r.amenities
+        ? r.amenities
+            .split(/[;|]/)
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : [],
+    });
+    if (res.success) rows.push(res.data);
+    else errors.push(`Row ${i + 2}: ${res.error.issues[0]?.path.join(".")} sahi nahi hai`);
+  });
+  if (!rows.length) throw new Error(errors[0] ?? "CSV mein koi valid row nahi mili.");
+  if (body.dry_run) return { dry_run: true, valid_rows: rows.length, errors };
+  const byProp = new Map<string, typeof rows>();
+  for (const r of rows)
+    byProp.set(r.property_external_ref_id, [...(byProp.get(r.property_external_ref_id) ?? []), r]);
+  let propertiesUpserted = 0;
+  let roomsUpserted = 0;
+  for (const [ext, rs] of byProp) {
+    const f = rs[0];
+    const { data: prop, error } = await a
+      .from("properties")
+      .upsert(
+        {
+          owner_id: me,
+          name: f.property_name,
+          city: f.city ?? null,
+          address: f.address ?? null,
+          source: "partner",
+          partner_org_id: m.org_id,
+          external_ref_id: ext,
+          is_public_listing: true,
+          verification_status: "verified",
+          property_type: "flat",
+        },
+        { onConflict: "partner_org_id,external_ref_id" },
+      )
+      .select("id")
+      .single();
+    if (error || !prop) {
+      errors.push(`Property "${f.property_name}": ${cleanDb(error?.message ?? "failed")}`);
+      continue;
+    }
+    propertiesUpserted++;
+    for (const r of rs) {
+      const { error: e2 } = await a.from("rooms").upsert(
+        {
+          owner_id: me,
+          property_id: prop.id,
+          room_number: r.room_number,
+          rent_amount: r.rent_amount,
+          myr_description: r.description ?? null,
+          myr_amenities: r.amenities ?? [],
+          source: "partner",
+          partner_org_id: m.org_id,
+          external_ref_id: r.room_external_ref_id,
+          is_public: true,
+          myr_available: true,
+        },
+        { onConflict: "partner_org_id,external_ref_id" },
+      );
+      if (e2) errors.push(`Room "${r.room_number}": ${cleanDb(e2.message)}`);
+      else roomsUpserted++;
+    }
+  }
+  return { propertiesUpserted, roomsUpserted, errors };
 }

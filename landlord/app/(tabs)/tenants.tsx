@@ -148,6 +148,14 @@ function TenantList() {
                 style={{ paddingVertical: 9 }}
               />
               <Button
+                kind="ghost"
+                title="Statement"
+                onPress={() =>
+                  router.push({ pathname: "/tenant-statement", params: { id: t.id } } as never)
+                }
+                style={{ paddingVertical: 9 }}
+              />
+              <Button
                 title="Bill banayein"
                 onPress={() =>
                   router.push({ pathname: "/bill-new", params: { tenant_id: t.id } } as never)

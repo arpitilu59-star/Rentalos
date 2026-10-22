@@ -110,6 +110,7 @@ export function makeAdmin(db: DB, opts: { rpc?: Record<string, (args: any) => an
       opts.rpc?.[name] ? { data: opts.rpc[name](args), error: null } : { data: null, error: null },
     storage: {
       from: () => ({
+        upload: async () => ({ error: null }),
         createSignedUrl: async () => ({ data: { signedUrl: "https://signed" } }),
         getPublicUrl: () => ({ data: { publicUrl: "https://pub" } }),
         remove: async () => ({}),

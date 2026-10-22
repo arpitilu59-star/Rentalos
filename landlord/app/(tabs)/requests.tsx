@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Image, Linking, RefreshControl, ScrollView, View } from "react-native";
 import { Text } from "@/components/Text";
@@ -5,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";
 import { SkeletonList } from "@/components/Skeleton";
-import { FilterRow, Pill, Row, Segmented } from "@/lib/ui2";
+import { Field, FilterRow, Pill, Row, Segmented } from "@/lib/ui2";
 import { useColors, inr, dmy } from "@/theme";
 
 type Req = {
@@ -34,7 +35,11 @@ type Tk = {
 };
 
 export default function Requests() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<"book" | "tickets">("book");
+  React.useEffect(() => {
+    if (params.tab === "book" || params.tab === "tickets") setTab(params.tab);
+  }, [params.tab]);
   return (
     <View style={{ flex: 1 }}>
       <Segmented
@@ -164,12 +169,13 @@ function Tickets() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["tickets"], queryFn: () => api<{ tickets: Tk[] }>("l/tickets") });
   const set = useMutation({
-    mutationFn: (p: { id: string; status: string }) => api("l/ticket/status", p),
+    mutationFn: (p: { id: string; status: string; note?: string }) => api("l/ticket/status", p),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
       qc.invalidateQueries({ queryKey: ["home"] });
     },
   });
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [st, setSt] = useState<"open" | "in_progress" | "resolved" | "all">("open");
   const [pr, setPr] = useState<"all" | "urgent" | "high" | "medium" | "low">("all");
   const rows = (q.data?.tickets ?? []).filter(
@@ -247,13 +253,30 @@ function Tickets() {
               ))}
             </ScrollView>
           ) : null}
+          {t.resolution_notes ? (
+            <Text style={{ color: c.muted, fontSize: 12 }}>
+              Resolution note: {t.resolution_notes}
+            </Text>
+          ) : null}
+          {t.status === "open" || t.status === "in_progress" ? (
+            <Field
+              label="Resolution note (optional)"
+              value={notes[t.id] ?? ""}
+              onChange={(v) => setNotes((n) => ({ ...n, [t.id]: v }))}
+              placeholder="Kya kaam hua / kisne kiya"
+              multiline
+              maxLength={500}
+            />
+          ) : null}
           <View style={{ flexDirection: "row", gap: 8 }}>
             {(next[t.status] ?? []).map(([s, l]) => (
               <Button
                 key={s}
                 kind={s === "resolved" ? "primary" : "ghost"}
                 title={l}
-                onPress={() => set.mutate({ id: t.id, status: s })}
+                onPress={() =>
+                  set.mutate({ id: t.id, status: s, note: notes[t.id]?.trim() || undefined })
+                }
                 style={{ flex: 1, paddingVertical: 10 }}
               />
             ))}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Image, RefreshControl, ScrollView, View } from "react-native";
 import { Text } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +12,12 @@ import { useColors, inr, dmy } from "@/theme";
 
 type Tab = "bills" | "verify" | "meters" | "deposits";
 export default function Money() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>("bills");
+  React.useEffect(() => {
+    if (params.tab && ["bills", "verify", "meters", "deposits"].includes(params.tab))
+      setTab(params.tab as Tab);
+  }, [params.tab]);
   return (
     <View style={{ flex: 1 }}>
       <Segmented
@@ -50,6 +55,7 @@ type Bill = {
 };
 function Bills() {
   const c = useColors();
+  const router = useRouter();
   const qc = useQueryClient();
   const [due, setDue] = useState(true);
   const q = useQuery({
@@ -125,13 +131,21 @@ function Bills() {
             <Row k="Total" v={inr(b.total_amount)} />
             {b.status !== "paid" ? <Row k="Baaki" v={inr(left)} /> : null}
             <Row k="Due date" v={dmy(b.due_date)} />
-            {b.status !== "paid" ? (
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
               <Button
-                title="Paid mark karein"
-                onPress={() => ask(b)}
-                style={{ paddingVertical: 9, marginTop: 4 }}
+                kind="ghost"
+                title="Detail / PDF / WhatsApp"
+                onPress={() => router.push({ pathname: "/bill/[id]", params: { id: b.id } })}
+                style={{ flex: 1, paddingVertical: 9 }}
               />
-            ) : null}
+              {b.status !== "paid" ? (
+                <Button
+                  title="Paid"
+                  onPress={() => ask(b)}
+                  style={{ flex: 1, paddingVertical: 9 }}
+                />
+              ) : null}
+            </View>
           </Card>
         );
       })}
