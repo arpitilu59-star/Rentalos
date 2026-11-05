@@ -95,12 +95,17 @@ export async function landlordMe(me: string) {
   if (!(await isLandlord(a, me))) return { landlord: false as const };
   const { data: p } = await a
     .from("profiles")
-    .select("full_name, business_name, upi_id, phone, mobile")
+    .select("full_name, business_name, upi_id, phone, mobile, address, city, bank_details")
     .eq("id", me)
     .maybeSingle();
   return {
     landlord: true as const,
     name: p?.business_name || p?.full_name || null,
+    full_name: p?.full_name ?? null,
+    business_name: p?.business_name ?? null,
+    address: p?.address ?? null,
+    city: p?.city ?? null,
+    bank_details: p?.bank_details ?? null,
     upi: p?.upi_id ?? null,
     phone: p?.phone ?? p?.mobile ?? null,
     canVerifyPayments: await entitled(me, "payment_verification"),
@@ -119,7 +124,15 @@ export async function saveProfile(me: string, body: Record<string, unknown>) {
       throw new Error("UPI ID looks wrong. Example: name@upi");
     patch.upi_id = u || null;
   }
-  if (body.phone !== undefined) patch.phone = str(body.phone, 20) || null;
+  if (body.phone !== undefined) {
+    const ph = str(body.phone, 20);
+    if (ph && ph.replace(/\D/g, "").length < 10)
+      throw new Error("Phone number 10 digit ka likhein.");
+    patch.phone = ph || null;
+  }
+  if (body.address !== undefined) patch.address = str(body.address, 300) || null;
+  if (body.city !== undefined) patch.city = str(body.city, 80) || null;
+  if (body.bank_details !== undefined) patch.bank_details = str(body.bank_details, 400) || null;
   const { error } = await a.from("profiles").update(patch).eq("id", me);
   if (error) throw new Error(cleanDb(error.message));
   return { ok: true };
@@ -1365,7 +1378,55 @@ export async function markPaid(me: string, body: Record<string, unknown>) {
       paid_at: status === "paid" ? new Date().toISOString() : null,
     })
     .eq("id", id);
-  return { ok: true, status };
+  const receipt = status === "paid" ? await emailReceipt(me, id, paid) : "not_needed";
+  return { ok: true, status, receipt };
+}
+
+/** Same receipt email as the website (Resend). Best-effort: the payment is already saved whatever happens here. */
+export async function emailReceipt(me: string, billId: string, amount: number): Promise<string> {
+  try {
+    const key = process.env.RESEND_API_KEY;
+    const a = await admin();
+    const { data: b } = await a
+      .from("bills")
+      .select("id, tenants(name, email), rooms(room_number)")
+      .eq("id", billId)
+      .eq("owner_id", me)
+      .maybeSingle();
+    const email = (b as any)?.tenants?.email as string | undefined;
+    if (!email) return "no_email";
+    if (!key) return "not_configured";
+    const { data: prof } = await a
+      .from("profiles")
+      .select("business_name, full_name")
+      .eq("id", me)
+      .maybeSingle();
+    const from = prof?.business_name || prof?.full_name || "RentDesk";
+    const { buildReceiptHtml } = await import("./receipt");
+    const html = buildReceiptHtml({
+      invoiceId: billId,
+      tenantName: (b as any).tenants.name,
+      roomNumber: (b as any).rooms?.room_number ?? "-",
+      amount,
+      paymentDate: new Date(),
+      businessName: from,
+    });
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: `${from} <onboarding@resend.dev>`,
+        to: [email],
+        subject: "Payment Receipt",
+        html,
+      }),
+    });
+    if (!res.ok) return "failed";
+    await a.from("bills").update({ receipt_sent_at: new Date().toISOString() }).eq("id", billId);
+    return "sent";
+  } catch {
+    return "failed";
+  }
 }
 
 export async function listPendingPayments(me: string) {
@@ -2007,9 +2068,30 @@ async function loadOwnBill(me: string, id: string) {
   return { a, b, profile };
 }
 
-function waMessage(b: any, profile: any, pdfUrl: string | null) {
+function waMessage(
+  b: any,
+  profile: any,
+  pdfUrl: string | null,
+  kind: "bill" | "reminder" | "receipt" = "bill",
+) {
   const from = profile?.business_name || profile?.full_name || "";
   const bal = Number(b.total_amount) - Number(b.amount_paid ?? 0);
+  if (kind === "reminder")
+    return (
+      `Hello ${b.tenants?.name ?? ""},\n\n` +
+      `🔔 Rent reminder — Room ${b.rooms?.room_number ?? ""} (${dmyText(b.rent_period_start)} – ${dmyText(b.rent_period_end)}).\n` +
+      `Baaki rakam: ${rupees(bal)}${b.due_date ? ` (due ${dmyText(b.due_date)})` : ""}.\n` +
+      (profile?.upi_id ? `💳 UPI: ${profile.upi_id}\n` : "") +
+      `Kripya jaldi payment kar dein.\n\nThank you${from ? `,\n${from}` : "."}`
+    );
+  if (kind === "receipt")
+    return (
+      `Hello ${b.tenants?.name ?? ""},\n\n` +
+      `✅ Payment mil gaya — Room ${b.rooms?.room_number ?? ""} (${dmyText(b.rent_period_start)} – ${dmyText(b.rent_period_end)}).\n` +
+      `Mila: ${rupees(b.amount_paid)} / ${rupees(b.total_amount)}` +
+      (bal > 0 ? `\nBaaki: ${rupees(bal)}` : "\nPura bhugtan ho gaya.") +
+      `\n\nThank you${from ? `,\n${from}` : "."}`
+    );
   const pay = profile?.upi_id
     ? `\n\n💳 UPI: ${profile.upi_id}`
     : profile?.bank_details
@@ -2087,7 +2169,16 @@ export async function billWhatsApp(me: string, body: Record<string, unknown>) {
   const { b, profile } = await loadOwnBill(me, uuid(body.bill_id));
   const digits = waDigits(b.tenants?.phone);
   if (!digits) throw new Error("Tenant ka phone number sahi nahi hai.");
-  const message = waMessage(b, profile, null);
+  const kind = str(body.kind, 10);
+  if (kind === "reminder" && b.status === "paid") throw new Error("Ye bill pehle hi paid hai.");
+  if (kind === "receipt" && Number(b.amount_paid ?? 0) <= 0)
+    throw new Error("Abhi koi payment nahi mili, receipt nahi ban sakti.");
+  const message = waMessage(
+    b,
+    profile,
+    null,
+    kind === "reminder" || kind === "receipt" ? kind : "bill",
+  );
   return { message, whatsapp_url: `https://wa.me/${digits}?text=${encodeURIComponent(message)}` };
 }
 
@@ -2323,4 +2414,505 @@ export async function partnerImport(me: string, body: Record<string, unknown>) {
     }
   }
   return { propertiesUpserted, roomsUpserted, errors };
+}
+
+// ---------------------------------------------------------------- room meter analysis
+
+export async function meterAnalysis(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const room_id = uuid(body.room_id);
+  const { data: room } = await a
+    .from("rooms")
+    .select("id, room_number")
+    .eq("id", room_id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!room) throw new Error("Room not found.");
+  const { data: reads } = await a
+    .from("meter_readings")
+    .select("reading, reading_date")
+    .eq("room_id", room_id)
+    .eq("owner_id", me)
+    .order("reading_date")
+    .limit(400);
+  const { analyseMeter } = await import("./meter-analysis");
+  return { room, ...analyseMeter((reads ?? []) as any[]) };
+}
+
+// ---------------------------------------------------------------- identity documents (landlord submits; only admins can approve)
+
+const KYC_FIELDS: Record<string, "landlord" | "property"> = {
+  id_doc_path: "landlord",
+  selfie_path: "landlord",
+  property_doc_path: "property",
+};
+const KYC_PATH =
+  /^[0-9a-f-]{36}\/(landlord|property)-(id_doc_path|selfie_path|property_doc_path)-[\w-]{8,64}\.(jpg|png|webp)$/i;
+
+export async function kycStatus(me: string) {
+  const a = await admin();
+  const { data } = await a
+    .from("myr_verifications")
+    .select(
+      "id, kind, status, id_doc_path, selfie_path, property_doc_path, rejection_reason, created_at",
+    )
+    .eq("user_id", me)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  return { records: data ?? [] };
+}
+
+/** Called after the app uploaded the photo to the private myr-kyc bucket under its own user folder. Status is always 'pending'. */
+export async function kycSubmit(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const field = str(body.field, 30);
+  const kind = KYC_FIELDS[field];
+  if (!kind) throw new Error("Invalid document type.");
+  const path = str(body.path, 200);
+  if (!path.startsWith(`${me}/`) || !KYC_PATH.test(path) || !path.includes(`${kind}-${field}-`))
+    throw new Error("Invalid document path.");
+  const { data: rows } = await a
+    .from("myr_verifications")
+    .select("id, kind, status, id_doc_path, selfie_path, property_doc_path")
+    .eq("user_id", me)
+    .eq("kind", kind)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const list = (rows ?? []) as any[];
+  const pending = list.find((r) => r.status === "pending");
+  if (pending) {
+    const { error } = await a
+      .from("myr_verifications")
+      .update({ [field]: path })
+      .eq("id", pending.id);
+    if (error) throw new Error(cleanDb(error.message));
+    return { ok: true, mode: "updated" };
+  }
+  const carry: Record<string, unknown> = {};
+  const latest = list[0];
+  if (latest)
+    for (const f of ["id_doc_path", "selfie_path", "property_doc_path"])
+      if (f !== field && latest[f]) carry[f] = latest[f];
+  const { error } = await a
+    .from("myr_verifications")
+    .insert({ user_id: me, kind, status: "pending", ...carry, [field]: path });
+  if (error) throw new Error(cleanDb(error.message));
+  return { ok: true, mode: "created" };
+}
+
+// ---------------------------------------------------------------- tenant inquiries (marketplace chat)
+
+export async function inquiries(me: string) {
+  const a = await admin();
+  const { data } = await a
+    .from("myr_inquiries")
+    .select("id, last_message, unread_for_landlord, updated_at, myr_listings(title)")
+    .eq("landlord_id", me)
+    .order("updated_at", { ascending: false })
+    .limit(60);
+  return { threads: data ?? [] };
+}
+
+async function ownInquiry(me: string, id: string) {
+  const a = await admin();
+  const { data } = await a
+    .from("myr_inquiries")
+    .select("id, landlord_id, myr_listings(title)")
+    .eq("id", id)
+    .eq("landlord_id", me)
+    .maybeSingle();
+  if (!data) throw new Error("Conversation not found.");
+  return { a, inq: data as any };
+}
+
+export async function inquiryMessages(me: string, body: Record<string, unknown>) {
+  const { a, inq } = await ownInquiry(me, uuid(body.id));
+  const { data } = await a
+    .from("myr_inquiry_messages")
+    .select("id, sender_id, body, created_at")
+    .eq("inquiry_id", inq.id)
+    .order("created_at")
+    .limit(300);
+  await a.from("myr_inquiries").update({ unread_for_landlord: 0 }).eq("id", inq.id);
+  return {
+    title: inq.myr_listings?.title ?? "Inquiry",
+    messages: (data ?? []).map((m: any) => ({ ...m, mine: m.sender_id === me })),
+  };
+}
+
+export async function inquirySend(me: string, body: Record<string, unknown>) {
+  const { a, inq } = await ownInquiry(me, uuid(body.id));
+  const text = str(body.body, 2000);
+  if (!text) throw new Error("Message likhein.");
+  const { error } = await a
+    .from("myr_inquiry_messages")
+    .insert({ inquiry_id: inq.id, sender_id: me, body: text });
+  if (error) throw new Error(cleanDb(error.message));
+  await a
+    .from("myr_inquiries")
+    .update({ last_message: text, updated_at: new Date().toISOString() })
+    .eq("id", inq.id);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- reports (read-only)
+
+export async function reports(me: string) {
+  const a = await admin();
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  const from = `${months[0]}-01`;
+  const [
+    { data: bills },
+    { data: pays },
+    { data: props },
+    { data: rooms },
+    { data: tens },
+    { data: exps },
+  ] = await Promise.all([
+    a
+      .from("bills")
+      .select(
+        "tenant_id, total_amount, amount_paid, status, due_date, rent_period_start, tenants(name), rooms(room_number)",
+      )
+      .eq("owner_id", me)
+      .gte("rent_period_start", from)
+      .limit(2000),
+    a
+      .from("payments")
+      .select("amount, paid_on, created_at, verification_status")
+      .eq("owner_id", me)
+      .gte("created_at", from)
+      .limit(4000),
+    a.from("properties").select("id, name").eq("owner_id", me),
+    a.from("rooms").select("id, property_id, capacity").eq("owner_id", me),
+    a.from("tenants").select("id, room_id").eq("owner_id", me).eq("active", true),
+    a
+      .from("expenses")
+      .select("amount, spent_on")
+      .eq("owner_id", me)
+      .gte("spent_on", from)
+      .limit(3000),
+  ]);
+  const spent: Record<string, number> = {};
+  for (const m of months) spent[m] = 0;
+  for (const e of (exps ?? []) as any[]) {
+    const m = String(e.spent_on ?? "").slice(0, 7);
+    if (m in spent) spent[m] += Number(e.amount) || 0;
+  }
+  const billed: Record<string, number> = {};
+  const collected: Record<string, number> = {};
+  for (const m of months) {
+    billed[m] = 0;
+    collected[m] = 0;
+  }
+  for (const b of (bills ?? []) as any[]) {
+    const m = String(b.rent_period_start ?? "").slice(0, 7);
+    if (m in billed) billed[m] += Number(b.total_amount) || 0;
+  }
+  for (const p of (pays ?? []) as any[]) {
+    if (p.verification_status && p.verification_status !== "verified") continue;
+    const m = String(p.paid_on ?? p.created_at ?? "").slice(0, 7);
+    if (m in collected) collected[m] += Number(p.amount) || 0;
+  }
+  const today = d2(now);
+  const dueBy: Record<string, { name: string; room: string; due: number; overdue: boolean }> = {};
+  for (const b of (bills ?? []) as any[]) {
+    const left = Number(b.total_amount) - Number(b.amount_paid ?? 0);
+    if (b.status === "paid" || left <= 0) continue;
+    const k = b.tenant_id ?? b.rooms?.room_number;
+    const cur = dueBy[k] ?? {
+      name: b.tenants?.name ?? "Tenant",
+      room: b.rooms?.room_number ?? "-",
+      due: 0,
+      overdue: false,
+    };
+    cur.due += left;
+    if (b.due_date && b.due_date < today) cur.overdue = true;
+    dueBy[k] = cur;
+  }
+  const occ = (props ?? []).map((p: any) => {
+    const rs = (rooms ?? []).filter((r: any) => r.property_id === p.id);
+    const ids = new Set(rs.map((r: any) => r.id));
+    const beds = rs.reduce((s: number, r: any) => s + (Number(r.capacity) || 1), 0);
+    const used = (tens ?? []).filter((t: any) => ids.has(t.room_id)).length;
+    return { id: p.id, name: p.name, beds, used, pct: beds ? Math.round((used / beds) * 100) : 0 };
+  });
+  return {
+    months: months.map((m) => ({
+      month: m,
+      label: new Date(m + "-01").toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
+      billed: Math.round(billed[m]),
+      collected: Math.round(collected[m]),
+      expenses: Math.round(spent[m]),
+    })),
+    total_collected: Math.round(Object.values(collected).reduce((s, n) => s + n, 0)),
+    total_expenses: Math.round(Object.values(spent).reduce((s, n) => s + n, 0)),
+    top_dues: Object.values(dueBy)
+      .sort((x, y) => y.due - x.due)
+      .slice(0, 8)
+      .map((d) => ({ ...d, due: Math.round(d.due) })),
+    occupancy: occ,
+  };
+}
+
+// ---------------------------------------------------------------- expenses
+
+const EXP_CATS = [
+  "repair",
+  "electricity",
+  "water",
+  "salary",
+  "tax",
+  "internet",
+  "cleaning",
+  "other",
+];
+
+export async function listExpenses(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const ym = str(body.month, 7);
+  let q = a
+    .from("expenses")
+    .select("id, category, amount, spent_on, note, property_id, properties(name)")
+    .eq("owner_id", me)
+    .order("spent_on", { ascending: false })
+    .limit(300);
+  if (/^\d{4}-\d{2}$/.test(ym)) {
+    const [y, m] = ym.split("-").map(Number);
+    q = q.gte("spent_on", `${ym}-01`).lt("spent_on", d2(new Date(y, m, 1)));
+  }
+  const { data } = await q;
+  const rows = (data ?? []) as any[];
+  const by: Record<string, number> = {};
+  for (const r of rows) by[r.category] = (by[r.category] ?? 0) + Number(r.amount);
+  return {
+    expenses: rows,
+    total: Math.round(rows.reduce((s2, r) => s2 + Number(r.amount), 0) * 100) / 100,
+    by_category: by,
+  };
+}
+
+export async function addExpense(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const category = str(body.category, 20);
+  if (!EXP_CATS.includes(category)) throw new Error("Category chunein.");
+  const amount = num(body.amount);
+  if (amount == null || amount <= 0 || amount > 10_000_000) throw new Error("Amount sahi likhein.");
+  const spent_on = iso(body.spent_on) ?? d2(new Date());
+  if (spent_on > d2(new Date())) throw new Error("Aage ki date nahi chalegi.");
+  let property_id: string | null = null;
+  if (body.property_id) {
+    property_id = uuid(body.property_id);
+    const { data: p } = await a
+      .from("properties")
+      .select("id")
+      .eq("id", property_id)
+      .eq("owner_id", me)
+      .maybeSingle();
+    if (!p) throw new Error("Property not found.");
+  }
+  const { data, error } = await a
+    .from("expenses")
+    .insert({
+      owner_id: me,
+      property_id,
+      category,
+      amount,
+      spent_on,
+      note: str(body.note, 300) || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(cleanDb(error.message));
+  return { id: data.id as string };
+}
+
+export async function deleteExpense(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const id = uuid(body.id);
+  const { data: e } = await a
+    .from("expenses")
+    .select("id")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!e) throw new Error("Expense not found.");
+  await a.from("expenses").delete().eq("id", id);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- live room video (same rules as the web recorder)
+
+const VIDEO_PATH = /^[0-9a-f-]{36}\/[\w-]{6,80}\.(mp4|mov|webm)$/i;
+const VIDEO_MIME: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
+
+async function ownRoomForVideo(me: string, id: string) {
+  const a = await admin();
+  const { data: r } = await a
+    .from("rooms")
+    .select("id, properties(latitude, longitude)")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!r) throw new Error("Room not found.");
+  return { a, r: r as any };
+}
+
+export async function listVideos(me: string, body: Record<string, unknown>) {
+  const { a, r } = await ownRoomForVideo(me, uuid(body.room_id));
+  const { data } = await a
+    .from("live_feed_videos")
+    .select(
+      "id, storage_path, verification_status, distance_m, duration_seconds, created_at, expires_at",
+    )
+    .eq("owner_id", me)
+    .eq("room_id", r.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const rows = await Promise.all(
+    ((data ?? []) as any[]).map(async (v) => {
+      const sig = await a.storage.from("live-feed-videos").createSignedUrl(v.storage_path, 3600);
+      return { ...v, url: (sig.data?.signedUrl as string | undefined) ?? null };
+    }),
+  );
+  return { videos: rows, can_record: await entitled(me, "live_feed_video") };
+}
+
+/** The app uploads the file to the private bucket under its own user folder, then registers it here. Always starts as pending/flagged: only an admin can mark a video verified. */
+export async function addVideo(me: string, body: Record<string, unknown>) {
+  await need(me, "live_feed_video");
+  const { a, r } = await ownRoomForVideo(me, uuid(body.room_id));
+  const path = str(body.storage_path, 200);
+  if (!path.startsWith(`${me}/`) || !VIDEO_PATH.test(path)) throw new Error("Invalid video path.");
+  const duration = num(body.duration_seconds);
+  if (duration == null || duration < 5 || duration > 45)
+    throw new Error("Video 5 se 45 second ki honi chahiye.");
+  const clat = num(body.lat);
+  const clng = num(body.lng);
+  if (clat == null || clng == null)
+    throw new Error("Video ke saath location chahiye. Location permission on karein.");
+  const tlat = r.properties?.latitude ?? null;
+  const tlng = r.properties?.longitude ?? null;
+  const distance = tlat != null && tlng != null ? haversine(clat, clng, tlat, tlng) : null;
+  const status = distance != null && distance > MAX_DISTANCE_M ? "flagged" : "pending";
+  const ext = path.split(".").pop()!.toLowerCase();
+  const { data, error } = await a
+    .from("live_feed_videos")
+    .insert({
+      owner_id: me,
+      room_id: r.id,
+      storage_path: path,
+      mime_type: VIDEO_MIME[ext] ?? "video/mp4",
+      duration_seconds: Math.round(duration),
+      captured_lat: clat,
+      captured_lng: clng,
+      target_lat: tlat,
+      target_lng: tlng,
+      distance_m: distance,
+      random_prompt: str(body.prompt, 200) || "Room walkthrough",
+      verification_status: status,
+    })
+    .select("id, verification_status, distance_m")
+    .single();
+  if (error) throw new Error("Video save nahi hui. Dobara try karein.");
+  return data;
+}
+
+export async function deleteVideo(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const id = uuid(body.id);
+  const { data: row } = await a
+    .from("live_feed_videos")
+    .select("storage_path")
+    .eq("id", id)
+    .eq("owner_id", me)
+    .maybeSingle();
+  if (!row) throw new Error("Video not found.");
+  await a.from("live_feed_videos").delete().eq("id", id);
+  await a.storage.from("live-feed-videos").remove([row.storage_path]);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- tenant / property verification requests
+
+const VDOCS = ["aadhaar", "pan", "dl", "profile_photo", "ownership", "property_photo"];
+
+export async function ownVerifications(me: string) {
+  const a = await admin();
+  const { data } = await a
+    .from("verifications")
+    .select(
+      "id, kind, status, notes, rejection_reason, created_at, tenants(name), properties(name), verification_documents(doc_type)",
+    )
+    .eq("owner_id", me)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  return { items: data ?? [] };
+}
+
+/** Landlord submits tenant/property documents for review. Status is set by the database default; only admins can decide. */
+export async function createOwnVerification(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const kind = str(body.kind, 10);
+  if (kind !== "tenant" && kind !== "property") throw new Error("Type chunein.");
+  let tenant_id: string | null = null;
+  let property_id: string | null = null;
+  if (kind === "tenant") {
+    tenant_id = uuid(body.tenant_id);
+    const { data: t } = await a
+      .from("tenants")
+      .select("id")
+      .eq("id", tenant_id)
+      .eq("owner_id", me)
+      .maybeSingle();
+    if (!t) throw new Error("Tenant not found.");
+  } else {
+    property_id = uuid(body.property_id);
+    const { data: p } = await a
+      .from("properties")
+      .select("id")
+      .eq("id", property_id)
+      .eq("owner_id", me)
+      .maybeSingle();
+    if (!p) throw new Error("Property not found.");
+  }
+  const docs = Array.isArray(body.documents) ? (body.documents as any[]).slice(0, 10) : [];
+  if (!docs.length) throw new Error("Kam se kam ek document upload karein.");
+  const clean = docs.map((d) => {
+    const doc_type = str(d?.doc_type, 30);
+    const storage_path = str(d?.storage_path, 300);
+    if (!VDOCS.includes(doc_type)) throw new Error("Document type galat hai.");
+    if (!storage_path.startsWith(`${me}/`) || storage_path.includes(".."))
+      throw new Error("Invalid document path.");
+    return { doc_type, storage_path };
+  });
+  let dup = a
+    .from("verifications")
+    .select("id")
+    .eq("owner_id", me)
+    .eq("kind", kind)
+    .eq("status", "pending");
+  dup = kind === "tenant" ? dup.eq("tenant_id", tenant_id) : dup.eq("property_id", property_id);
+  const { data: existing } = await dup.limit(1);
+  if ((existing ?? []).length) throw new Error("Iske liye request pehle se review mein hai.");
+  const { data: v, error } = await a
+    .from("verifications")
+    .insert({ kind, tenant_id, property_id, owner_id: me, notes: str(body.notes, 2000) || null })
+    .select("id")
+    .single();
+  if (error) throw new Error(cleanDb(error.message));
+  const { error: e2 } = await a
+    .from("verification_documents")
+    .insert(clean.map((d) => ({ verification_id: v.id, ...d, uploaded_by: me })));
+  if (e2) throw new Error(cleanDb(e2.message));
+  return { id: v.id as string };
 }

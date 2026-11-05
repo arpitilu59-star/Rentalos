@@ -292,6 +292,15 @@ export default function Listing() {
               }
             />
           ) : null}
+          {d.photosRequired ? (
+            <Button
+              kind="ghost"
+              title="🎥 Room video record karein"
+              onPress={() =>
+                router.push({ pathname: "/videos", params: { room_id: d.room.id } } as never)
+              }
+            />
+          ) : null}
           {d.room.published ? (
             <Button
               kind="danger"

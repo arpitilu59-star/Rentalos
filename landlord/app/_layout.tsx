@@ -61,6 +61,12 @@ function Gate() {
       <Stack.Screen name="terms-history" options={{ title: "Terms versions" }} />
       <Stack.Screen name="partner-import" options={{ title: "Partner import" }} />
       <Stack.Screen name="bill-new" options={{ title: "Naya bill" }} />
+      <Stack.Screen name="videos" options={{ title: "Room video" }} />
+      <Stack.Screen name="expenses" options={{ title: "Kharche" }} />
+      <Stack.Screen name="tenant-verify" options={{ title: "Verification request" }} />
+      <Stack.Screen name="reports" options={{ title: "Reports" }} />
+      <Stack.Screen name="meter-analysis" options={{ title: "Meter analysis" }} />
+      <Stack.Screen name="inquiry/[id]" options={{ title: "Message" }} />
       <Stack.Screen name="meter-add" options={{ title: "Meter reading" }} />
       <Stack.Screen name="subscription" options={{ title: "Plan & features" }} />
       <Stack.Screen name="verification" options={{ title: "Verification" }} />

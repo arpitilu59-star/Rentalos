@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";
 import { SkeletonList } from "@/components/Skeleton";
-import { Field, Pill, Row, Segmented } from "@/lib/ui2";
+import { Field, FilterRow, Pill, Row, Segmented } from "@/lib/ui2";
 import { checkMeterReading } from "@/lib/meter-check";
 import { useColors, inr, dmy } from "@/theme";
 
@@ -58,6 +58,8 @@ function Bills() {
   const router = useRouter();
   const qc = useQueryClient();
   const [due, setDue] = useState(true);
+  const [st, setSt] = useState<"all" | "pending" | "partial" | "paid" | "overdue">("all");
+  const [ym, setYm] = useState<string>("all");
   const q = useQuery({
     queryKey: ["bills", due],
     queryFn: () => api<{ bills: Bill[] }>("l/bills", { filter: due ? "due" : "all" }),
@@ -106,49 +108,89 @@ function Bills() {
       {q.data && !q.data.bills.length ? (
         <Empty text={due ? "Koi bill baaki nahi 🎉" : "Abhi koi bill nahi."} />
       ) : null}
-      {q.data?.bills.map((b) => {
-        const left = Number(b.total_amount) - Number(b.amount_paid ?? 0);
-        const late = b.status !== "paid" && b.due_date && b.due_date < today;
-        return (
-          <Card key={b.id} style={{ gap: 5 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-              <Text style={{ color: c.text, fontWeight: "800", flex: 1 }}>
-                {b.tenants?.name ?? "Tenant"} · Room {b.rooms?.room_number ?? "—"}
-              </Text>
-              <Pill
-                text={
-                  b.status === "paid"
-                    ? "Paid"
-                    : late
-                      ? "Overdue"
-                      : b.status === "partial"
-                        ? "Partial"
-                        : "Pending"
-                }
-                tone={b.status === "paid" ? "ok" : late ? "danger" : "warn"}
-              />
-            </View>
-            <Row k="Total" v={inr(b.total_amount)} />
-            {b.status !== "paid" ? <Row k="Baaki" v={inr(left)} /> : null}
-            <Row k="Due date" v={dmy(b.due_date)} />
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-              <Button
-                kind="ghost"
-                title="Detail / PDF / WhatsApp"
-                onPress={() => router.push({ pathname: "/bill/[id]", params: { id: b.id } })}
-                style={{ flex: 1, paddingVertical: 9 }}
-              />
-              {b.status !== "paid" ? (
+      {q.data?.bills.length ? (
+        <>
+          <FilterRow
+            value={st}
+            onChange={setSt}
+            options={[
+              ["all", "Sab status"],
+              ["pending", "Pending"],
+              ["partial", "Partial"],
+              ["paid", "Paid"],
+              ["overdue", "Overdue"],
+            ]}
+          />
+          <FilterRow
+            value={ym}
+            onChange={setYm}
+            options={[
+              ["all", "Sab mahine"],
+              ...Array.from(
+                new Set(
+                  q.data.bills.map((b) => (b.rent_period_start ?? "").slice(0, 7)).filter(Boolean),
+                ),
+              )
+                .sort()
+                .reverse()
+                .slice(0, 12)
+                .map((m) => [m, dmy(`${m}-01`).replace(/^\d+\s/, "")] as [string, string]),
+            ]}
+          />
+        </>
+      ) : null}
+      {q.data?.bills
+        .filter(
+          (b) =>
+            (ym === "all" || (b.rent_period_start ?? "").startsWith(ym)) &&
+            (st === "all" ||
+              (st === "overdue"
+                ? b.status !== "paid" && !!b.due_date && b.due_date < today
+                : b.status === st)),
+        )
+        .map((b) => {
+          const left = Number(b.total_amount) - Number(b.amount_paid ?? 0);
+          const late = b.status !== "paid" && b.due_date && b.due_date < today;
+          return (
+            <Card key={b.id} style={{ gap: 5 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                <Text style={{ color: c.text, fontWeight: "800", flex: 1 }}>
+                  {b.tenants?.name ?? "Tenant"} · Room {b.rooms?.room_number ?? "—"}
+                </Text>
+                <Pill
+                  text={
+                    b.status === "paid"
+                      ? "Paid"
+                      : late
+                        ? "Overdue"
+                        : b.status === "partial"
+                          ? "Partial"
+                          : "Pending"
+                  }
+                  tone={b.status === "paid" ? "ok" : late ? "danger" : "warn"}
+                />
+              </View>
+              <Row k="Total" v={inr(b.total_amount)} />
+              {b.status !== "paid" ? <Row k="Baaki" v={inr(left)} /> : null}
+              <Row k="Due date" v={dmy(b.due_date)} />
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
                 <Button
-                  title="Paid"
-                  onPress={() => ask(b)}
+                  kind="ghost"
+                  title="Detail / PDF / WhatsApp"
+                  onPress={() => router.push({ pathname: "/bill/[id]", params: { id: b.id } })}
                   style={{ flex: 1, paddingVertical: 9 }}
                 />
-              ) : null}
-            </View>
-          </Card>
-        );
-      })}
+                {b.status !== "paid" ? (
+                  <Button
+                    title="Paid"
+                    onPress={() => ask(b)}
+                    style={{ flex: 1, paddingVertical: 9 }}
+                  />
+                ) : null}
+              </View>
+            </Card>
+          );
+        })}
     </ScrollView>
   );
 }
@@ -257,6 +299,17 @@ function Meters() {
     queryKey: ["meters"],
     queryFn: () => api<{ submissions: M[] }>("l/meters"),
   });
+  const ov = useQuery({
+    queryKey: ["meter-overview"],
+    queryFn: () =>
+      api<{
+        properties: Array<{
+          id: string;
+          name: string;
+          rooms: Array<{ id: string; number: string }>;
+        }>;
+      }>("l/meter/overview"),
+  });
   const [edit, setEdit] = useState<Record<string, string>>({});
   const decide = useMutation({
     mutationFn: (p: { id: string; approve: boolean; reading?: number }) => api("l/meter/decide", p),
@@ -274,6 +327,26 @@ function Meters() {
         title="+ Meter reading daalein (guided)"
         onPress={() => router.push("/meter-add" as never)}
       />
+      {ov.data?.properties.some((p) => p.rooms.length) ? (
+        <Card style={{ gap: 6 }}>
+          <Text style={{ color: c.text, fontWeight: "800" }}>Room meter analysis</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {ov.data.properties.flatMap((p) =>
+              p.rooms.map((r) => (
+                <Button
+                  key={r.id}
+                  kind="ghost"
+                  title={`${p.name} · ${r.number}`}
+                  onPress={() =>
+                    router.push({ pathname: "/meter-analysis", params: { room_id: r.id } })
+                  }
+                  style={{ paddingVertical: 8, paddingHorizontal: 12 }}
+                />
+              )),
+            )}
+          </View>
+        </Card>
+      ) : null}
       <Card>
         <Text style={{ color: c.muted, fontSize: 13 }}>
           Tenant ki bheji reading aapke approve karne ke baad hi bill mein judti hai. Photo se

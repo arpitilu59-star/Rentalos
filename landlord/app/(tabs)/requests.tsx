@@ -1,6 +1,6 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Image, Linking, RefreshControl, ScrollView, View } from "react-native";
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { Text } from "@/components/Text";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -36,9 +36,10 @@ type Tk = {
 
 export default function Requests() {
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<"book" | "tickets">("book");
+  const [tab, setTab] = useState<"book" | "tickets" | "chat">("book");
   React.useEffect(() => {
-    if (params.tab === "book" || params.tab === "tickets") setTab(params.tab);
+    if (params.tab === "book" || params.tab === "tickets" || params.tab === "chat")
+      setTab(params.tab);
   }, [params.tab]);
   return (
     <View style={{ flex: 1 }}>
@@ -48,9 +49,10 @@ export default function Requests() {
         options={[
           ["book", "Booking requests"],
           ["tickets", "Complaints"],
+          ["chat", "Messages"],
         ]}
       />
-      {tab === "book" ? <Bookings /> : <Tickets />}
+      {tab === "book" ? <Bookings /> : tab === "tickets" ? <Tickets /> : <Inquiries />}
     </View>
   );
 }
@@ -282,6 +284,54 @@ function Tickets() {
             ))}
           </View>
         </Card>
+      ))}
+    </ScrollView>
+  );
+}
+
+type Th = {
+  id: string;
+  last_message: string | null;
+  unread_for_landlord: number;
+  updated_at: string;
+  myr_listings: { title: string } | null;
+};
+function Inquiries() {
+  const c = useColors();
+  const router = useRouter();
+  const q = useQuery({
+    queryKey: ["inquiries"],
+    queryFn: () => api<{ threads: Th[] }>("l/inquiries"),
+  });
+  return (
+    <ScrollView
+      contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 10 }}
+      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} />}
+    >
+      <ErrorText error={q.error} />
+      {q.isLoading ? <SkeletonList n={3} height={70} /> : null}
+      {q.data && !q.data.threads.length ? (
+        <Empty text="Abhi kisi tenant ne message nahi kiya." />
+      ) : null}
+      {q.data?.threads.map((t) => (
+        <Pressable
+          key={t.id}
+          onPress={() => router.push({ pathname: "/inquiry/[id]", params: { id: t.id } })}
+        >
+          <Card style={{ gap: 3, borderColor: t.unread_for_landlord ? c.primary : c.border }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+              <Text style={{ color: c.text, fontWeight: "800", flex: 1 }} numberOfLines={1}>
+                {t.myr_listings?.title ?? "Listing"}
+              </Text>
+              {t.unread_for_landlord ? (
+                <Pill text={`${t.unread_for_landlord} naya`} tone="warn" />
+              ) : null}
+            </View>
+            <Text style={{ color: c.muted }} numberOfLines={1}>
+              {t.last_message ?? "—"} · {dmy(t.updated_at)}
+            </Text>
+          </Card>
+        </Pressable>
       ))}
     </ScrollView>
   );

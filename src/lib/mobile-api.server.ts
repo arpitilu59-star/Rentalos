@@ -291,6 +291,12 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await L.getTerms(me, body));
         case "terms/publish":
           return json(await L.publishTerms(me, body));
+        case "videos":
+          return json(await L.listVideos(me, body));
+        case "video/add":
+          return json(await L.addVideo(me, body));
+        case "video/delete":
+          return json(await L.deleteVideo(me, body));
         case "photos":
           return json(await L.listPhotos(me, body));
         case "photo/add":
@@ -317,6 +323,10 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await L.moveOutCheck(me, body));
         case "subscription":
           return json(await L.subscriptionInfo(me));
+        case "verifications":
+          return json(await L.ownVerifications(me));
+        case "verification/create":
+          return json(await L.createOwnVerification(me, body));
         case "verification":
           return json(await L.verificationStatus(me));
         case "bills":
@@ -345,6 +355,26 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await L.partnerStatus(me));
         case "partner/import":
           return json(await L.partnerImport(me, body));
+        case "meter/analysis":
+          return json(await L.meterAnalysis(me, body));
+        case "kyc":
+          return json(await L.kycStatus(me));
+        case "kyc/submit":
+          return json(await L.kycSubmit(me, body));
+        case "inquiries":
+          return json(await L.inquiries(me));
+        case "inquiry/messages":
+          return json(await L.inquiryMessages(me, body));
+        case "inquiry/send":
+          return json(await L.inquirySend(me, body));
+        case "expenses":
+          return json(await L.listExpenses(me, body));
+        case "expense/add":
+          return json(await L.addExpense(me, body));
+        case "expense/delete":
+          return json(await L.deleteExpense(me, body));
+        case "reports":
+          return json(await L.reports(me));
         case "bill/whatsapp":
           return json(await L.billWhatsApp(me, body));
         case "payments":

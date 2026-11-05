@@ -72,9 +72,10 @@ export default function BillDetail() {
   });
   // WhatsApp: opens the landlord's own WhatsApp with the bill text typed in; they press send.
   const wa = useMutation({
-    mutationFn: (withPdf: boolean) =>
-      api<{ whatsapp_url: string | null }>(withPdf ? "l/bill/pdf" : "l/bill/whatsapp", {
+    mutationFn: (v: boolean | "reminder" | "receipt") =>
+      api<{ whatsapp_url: string | null }>(v === true ? "l/bill/pdf" : "l/bill/whatsapp", {
         bill_id: id,
+        kind: typeof v === "string" ? v : undefined,
       }),
     onSuccess: (r) => {
       if (!r.whatsapp_url) return Alert.alert("WhatsApp", "Tenant ka phone number sahi nahi hai.");
@@ -84,9 +85,17 @@ export default function BillDetail() {
   });
   const paid = useMutation({
     mutationFn: (p: { method: string; amount?: number }) =>
-      api("l/bill/paid", { bill_id: id, ...p }),
-    onSuccess: () => {
+      api<{ status: string; receipt: string }>("l/bill/paid", { bill_id: id, ...p }),
+    onSuccess: (r) => {
       setAmt("");
+      const msg: Record<string, string> = {
+        sent: "Receipt tenant ko email kar di gayi ✓",
+        no_email:
+          "Tenant ka email nahi hai, isliye receipt email nahi gayi. WhatsApp receipt bhej sakte hain.",
+        not_configured: "Email service set nahi hai. WhatsApp receipt bhej sakte hain.",
+        failed: "Receipt email nahi ja saki. WhatsApp receipt bhej sakte hain.",
+      };
+      if (msg[r.receipt]) Alert.alert("Payment save ho gaya", msg[r.receipt]);
       for (const k of ["bills", "home", "tenants", "bill"]) qc.invalidateQueries({ queryKey: [k] });
     },
   });
@@ -174,6 +183,24 @@ export default function BillDetail() {
         disabled={!d.whatsapp_ready}
         onPress={() => wa.mutate(true)}
       />
+      {b.status !== "paid" ? (
+        <Button
+          kind="ghost"
+          title="🔔 Payment reminder bhejein (WhatsApp)"
+          busy={wa.isPending && wa.variables === "reminder"}
+          disabled={!d.whatsapp_ready}
+          onPress={() => wa.mutate("reminder")}
+        />
+      ) : null}
+      {Number(b.amount_paid ?? 0) > 0 ? (
+        <Button
+          kind="ghost"
+          title="✅ Payment receipt bhejein (WhatsApp)"
+          busy={wa.isPending && wa.variables === "receipt"}
+          disabled={!d.whatsapp_ready}
+          onPress={() => wa.mutate("receipt")}
+        />
+      ) : null}
       {!d.whatsapp_ready ? (
         <Text style={{ color: c.muted, fontSize: 12 }}>
           Tenant ka phone number sahi nahi hai, isliye WhatsApp band hai. Tenant edit karke number

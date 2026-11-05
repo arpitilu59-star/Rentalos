@@ -28,24 +28,46 @@ export default function Profile() {
     queryFn: () =>
       api<{
         name: string | null;
+        full_name: string | null;
+        business_name: string | null;
+        address: string | null;
+        city: string | null;
+        bank_details: string | null;
         upi: string | null;
         phone: string | null;
         canVerifyPayments: boolean;
         canLivePhotos: boolean;
       }>("l/me"),
   });
+  const [fullName, setFullName] = useState("");
   const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [bank, setBank] = useState("");
   const [upi, setUpi] = useState("");
   const [phone, setPhone] = useState("");
   useEffect(() => {
     if (me.data) {
-      setName(me.data.name ?? "");
+      setFullName(me.data.full_name ?? "");
+      setName(me.data.business_name ?? "");
+      setAddress(me.data.address ?? "");
+      setCity(me.data.city ?? "");
+      setBank(me.data.bank_details ?? "");
       setUpi(me.data.upi ?? "");
       setPhone(me.data.phone ?? "");
     }
   }, [me.data]);
   const save = useMutation({
-    mutationFn: () => api("l/profile/save", { business_name: name, upi_id: upi, phone }),
+    mutationFn: () =>
+      api("l/profile/save", {
+        full_name: fullName,
+        business_name: name,
+        upi_id: upi,
+        phone,
+        address,
+        city,
+        bank_details: bank,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["me"] });
     },
@@ -81,7 +103,16 @@ export default function Profile() {
       contentContainerStyle={{ padding: 16, gap: 14 }}
       keyboardShouldPersistTaps="handled"
     >
-      <Field label="Naam / business ka naam" value={name} onChange={setName} />
+      <Text style={{ color: c.muted, fontSize: 12 }}>
+        Ye details tenants ko bheje gaye bill PDF aur WhatsApp message mein dikhti hain.
+      </Text>
+      <Field label="Aapka poora naam" value={fullName} onChange={setFullName} />
+      <Field
+        label="Business / PG ka naam (optional)"
+        value={name}
+        onChange={setName}
+        hint="Bill ke upar yehi naam aata hai; khali ho to aapka naam."
+      />
       <Field
         label="UPI ID (rent yahin aayega)"
         value={upi}
@@ -91,6 +122,16 @@ export default function Profile() {
         hint="Tenants isi UPI par rent bhejte hain."
       />
       <Field label="Phone" value={phone} onChange={setPhone} keyboard="phone-pad" />
+      <Field label="Address" value={address} onChange={setAddress} multiline maxLength={300} />
+      <Field label="City" value={city} onChange={setCity} />
+      <Field
+        label="Bank details (optional)"
+        value={bank}
+        onChange={setBank}
+        multiline
+        maxLength={400}
+        hint="Account naam, number aur IFSC — UPI na ho to tenant bank transfer kar sakta hai."
+      />
       <ErrorText error={save.error} />
       {save.isSuccess ? <Text style={{ color: c.ok }}>Save ho gaya ✓</Text> : null}
       <Button title="Save karein" busy={save.isPending} onPress={() => save.mutate()} />

@@ -30,7 +30,18 @@ Legend: ✅ implemented + server-enforced · 🟡 partial · ❌ missing · 🔒
 | Notifications | ✅ | list, unread badge, mark read; tap opens the exact tab/sub-tab from the notification link (meters, verify, bills, deposits, bookings, complaints…) |
 | Settings (settings.tsx) | ✅ | profile, UPI, billing default rates |
 | Subscription (subscription.tsx) | 🟡 | read-only plan, real entitlements, plans, payment history. Upgrade/payment stays on the website (admin-verified) |
-| Identity verification | 🟡 | read-only status; submitting documents stays on the web |
+| Identity verification | ✅ | status + photo upload of ID / selfie / property proof to the private myr-kyc bucket (always "pending"; only admins approve). 🟡 PDF upload stays on web |
 | Partner CSV import | ✅ | paste CSV → dry-run check → import; only for partner-org members with `partner_import` entitlement (tests). No file picker (paste only) |
 | WhatsApp link status | 🟡 | read-only (linked / opted-in / live delivery on or off). Linking needs OTP and stays on the website |
 | Push notifications | 🔒 | needs EAS build + FCM |
+| Room meter analysis (rooms_.$roomId.analysis) | ✅ | monthly units, average, rollback/stuck/spike/drop alerts (tests); 🟡 bar list instead of chart, no per-room bill history |
+| Bill filters (status + month) | ✅ | Sab/Pending/Partial/Paid/Overdue + month chips |
+| Tenant inquiries (myr/landlord/inquiries) | ✅ | Messages segment in Requests tab + chat screen (own conversations only, unread cleared on open) |
+| Tenant/property verification requests (verifications.tsx) | ✅ | pick tenant/property, attach photos (private verification-docs bucket), submit; only admins decide; duplicate pending refused (tests). Image only, PDF on web |
+| Onboarding wizard (onboarding.tsx) | ❌ | the app uses the dashboard checklist instead |
+| Bill receipt email on mark-paid | ✅ | same Resend email as web when fully paid; app tells honestly if sent / no email / email service not configured (tests). Needs RESEND_API_KEY |
+| Landlord profile details (name, business, address, city, bank, UPI, phone) | ✅ | used on bill PDF + WhatsApp text; dashboard nudges when address/city missing |
+| WhatsApp payment reminder + receipt (manual, owner sends) | ✅ | reminder only for unpaid bills, receipt only after a payment (tests) |
+| Reports (new, app-only) | ✅ | 6-month billed vs collected (verified payments only), biggest dues, occupancy per property (tests) |
+| Live room video record + upload (web LiveFeedRecorder) | ✅ | camera-only 5–45 s MP4, GPS within 50 m, private bucket, starts "pending"/"flagged" — only an admin can verify (same as web). Plan-gated (`live_feed_video`) (tests) |
+| Expenses (new, app-only; needs migration 20261003) | ✅ | 8 categories, month filter, totals, delete; reports show expenses and net |

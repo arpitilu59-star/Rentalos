@@ -45,7 +45,8 @@
         {
           "locationWhenInUsePermission": "Aapke paas ke rooms dikhane ke liye location chahiye."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": false

@@ -28,7 +28,10 @@ export default function HomeTab() {
   const router = useRouter();
   const me = useQuery({
     queryKey: ["me"],
-    queryFn: () => api<{ name: string | null; upi: string | null }>("l/me"),
+    queryFn: () =>
+      api<{ name: string | null; upi: string | null; address: string | null; city: string | null }>(
+        "l/me",
+      ),
   });
   const q = useQuery({ queryKey: ["home"], queryFn: () => api<Home>("l/home") });
   const d = q.data;
@@ -194,6 +197,26 @@ export default function HomeTab() {
               </Card>
             </Pressable>
           ) : null}
+          {me.data && me.data.upi && (!me.data.address || !me.data.city) ? (
+            <Pressable onPress={() => router.push("/settings" as never)}>
+              <Card style={{ borderColor: c.warn }}>
+                <Text style={{ color: c.text, fontWeight: "700" }}>
+                  Address aur city add karein
+                </Text>
+                <Text style={{ color: c.muted, fontSize: 12 }}>
+                  Ye tenants ko jaane wale bill PDF mein dikhte hain.
+                </Text>
+              </Card>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={() => router.push("/reports" as never)}>
+            <Card style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: c.text, fontWeight: "700" }}>
+                📊 Reports (income, baaki, occupancy)
+              </Text>
+              <Text style={{ color: c.primary, fontWeight: "700" }}>Dekhein ›</Text>
+            </Card>
+          </Pressable>
         </>
       )}
       <Pressable onPress={() => router.push("/settings" as never)}>

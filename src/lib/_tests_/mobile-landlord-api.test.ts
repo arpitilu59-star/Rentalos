@@ -547,3 +547,264 @@ describe("gender fit, parking honesty, meter location", () => {
     expect(db.meter_readings[0]).not.toBeUndefined();
   });
 });
+
+describe("meter analysis, KYC submit, inquiries", () => {
+  it("detects rollback, stuck and spike months", async () => {
+    const { analyseMeter } = await import("../meter-analysis");
+    const r = analyseMeter([
+      { reading: 100, reading_date: "2026-01-05" },
+      { reading: 150, reading_date: "2026-02-05" },
+      { reading: 200, reading_date: "2026-03-05" },
+      { reading: 190, reading_date: "2026-04-05" },
+      { reading: 190, reading_date: "2026-05-05" },
+      { reading: 600, reading_date: "2026-06-05" },
+    ]);
+    expect(r.months_tracked).toBe(5);
+    expect(r.anomalies.map((x) => x.type)).toEqual(["rollback", "stuck", "spike"]);
+    expect(analyseMeter([{ reading: 5, reading_date: "2026-01-01" }]).anomalies).toEqual([]);
+  });
+  it("kycSubmit only accepts own-folder image paths and always stays pending", async () => {
+    const { kycSubmit } = await L();
+    db.myr_verifications = [];
+    const good = `${ME}/landlord-id_doc_path-12345678-aaaa.jpg`;
+    await expect(
+      kycSubmit(ME, {
+        field: "id_doc_path",
+        path: `${OTHER}/landlord-id_doc_path-12345678-aaaa.jpg`,
+      }),
+    ).rejects.toThrow(/path/);
+    await expect(kycSubmit(ME, { field: "id_doc_path", path: `${ME}/../x.jpg` })).rejects.toThrow(
+      /path/,
+    );
+    await expect(kycSubmit(ME, { field: "selfie_path", path: good })).rejects.toThrow(/path/);
+    await expect(kycSubmit(ME, { field: "status", path: good })).rejects.toThrow(/Invalid/);
+    await expect(kycSubmit(ME, { field: "id_doc_path", path: good })).resolves.toMatchObject({
+      mode: "created",
+    });
+    expect(db.myr_verifications[0].status).toBe("pending");
+    await expect(
+      kycSubmit(ME, { field: "selfie_path", path: `${ME}/landlord-selfie_path-12345678-bbbb.png` }),
+    ).resolves.toMatchObject({ mode: "updated" });
+    expect(db.myr_verifications).toHaveLength(1);
+  });
+  it("a landlord can only read and reply in their own inquiry", async () => {
+    const { inquiryMessages, inquirySend } = await L();
+    const I1 = "99999999-9999-4999-8999-999999999999";
+    db.myr_inquiries = [{ id: I1, landlord_id: ME, tenant_id: OTHER, last_message: null }];
+    db.myr_inquiry_messages = [];
+    await expect(inquirySend(OTHER, { id: I1, body: "hi" })).rejects.toThrow(/not found/);
+    await expect(inquirySend(ME, { id: I1, body: "  " })).rejects.toThrow(/likhein/);
+    await inquirySend(ME, { id: I1, body: "Room available hai" });
+    const r: any = await inquiryMessages(ME, { id: I1 });
+    expect(r.messages[0]).toMatchObject({ body: "Room available hai", mine: true });
+    expect(db.myr_inquiries[0].last_message).toBe("Room available hai");
+  });
+});
+
+describe("profile details, reminders, reports", () => {
+  it("saves address/city/bank details and rejects a short phone", async () => {
+    const { saveProfile } = await L();
+    await saveProfile(ME, {
+      address: "12 MG Road",
+      city: "Jaipur",
+      bank_details: "HDFC 1234 IFSC HDFC0001",
+    });
+    expect(db.profiles[0]).toMatchObject({ city: "Jaipur", address: "12 MG Road" });
+    await expect(saveProfile(ME, { phone: "123" })).rejects.toThrow(/10 digit/);
+  });
+  it("reminder only for unpaid bills, receipt only after a payment", async () => {
+    const { billWhatsApp } = await L();
+    const base = {
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      owner_id: ME,
+      rent_amount: 6000,
+      electricity_amount: 0,
+      units_consumed: 0,
+      water_amount: 0,
+      cleaning_amount: 0,
+      total_amount: 6000,
+      amount_paid: 0,
+      status: "pending",
+      due_date: "2026-11-05",
+      rent_period_start: "2026-10-01",
+      rent_period_end: "2026-10-31",
+      tenants: { name: "Ravi", phone: "9876543210" },
+      rooms: { room_number: "101" },
+    };
+    db.bills.push({ ...base });
+    const rem: any = await billWhatsApp(ME, { bill_id: base.id, kind: "reminder" });
+    expect(decodeURIComponent(rem.whatsapp_url)).toContain("Rent reminder");
+    await expect(billWhatsApp(ME, { bill_id: base.id, kind: "receipt" })).rejects.toThrow(
+      /receipt/,
+    );
+    db.bills[0].amount_paid = 6000;
+    db.bills[0].status = "paid";
+    const rec: any = await billWhatsApp(ME, { bill_id: base.id, kind: "receipt" });
+    expect(decodeURIComponent(rec.whatsapp_url)).toContain("Pura bhugtan");
+    await expect(billWhatsApp(ME, { bill_id: base.id, kind: "reminder" })).rejects.toThrow(/paid/);
+  });
+  it("reports totals only verified payments and lists dues", async () => {
+    const { reports } = await L();
+    const ym = new Date().toISOString().slice(0, 7);
+    db.bills.push({
+      id: "b1",
+      owner_id: ME,
+      tenant_id: T1,
+      total_amount: 5000,
+      amount_paid: 2000,
+      status: "partial",
+      due_date: "2020-01-01",
+      rent_period_start: `${ym}-01`,
+      tenants: { name: "Ravi" },
+      rooms: { room_number: "101" },
+    });
+    db.payments.push(
+      {
+        amount: 2000,
+        paid_on: `${ym}-03`,
+        created_at: `${ym}-03`,
+        verification_status: "verified",
+        owner_id: ME,
+      },
+      {
+        amount: 999,
+        paid_on: `${ym}-04`,
+        created_at: `${ym}-04`,
+        verification_status: "pending",
+        owner_id: ME,
+      },
+    );
+    const r: any = await reports(ME);
+    expect(r.months).toHaveLength(6);
+    expect(r.total_collected).toBe(2000);
+    expect(r.top_dues[0]).toMatchObject({ name: "Ravi", due: 3000, overdue: true });
+  });
+});
+
+describe("live room video + expenses", () => {
+  const vpath = `${ME}/room-1700000000.mp4`;
+  const setup = () => {
+    db.rooms.push(completeRoom());
+    db.properties.push(completeProperty());
+    db.live_feed_videos = [];
+  };
+  it("registers a video as pending, flags a far-away one, never verifies", async () => {
+    const { addVideo } = await L();
+    setup();
+    (db.rooms[0] as any).properties = { latitude: 26.9, longitude: 75.8 };
+    const ok: any = await addVideo(ME, {
+      room_id: R1,
+      storage_path: vpath,
+      duration_seconds: 20,
+      lat: 26.9,
+      lng: 75.8,
+    });
+    expect(ok.verification_status).toBe("pending");
+    const far: any = await addVideo(ME, {
+      room_id: R1,
+      storage_path: `${ME}/room-1700000001.mp4`,
+      duration_seconds: 20,
+      lat: 27.5,
+      lng: 76.5,
+    });
+    expect(far.verification_status).toBe("flagged");
+  });
+  it("rejects bad duration, foreign path, missing location, and no entitlement", async () => {
+    const { addVideo } = await L();
+    setup();
+    const base = { room_id: R1, storage_path: vpath, duration_seconds: 20, lat: 26.9, lng: 75.8 };
+    await expect(addVideo(ME, { ...base, duration_seconds: 3 })).rejects.toThrow(/5 se 45/);
+    await expect(addVideo(ME, { ...base, duration_seconds: 60 })).rejects.toThrow(/5 se 45/);
+    await expect(
+      addVideo(ME, { ...base, storage_path: `${OTHER}/room-1700000000.mp4` }),
+    ).rejects.toThrow(/path/);
+    await expect(addVideo(ME, { ...base, storage_path: `${ME}/../x.mp4` })).rejects.toThrow(/path/);
+    await expect(addVideo(ME, { ...base, lat: undefined })).rejects.toThrow(/location/);
+    await expect(addVideo(OTHER, base)).rejects.toThrow(/not found/);
+    entitled = false;
+    await expect(addVideo(ME, base)).rejects.toThrow(/SUBSCRIPTION/);
+  });
+  it("expenses: validates, totals by category, refuses other owners", async () => {
+    const { addExpense, listExpenses, deleteExpense } = await L();
+    db.expenses = [];
+    await expect(addExpense(ME, { category: "x", amount: 10 })).rejects.toThrow(/Category/);
+    await expect(addExpense(ME, { category: "repair", amount: 0 })).rejects.toThrow(/Amount/);
+    await expect(
+      addExpense(ME, { category: "repair", amount: 10, spent_on: "2999-01-01" }),
+    ).rejects.toThrow(/Aage/);
+    await addExpense(ME, { category: "repair", amount: 500, spent_on: today });
+    await addExpense(ME, { category: "repair", amount: 250, spent_on: today });
+    await addExpense(ME, { category: "salary", amount: 1000, spent_on: today });
+    const r: any = await listExpenses(ME, {});
+    expect(r.total).toBe(1750);
+    expect(r.by_category).toEqual({ repair: 750, salary: 1000 });
+    await expect(deleteExpense(OTHER, { id: db.expenses[0].id })).rejects.toThrow(/not found/);
+    await expect(deleteExpense(ME, { id: db.expenses[0].id })).resolves.toEqual({ ok: true });
+  });
+});
+
+describe("receipt email + tenant verification requests", () => {
+  const bill = () => ({
+    id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    owner_id: ME,
+    total_amount: 1000,
+    amount_paid: 0,
+    status: "pending",
+    tenants: { name: "Ravi", email: "ravi@example.com" },
+    rooms: { room_number: "101" },
+  });
+  it("sends a receipt only when fully paid, reports no_email / not_configured honestly", async () => {
+    const { markPaid } = await L();
+    const calls: any[] = [];
+    vi.stubGlobal("fetch", async (u: string, o: any) => {
+      calls.push([u, o]);
+      return { ok: true };
+    });
+    db.bills.push(bill());
+    process.env.RESEND_API_KEY = "re_test";
+    const part: any = await markPaid(ME, { bill_id: db.bills[0].id, amount: 400 });
+    expect(part).toMatchObject({ status: "partial", receipt: "not_needed" });
+    expect(calls).toHaveLength(0);
+    const full: any = await markPaid(ME, { bill_id: db.bills[0].id });
+    expect(full).toMatchObject({ status: "paid", receipt: "sent" });
+    expect(calls[0][0]).toContain("resend.com");
+    expect(JSON.parse(calls[0][1].body).to).toEqual(["ravi@example.com"]);
+    db.bills.push({
+      ...bill(),
+      id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      tenants: { name: "A", email: null },
+    });
+    expect(
+      (await markPaid(ME, { bill_id: "ffffffff-ffff-4fff-8fff-ffffffffffff" })) as any,
+    ).toMatchObject({ receipt: "no_email" });
+    delete process.env.RESEND_API_KEY;
+    db.bills.push({ ...bill(), id: "dddddddd-aaaa-4aaa-8aaa-dddddddddddd" });
+    expect(
+      (await markPaid(ME, { bill_id: "dddddddd-aaaa-4aaa-8aaa-dddddddddddd" })) as any,
+    ).toMatchObject({ receipt: "not_configured" });
+    vi.unstubAllGlobals();
+  });
+  it("tenant verification: own tenant only, own-folder docs, known types, no duplicates", async () => {
+    const { createOwnVerification } = await L();
+    db.verifications = [];
+    db.verification_documents = [];
+    db.tenants.push({ id: T1, owner_id: ME, room_id: R1, active: true });
+    const doc = { doc_type: "aadhaar", storage_path: `${ME}/1700-a.jpg` };
+    const base = { kind: "tenant", tenant_id: T1, documents: [doc] };
+    await expect(createOwnVerification(ME, { ...base, documents: [] })).rejects.toThrow(/document/);
+    await expect(
+      createOwnVerification(ME, { ...base, documents: [{ ...doc, doc_type: "x" }] }),
+    ).rejects.toThrow(/type/);
+    await expect(
+      createOwnVerification(ME, {
+        ...base,
+        documents: [{ ...doc, storage_path: `${OTHER}/a.jpg` }],
+      }),
+    ).rejects.toThrow(/path/);
+    await expect(createOwnVerification(OTHER, base)).rejects.toThrow(/not found/);
+    await expect(createOwnVerification(ME, base)).resolves.toHaveProperty("id");
+    expect(db.verification_documents).toHaveLength(1);
+    db.verifications[0].status = "pending";
+    await expect(createOwnVerification(ME, base)).rejects.toThrow(/review mein/);
+  });
+});
