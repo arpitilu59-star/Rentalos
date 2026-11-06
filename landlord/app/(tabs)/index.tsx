@@ -123,7 +123,7 @@ export default function HomeTab() {
           {me.data?.name ?? "Landlord"}
         </Text>
       </View>
-      <ErrorText error={q.error} />
+      <ErrorText error={q.error ?? me.error} />
       {!d ? (
         <SkeletonList n={3} height={80} />
       ) : (

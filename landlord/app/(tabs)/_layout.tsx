@@ -5,6 +5,7 @@ import { Text } from "@/components/Text";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { setAuthNotice } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { useColors } from "@/theme";
 
@@ -21,7 +22,12 @@ export default function TabsLayout() {
   });
   // A tenant account must never sit inside the landlord app.
   useEffect(() => {
-    if (me.data && !me.data.landlord) void supabase.auth.signOut();
+    if (me.data && !me.data.landlord) {
+      setAuthNotice(
+        "Ye account landlord account nahi hai (is account par koi property ya landlord role nahi). Landlord banne ke liye 'Naya account' se signup karein, ya landlord wale email se login karein.",
+      );
+      void supabase.auth.signOut();
+    }
   }, [me.data]);
   const router = useRouter();
   const unread = useQuery({

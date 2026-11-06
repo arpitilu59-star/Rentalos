@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View, Pressable } from "react-native";
 import { Text, TextInput } from "@/components/Text";
 import { supabase } from "@/lib/supabase";
+import { setAuthNotice, takeAuthNotice } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useColors, R } from "@/theme";
 import { Button, ErrorText } from "@/components/ui";
@@ -14,7 +15,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<unknown>(null);
+  const [err, setErr] = useState<unknown>(() => {
+    const n = takeAuthNotice();
+    return n ? new Error(n) : null;
+  });
   const [info, setInfo] = useState("");
   const input = {
     backgroundColor: c.card,
@@ -61,6 +65,7 @@ export default function Login() {
         );
       const me = await api<{ landlord: boolean }>("l/me");
       if (!me.landlord) {
+        setAuthNotice("Ye account tenant ka hai. RentDesk sirf landlords ke liye hai.");
         await supabase.auth.signOut();
         throw new Error(
           "Ye account tenant ka hai. RentDesk sirf landlords ke liye hai — tenant Rentalos app use karein. Landlord banna hai to 'Naya account' se landlord signup karein.",

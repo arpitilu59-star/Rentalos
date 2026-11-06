@@ -19,3 +19,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
   return <AuthCtx.Provider value={{ session, loading }}>{children}</AuthCtx.Provider>;
 }
+
+// A message that must survive the redirect to the login screen (the login screen is re-created after sign-out).
+let notice: string | null = null;
+export const setAuthNotice = (m: string) => {
+  notice = m;
+};
+export const takeAuthNotice = () => {
+  const m = notice;
+  notice = null;
+  return m;
+};
