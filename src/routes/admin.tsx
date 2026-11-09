@@ -106,6 +106,7 @@ function AdminLayout() {
     { to: "/admin/live-feed-review", label: "Live Feed", icon: Video },
     { to: "/admin/partners", label: "Partners", icon: Building2 },
     { to: "/admin/activity", label: "Activity", icon: Activity },
+    { to: "/admin/feedback", label: "Feedback & analytics", icon: ClipboardList },
     { to: "/admin/diagnostics", label: "Diagnostics", icon: Activity },
     { to: "/admin/audits", label: "Audit logs", icon: ClipboardList },
     { to: "/admin/security", label: "Security", icon: Lock },

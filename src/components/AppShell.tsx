@@ -46,6 +46,7 @@ const NAV = [
   { to: "/rental-terms", label: "Rental terms", icon: ScrollText },
   { to: "/subscription", label: "Subscription", icon: CreditCard },
   { to: "/settings", label: "Pricing", icon: Settings },
+  { to: "/feedback", label: "Help & feedback", icon: Inbox },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {

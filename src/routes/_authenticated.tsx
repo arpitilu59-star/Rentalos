@@ -8,6 +8,7 @@ import { useEntitlements } from "@/lib/subscription/use-entitlements";
 import { featureForPath } from "@/lib/subscription/keys";
 import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
 import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
+import { trackProductEvent } from "@/lib/product.functions";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -67,6 +68,15 @@ function AuthLayout() {
         nav({ to: "/onboarding" });
       }
       setState("ready");
+      // Product analytics: one app_open per browser session; never blocks the UI.
+      try {
+        if (!sessionStorage.getItem("rentalos_open_tracked")) {
+          sessionStorage.setItem("rentalos_open_tracked", "1");
+          void trackProductEvent({ data: { event: "app_open" } }).catch(() => {});
+        }
+      } catch {
+        /* storage unavailable */
+      }
     };
 
     check();

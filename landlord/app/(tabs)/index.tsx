@@ -128,6 +128,21 @@ export default function HomeTab() {
         <SkeletonList n={3} height={80} />
       ) : (
         <>
+          {d.properties === 0 || d.rooms === 0 || d.filled === 0 || d.collected === 0 ? (
+            <Card>
+              <Text style={{ color: c.text, fontWeight: "800" }}>Shuru karne ke steps</Text>
+              {[
+                [d.properties > 0, "Property add karein", "/rooms"],
+                [d.rooms > 0, "Room / beds add karein", "/rooms"],
+                [d.filled > 0, "Pehla tenant add karein", "/tenants"],
+                [d.collected > 0, "Pehla payment collect karein", "/money"],
+              ].map(([done, label, href]) => (
+                <Pressable key={String(label)} onPress={() => router.push(href as never)} style={{ paddingVertical: 6 }}>
+                  <Text style={{ color: done ? c.ok : c.text }}>{done ? "✅ " : "⬜ "}{String(label)}</Text>
+                </Pressable>
+              ))}
+            </Card>
+          ) : null}
           <Text style={{ color: c.text, fontSize: 16, fontWeight: "800" }}>Action required</Text>
           {items.length ? (
             items

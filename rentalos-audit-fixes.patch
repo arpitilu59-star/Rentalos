@@ -1,0 +1,1346 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..824ac99
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,23 @@
++name: CI
++on:
++  push:
++    branches: [main]
++  pull_request: {}
++permissions:
++  contents: read
++concurrency:
++  group: ci-${{ github.ref }}
++  cancel-in-progress: true
++jobs:
++  web:
++    runs-on: ubuntu-latest
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 22
++          cache: npm
++      - run: npm ci
++      - run: npm test
++      - run: npm run build
+diff --git a/.gitignore b/.gitignore
+index 38caef3..7537bb5 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -33,3 +33,8 @@ dist-ssr
+ 
+ .vercel
+ .env*
++
++# local env (contains secrets) — never commit
++.env
++.env.*
++!.env.example
+diff --git a/desktop.ini b/desktop.ini
+deleted file mode 100644
+index ac9210d..0000000
+--- a/desktop.ini
++++ /dev/null
+@@ -1,2 +0,0 @@
+-[.ShellClassInfo]
+-LocalizedResourceName=fake reantal
+diff --git a/git config --global core.pager cat b/git config --global core.pager cat
+deleted file mode 100644
+index 8b003f8..0000000
+--- a/git config --global core.pager cat	
++++ /dev/null
+@@ -1,57 +0,0 @@
+-[33mcommit 0bfc88369c6c2668d429c3cf577cdd8e4a8c8080[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+-Author: arpitilu59-star <arpitilu59@gmail.com>
+-Date:   Fri Oct 9 18:02:58 2026 +0530
+-
+-    Upgrade @tanstack/react-start to patched version (start-server-core >= 1.169.39)
+-
+- package-lock.json | 1196 [32m+++++++++++++++++++++++++[m[31m----------------------------[m
+- package.json      |    2 [32m+[m[31m-[m
+- 2 files changed, 559 insertions(+), 639 deletions(-)
+-
+-[33mcommit ee656f8d9bf165a151cca5b1576f5126c8257875[m
+-Author: arpitilu59-star <arpitilu59@gmail.com>
+-Date:   Fri Oct 9 17:41:15 2026 +0530
+-
+-    RentalOS: video-first previews, new homepage, navbar, pricing, meter validation
+-
+- src/components/LiveFeedCover.tsx                   | 221 [32m++++++[m[31m--[m
+- src/components/LiveFeedRecorder.tsx                |   3 [32m+[m[31m-[m
+- src/components/MyrShell.tsx                        |   2 [32m+[m[31m-[m
+- src/components/SiteNavbar.tsx                      | 159 [32m+++++[m[31m-[m
+- src/lib/pricing.ts                                 |  15 [32m+[m[31m-[m
+- src/lib/video.ts                                   |  66 [32m+++[m
+- src/routes/_authenticated/meters.tsx               | 363 [32m++++++++++[m[31m--[m
+- src/routes/index.tsx                               | 627 [32m++++++++++++++[m[31m-------[m
+- src/routes/landlord.login.tsx                      |   2 [32m+[m[31m-[m
+- src/routes/myr/browse.tsx                          |   3 [32m+[m[31m-[m
+- src/routes/myr/index.tsx                           |   6 [32m+[m[31m-[m
+- src/routes/myr/onboard.tsx                         |   2 [32m+[m[31m-[m
+- src/routes/myr/room.$id.tsx                        |  74 [32m++[m[31m-[m
+- src/routes/myr/roommates.tsx                       |   2 [32m+[m[31m-[m
+- src/routes/pricing.tsx                             |   2 [32m+[m[31m-[m
+- src/routes/tenant.login.tsx                        |   2 [32m+[m[31m-[m
+- .../20260916000000_parking_intelligence.sql        |  74 [32m+++[m
+- .../migrations/20260916000001_lease_expiry.sql     | 105 [32m++++[m
+- 18 files changed, 1393 insertions(+), 335 deletions(-)
+-
+-[33mcommit f164ef850aa254de475298c5443da1408edbb62b[m
+-Author: arpitilu59-star <arpitilu59@gmail.com>
+-Date:   Wed Sep 16 20:01:30 2026 +0530
+-
+-    Fix sitemap robots and missing papaparse dependency
+-
+- src/lib/pricing.ts                  | 100 [32m++++++++++++++++++++++++++++++++[m
+- src/lib/public-listing.functions.ts |  63 [32m++++++++++++++++++++[m
+- src/lib/seo.ts                      | 111 [32m++++++++++++++++++++++++++++++++++++[m
+- src/routeTree.gen.ts                |  21 [32m+++++++[m
+- src/routes/__root.tsx               |  20 [32m+++[m[31m----[m
+- src/routes/_authenticated.tsx       |  46 [32m++++++++++++[m[31m---[m
+- src/routes/about.tsx                |  94 [32m++++++++++++++++++[m[31m------------[m
+- src/routes/admin.tsx                |  11 [32m+++[m[31m-[m
+- src/routes/contact.tsx              |   9 [32m++[m[31m-[m
+- src/routes/index.tsx                |  20 [32m++++++[m[31m-[m
+- src/routes/myr/browse.tsx           |  11 [32m++++[m
+- src/routes/myr/room.$id.tsx         |  91 [32m++++++++++++++++++++++++++++[m[31m-[m
+- src/routes/pricing.tsx              | 102 [32m+++++++++++++++++++++++++++++++++[m
+- src/routes/tenant.tsx               |   8 [32m++[m[31m-[m
+- 14 files changed, 646 insertions(+), 61 deletions(-)
+diff --git a/landlord/api.ts b/landlord/api.ts
+deleted file mode 100644
+index b9f8d7d..0000000
+--- a/landlord/api.ts
++++ /dev/null
+@@ -1,24 +0,0 @@
+-import { supabase } from "./supabase";
+-
+-const BASE = (process.env.EXPO_PUBLIC_API_URL ?? "https://www.rentalos.in").replace(/\/+$/, "");
+-export const WEB = BASE;
+-
+-/** Calls the Rentalos server (/api/app/*) with the signed-in user's token. Throws a readable Error. */
+-export async function api<T = any>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+-  const { data } = await supabase.auth.getSession();
+-  const token = data.session?.access_token;
+-  if (!token) throw new Error("Please sign in again.");
+-  let res: Response;
+-  try {
+-    res = await fetch(`${BASE}/api/app/${path}`, {
+-      method: "POST",
+-      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+-      body: JSON.stringify(body),
+-    });
+-  } catch {
+-    throw new Error("No internet connection. Please try again.");
+-  }
+-  const json = await res.json().catch(() => ({}));
+-  if (!res.ok) throw new Error((json as { error?: string }).error || "Something went wrong.");
+-  return json as T;
+-}
+diff --git a/landlord/app/(tabs)/_layout.tsx b/landlord/app/(tabs)/_layout.tsx
+index ec598aa..328bd60 100644
+--- a/landlord/app/(tabs)/_layout.tsx
++++ b/landlord/app/(tabs)/_layout.tsx
+@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
+ import { api } from "@/lib/api";
+ import { setAuthNotice } from "@/lib/auth";
+ import { supabase } from "@/lib/supabase";
++import { registerForPush } from "@/lib/push";
++import { track } from "@/lib/track";
+ import { useColors } from "@/theme";
+ 
+ type Home = { pending: { bookings: number; payments: number; meters: number; tickets: number } };
+@@ -29,6 +31,13 @@ export default function TabsLayout() {
+       void supabase.auth.signOut();
+     }
+   }, [me.data]);
++  // Landlords only: register for push (no-op in Expo Go/emulator/when denied) and log one app_open.
++  useEffect(() => {
++    if (me.data?.landlord === true) {
++      void registerForPush();
++      track("app_open");
++    }
++  }, [me.data?.landlord]);
+   const router = useRouter();
+   const unread = useQuery({
+     queryKey: ["unread-count"],
+diff --git a/landlord/app/(tabs)/index.tsx b/landlord/app/(tabs)/index.tsx
+index 188b8e7..3f7f9e9 100644
+--- a/landlord/app/(tabs)/index.tsx
++++ b/landlord/app/(tabs)/index.tsx
+@@ -128,6 +128,21 @@ export default function HomeTab() {
+         <SkeletonList n={3} height={80} />
+       ) : (
+         <>
++          {d.properties === 0 || d.rooms === 0 || d.filled === 0 || d.collected === 0 ? (
++            <Card>
++              <Text style={{ color: c.text, fontWeight: "800" }}>Shuru karne ke steps</Text>
++              {[
++                [d.properties > 0, "Property add karein", "/rooms"],
++                [d.rooms > 0, "Room / beds add karein", "/rooms"],
++                [d.filled > 0, "Pehla tenant add karein", "/tenants"],
++                [d.collected > 0, "Pehla payment collect karein", "/money"],
++              ].map(([done, label, href]) => (
++                <Pressable key={String(label)} onPress={() => router.push(href as never)} style={{ paddingVertical: 6 }}>
++                  <Text style={{ color: done ? c.ok : c.text }}>{done ? "✅ " : "⬜ "}{String(label)}</Text>
++                </Pressable>
++              ))}
++            </Card>
++          ) : null}
+           <Text style={{ color: c.text, fontSize: 16, fontWeight: "800" }}>Action required</Text>
+           {items.length ? (
+             items
+diff --git a/landlord/app/feedback.tsx b/landlord/app/feedback.tsx
+new file mode 100644
+index 0000000..54df60a
+--- /dev/null
++++ b/landlord/app/feedback.tsx
+@@ -0,0 +1,60 @@
++import React, { useState } from "react";
++import { ScrollView, TextInput, View, Pressable } from "react-native";
++import { Platform } from "react-native";
++import Constants from "expo-constants";
++import { Text } from "@/components/Text";
++import { useMutation } from "@tanstack/react-query";
++import { api } from "@/lib/api";
++import { Button, Card, ErrorText } from "@/components/ui";
++import { useColors } from "@/theme";
++
++const KINDS: Array<[string, string]> = [
++  ["bug", "Kuch kaam nahi kar raha"],
++  ["support", "Madad chahiye"],
++  ["idea", "Suggestion"],
++  ["other", "Other"],
++];
++
++export default function Feedback() {
++  const c = useColors();
++  const [kind, setKind] = useState("bug");
++  const [body, setBody] = useState("");
++  const send = useMutation({
++    mutationFn: () =>
++      api("feedback", { kind, body, platform: Platform.OS, appVersion: Constants.expoConfig?.version ?? null, screen: "RentDesk" }),
++    onSuccess: () => setBody(""),
++  });
++  return (
++    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled">
++      <Card>
++        <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>Help & feedback</Text>
++        <Text style={{ color: c.muted, marginTop: 4 }}>Problem ya idea batayein. Password kabhi na likhein.</Text>
++        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
++          {KINDS.map(([k, label]) => (
++            <Pressable
++              key={k}
++              onPress={() => setKind(k)}
++              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: c.border, backgroundColor: kind === k ? c.primary : "transparent" }}
++            >
++              <Text style={{ color: kind === k ? "#fff" : c.text }}>{label}</Text>
++            </Pressable>
++          ))}
++        </View>
++        <TextInput
++          value={body}
++          onChangeText={setBody}
++          multiline
++          maxLength={2000}
++          placeholder="Yahan likhein…"
++          placeholderTextColor={c.muted}
++          style={{ marginTop: 12, minHeight: 120, borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, color: c.text, textAlignVertical: "top" }}
++        />
++        <ErrorText error={send.error} />
++        {send.isSuccess ? <Text style={{ color: "#16a34a", marginTop: 8 }}>Dhanyavaad! Hume mil gaya.</Text> : null}
++        <View style={{ marginTop: 12 }}>
++          <Button title="Bhejein" busy={send.isPending} disabled={body.trim().length < 3} onPress={() => send.mutate()} />
++        </View>
++      </Card>
++    </ScrollView>
++  );
++}
+diff --git a/landlord/app/settings.tsx b/landlord/app/settings.tsx
+index 19ac309..5e99fed 100644
+--- a/landlord/app/settings.tsx
++++ b/landlord/app/settings.tsx
+@@ -205,6 +205,11 @@ export default function Profile() {
+         title="Verification status"
+         onPress={() => router.push("/verification" as never)}
+       />
++      <Button
++        kind="ghost"
++        title="Help & feedback"
++        onPress={() => router.push("/feedback" as never)}
++      />
+       <Button kind="ghost" title="Sign out" onPress={() => supabase.auth.signOut()} />
+     </ScrollView>
+   );
+diff --git a/landlord/auth.tsx b/landlord/auth.tsx
+deleted file mode 100644
+index e0ea468..0000000
+--- a/landlord/auth.tsx
++++ /dev/null
+@@ -1,21 +0,0 @@
+-import React, { createContext, useContext, useEffect, useState } from "react";
+-import type { Session } from "@supabase/supabase-js";
+-import { supabase } from "./supabase";
+-
+-type Ctx = { session: Session | null; loading: boolean };
+-const AuthCtx = createContext<Ctx>({ session: null, loading: true });
+-export const useAuth = () => useContext(AuthCtx);
+-
+-export function AuthProvider({ children }: { children: React.ReactNode }) {
+-  const [session, setSession] = useState<Session | null>(null);
+-  const [loading, setLoading] = useState(true);
+-  useEffect(() => {
+-    supabase.auth.getSession().then(({ data }) => {
+-      setSession(data.session);
+-      setLoading(false);
+-    });
+-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+-    return () => sub.subscription.unsubscribe();
+-  }, []);
+-  return <AuthCtx.Provider value={{ session, loading }}>{children}</AuthCtx.Provider>;
+-}
+diff --git a/landlord/package.json b/landlord/package.json
+index f064d8e..f60b041 100644
+--- a/landlord/package.json
++++ b/landlord/package.json
+@@ -16,6 +16,7 @@
+     "@tanstack/react-query": "^5.90.0",
+     "expo": "~57.0.30",
+     "expo-constants": "~57.0.22",
++    "expo-device": "~57.0.2",
+     "expo-haptics": "~57.0.3",
+     "expo-image-picker": "~57.0.20",
+     "expo-linking": "~57.0.13",
+diff --git a/landlord/src/lib/push.ts b/landlord/src/lib/push.ts
+new file mode 100644
+index 0000000..456b332
+--- /dev/null
++++ b/landlord/src/lib/push.ts
+@@ -0,0 +1,57 @@
++import * as Device from "expo-device";
++import Constants, { ExecutionEnvironment } from "expo-constants";
++import { Platform } from "react-native";
++import { api } from "./api";
++
++/** Expo Go has no push support (and its notifications native module is missing), so never even load it there. */
++export const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
++
++async function notifications() {
++  if (inExpoGo) return null;
++  try {
++    const N = await import("expo-notifications");
++    N.setNotificationHandler({
++      handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
++    });
++    return N;
++  } catch {
++    return null;
++  }
++}
++
++/** Asks permission and registers this phone for push. Silent no-op in Expo Go / emulators / when denied. */
++export async function registerForPush(): Promise<void> {
++  try {
++    if (!Device.isDevice) return;
++    const N = await notifications();
++    if (!N) return;
++    if (Platform.OS === "android") {
++      await N.setNotificationChannelAsync("default", { name: "Rentalos", importance: N.AndroidImportance.HIGH });
++    }
++    let { status } = await N.getPermissionsAsync();
++    if (status !== "granted") status = (await N.requestPermissionsAsync()).status;
++    if (status !== "granted") return;
++    const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
++    const token = (await N.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
++    await api("push-token", { token, platform: Platform.OS === "ios" ? "ios" : "android" });
++  } catch {
++    /* push is optional */
++  }
++}
++
++/** Calls `onLink` when the user taps a push notification. Returns an unsubscribe function. */
++export function listenForNotificationTaps(onLink: (link: string | undefined) => void): () => void {
++  let remove: (() => void) | null = null;
++  let cancelled = false;
++  void notifications().then((N) => {
++    if (!N || cancelled) return;
++    const sub = N.addNotificationResponseReceivedListener((r) => {
++      onLink((r.notification.request.content.data as { link?: string } | undefined)?.link);
++    });
++    remove = () => sub.remove();
++  });
++  return () => {
++    cancelled = true;
++    remove?.();
++  };
++}
+diff --git a/landlord/src/lib/track.ts b/landlord/src/lib/track.ts
+new file mode 100644
+index 0000000..b8fa1fe
+--- /dev/null
++++ b/landlord/src/lib/track.ts
+@@ -0,0 +1,7 @@
++import { Platform } from "react-native";
++import { api } from "./api";
++
++/** Fire-and-forget product analytics (first-party). Never throws, never blocks the UI. */
++export function track(event: string, props?: Record<string, string | number | boolean>): void {
++  void api("track", { event, props, platform: Platform.OS }).catch(() => {});
++}
+diff --git a/landlord/supabase.ts b/landlord/supabase.ts
+deleted file mode 100644
+index 77be323..0000000
+--- a/landlord/supabase.ts
++++ /dev/null
+@@ -1,12 +0,0 @@
+-import "react-native-url-polyfill/auto";
+-import AsyncStorage from "@react-native-async-storage/async-storage";
+-import { createClient } from "@supabase/supabase-js";
+-
+-const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+-const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
+-
+-export const configured = Boolean(url && key);
+-
+-export const supabase = createClient(url || "https://invalid.local", key || "invalid", {
+-  auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+-});
+diff --git a/landlord/ui2.tsx b/landlord/ui2.tsx
+deleted file mode 100644
+index b2fa201..0000000
+--- a/landlord/ui2.tsx
++++ /dev/null
+@@ -1,69 +0,0 @@
+-import React from "react";
+-import { Pressable, View } from "react-native";
+-import { Text, TextInput } from "@/components/Text";
+-import { useColors, R } from "@/theme";
+-
+-/** Labelled text field. */
+-export function Field({ label, value, onChange, placeholder, keyboard, multiline, required, hint, maxLength }: {
+-  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+-  keyboard?: "default" | "numeric" | "phone-pad" | "email-address"; multiline?: boolean; required?: boolean; hint?: string; maxLength?: number;
+-}) {
+-  const c = useColors();
+-  return (
+-    <View style={{ gap: 5 }}>
+-      <Text style={{ color: c.text, fontWeight: "600", fontSize: 13 }}>{label}{required ? <Text style={{ color: c.danger }}> *</Text> : null}</Text>
+-      <TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.muted} keyboardType={keyboard} multiline={multiline} maxLength={maxLength}
+-        style={{ backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: R.m, padding: 12, color: c.text, fontSize: 15, minHeight: multiline ? 84 : undefined, textAlignVertical: multiline ? "top" : "center" }} />
+-      {hint ? <Text style={{ color: c.muted, fontSize: 12 }}>{hint}</Text> : null}
+-    </View>
+-  );
+-}
+-
+-/** Single-choice chips. Tapping the active chip does nothing unless `clearable`. */
+-export function Choice<T extends string>({ label, value, options, onChange, required }: {
+-  label: string; value: T | null | undefined; options: Array<[T, string]>; onChange: (v: T) => void; required?: boolean;
+-}) {
+-  const c = useColors();
+-  return (
+-    <View style={{ gap: 6 }}>
+-      <Text style={{ color: c.text, fontWeight: "600", fontSize: 13 }}>{label}{required ? <Text style={{ color: c.danger }}> *</Text> : null}</Text>
+-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+-        {options.map(([k, l]) => (
+-          <Pressable key={k} onPress={() => onChange(k)} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 99, borderWidth: 1,
+-            backgroundColor: value === k ? c.primary : c.card, borderColor: value === k ? c.primary : c.border }}>
+-            <Text style={{ color: value === k ? c.onPrimary : c.text, fontSize: 13, fontWeight: "600" }}>{l}</Text>
+-          </Pressable>
+-        ))}
+-      </View>
+-    </View>
+-  );
+-}
+-
+-export function Pill({ text, tone = "muted" }: { text: string; tone?: "ok" | "warn" | "danger" | "muted" | "primary" }) {
+-  const c = useColors();
+-  const col = tone === "ok" ? c.ok : tone === "warn" ? c.warn : tone === "danger" ? c.danger : tone === "primary" ? c.primary : c.muted;
+-  return <View style={{ borderWidth: 1, borderColor: col, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 2, alignSelf: "flex-start" }}><Text style={{ color: col, fontSize: 11, fontWeight: "700" }}>{text}</Text></View>;
+-}
+-
+-export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: Array<[T, string]> }) {
+-  const c = useColors();
+-  return (
+-    <View style={{ flexDirection: "row", backgroundColor: c.soft, borderRadius: R.m, padding: 4, margin: 16, marginBottom: 4 }}>
+-      {options.map(([k, l]) => (
+-        <Pressable key={k} onPress={() => onChange(k)} style={{ flex: 1, paddingVertical: 9, borderRadius: R.m - 4, alignItems: "center", backgroundColor: value === k ? c.card : "transparent" }}>
+-          <Text style={{ color: value === k ? c.primary : c.muted, fontWeight: "700", fontSize: 13 }}>{l}</Text>
+-        </Pressable>
+-      ))}
+-    </View>
+-  );
+-}
+-
+-export function Row({ k, v }: { k: string; v: React.ReactNode }) {
+-  const c = useColors();
+-  return (
+-    <View style={{ flexDirection: "row", gap: 10, paddingVertical: 2 }}>
+-      <Text style={{ color: c.muted, width: 110, fontSize: 13 }}>{k}</Text>
+-      <Text style={{ color: c.text, flex: 1, fontWeight: "600", fontSize: 13 }}>{v}</Text>
+-    </View>
+-  );
+-}
+diff --git a/mobile/app/feedback.tsx b/mobile/app/feedback.tsx
+new file mode 100644
+index 0000000..159162e
+--- /dev/null
++++ b/mobile/app/feedback.tsx
+@@ -0,0 +1,60 @@
++import React, { useState } from "react";
++import { ScrollView, TextInput, View, Pressable } from "react-native";
++import { Platform } from "react-native";
++import Constants from "expo-constants";
++import { Text } from "@/components/Text";
++import { useMutation } from "@tanstack/react-query";
++import { api } from "@/lib/api";
++import { Button, Card, ErrorText } from "@/components/ui";
++import { useColors } from "@/theme";
++
++const KINDS: Array<[string, string]> = [
++  ["bug", "Kuch kaam nahi kar raha"],
++  ["support", "Madad chahiye"],
++  ["idea", "Suggestion"],
++  ["other", "Other"],
++];
++
++export default function Feedback() {
++  const c = useColors();
++  const [kind, setKind] = useState("bug");
++  const [body, setBody] = useState("");
++  const send = useMutation({
++    mutationFn: () =>
++      api("feedback", { kind, body, platform: Platform.OS, appVersion: Constants.expoConfig?.version ?? null, screen: "Rentalos app" }),
++    onSuccess: () => setBody(""),
++  });
++  return (
++    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled">
++      <Card>
++        <Text style={{ color: c.text, fontWeight: "700", fontSize: 16 }}>Help & feedback</Text>
++        <Text style={{ color: c.muted, marginTop: 4 }}>Problem ya idea batayein. Password kabhi na likhein.</Text>
++        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
++          {KINDS.map(([k, label]) => (
++            <Pressable
++              key={k}
++              onPress={() => setKind(k)}
++              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1, borderColor: c.border, backgroundColor: kind === k ? c.primary : "transparent" }}
++            >
++              <Text style={{ color: kind === k ? "#fff" : c.text }}>{label}</Text>
++            </Pressable>
++          ))}
++        </View>
++        <TextInput
++          value={body}
++          onChangeText={setBody}
++          multiline
++          maxLength={2000}
++          placeholder="Yahan likhein…"
++          placeholderTextColor={c.muted}
++          style={{ marginTop: 12, minHeight: 120, borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, color: c.text, textAlignVertical: "top" }}
++        />
++        <ErrorText error={send.error} />
++        {send.isSuccess ? <Text style={{ color: "#16a34a", marginTop: 8 }}>Dhanyavaad! Hume mil gaya.</Text> : null}
++        <View style={{ marginTop: 12 }}>
++          <Button title="Bhejein" busy={send.isPending} disabled={body.trim().length < 3} onPress={() => send.mutate()} />
++        </View>
++      </Card>
++    </ScrollView>
++  );
++}
+diff --git a/src/components/AppShell.tsx b/src/components/AppShell.tsx
+index 7489bbf..a00736e 100644
+--- a/src/components/AppShell.tsx
++++ b/src/components/AppShell.tsx
+@@ -46,6 +46,7 @@ const NAV = [
+   { to: "/rental-terms", label: "Rental terms", icon: ScrollText },
+   { to: "/subscription", label: "Subscription", icon: CreditCard },
+   { to: "/settings", label: "Pricing", icon: Settings },
++  { to: "/feedback", label: "Help & feedback", icon: Inbox },
+ ] as const;
+ 
+ export function AppShell({ children }: { children: React.ReactNode }) {
+diff --git a/src/lib/_tests_/product.test.ts b/src/lib/_tests_/product.test.ts
+new file mode 100644
+index 0000000..51b3d6a
+--- /dev/null
++++ b/src/lib/_tests_/product.test.ts
+@@ -0,0 +1,24 @@
++import { describe, expect, it, vi } from "vitest";
++
++vi.mock("../whatsapp/db", () => ({ getAdmin: vi.fn() }));
++import { parseFeedback, sanitizeProps } from "../product.server";
++
++describe("sanitizeProps", () => {
++  it("keeps short scalars and drops free text / bad keys", () => {
++    expect(sanitizeProps({ kind: "bug", n: 3, ok: true, email: "a b@c.com", "Bad Key": "x" })).toEqual({ kind: "bug", n: 3, ok: true });
++  });
++  it("handles non-objects", () => {
++    expect(sanitizeProps(null)).toEqual({});
++    expect(sanitizeProps("x")).toEqual({});
++  });
++});
++
++describe("parseFeedback", () => {
++  it("rejects empty text", () => {
++    expect(() => parseFeedback({ kind: "bug", body: " " }, "landlord")).toThrow();
++  });
++  it("normalises kind/platform and trims", () => {
++    const f = parseFeedback({ kind: "weird", body: "  app crash  ", platform: "ios" }, "tenant");
++    expect(f).toMatchObject({ kind: "other", body: "app crash", platform: "ios", role: "tenant" });
++  });
++});
+diff --git a/src/lib/mobile-api.server.ts b/src/lib/mobile-api.server.ts
+index 355be77..434408f 100644
+--- a/src/lib/mobile-api.server.ts
++++ b/src/lib/mobile-api.server.ts
+@@ -64,6 +64,23 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
+       return json({ ok: true });
+     }
+ 
++    if (path === "/api/app/feedback" || path === "/api/app/track") {
++      const P = await import("./product.server");
++      const { getAdmin } = await import("./whatsapp/db");
++      const admin = await getAdmin();
++      const role = (await (await import("./mobile-landlord.server")).isLandlord(admin, me)) ? "landlord" : "tenant";
++      const platform = body.platform === "ios" ? "ios" : "android";
++      if (path === "/api/app/track") {
++        await P.trackEvent(me, str(body.event, 60), { role, platform, props: body.props });
++        return json({ ok: true });
++      }
++      try {
++        return json(await P.saveFeedback(me, P.parseFeedback({ ...body, platform }, role)));
++      } catch (e) {
++        return json({ error: e instanceof Error ? e.message : "Couldn't save feedback." }, 400);
++      }
++    }
++
+     if (path === "/api/app/home") {
+       // Same ownership rules as the web tenant portal: linked by user id, mobile or email.
+       const { getAdmin } = await import("./whatsapp/db");
+diff --git a/src/lib/product.functions.ts b/src/lib/product.functions.ts
+new file mode 100644
+index 0000000..00a0c49
+--- /dev/null
++++ b/src/lib/product.functions.ts
+@@ -0,0 +1,101 @@
++import { createServerFn } from "@tanstack/react-start";
++import { z } from "zod";
++import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
++
++// eslint-disable-next-line @typescript-eslint/no-explicit-any
++async function assertAdmin(supabase: any, userId: string) {
++  const { data, error } = await supabase.from("admin_users").select("id").eq("user_id", userId).eq("active", true).maybeSingle();
++  if (error) throw new Error(error.message);
++  if (!data) throw new Error("Forbidden");
++}
++
++// eslint-disable-next-line @typescript-eslint/no-explicit-any
++async function roleOf(_supabase: any, userId: string): Promise<"landlord" | "tenant"> {
++  const { getAdmin } = await import("./whatsapp/db");
++  const { isLandlord } = await import("./mobile-landlord.server");
++  return (await isLandlord(await getAdmin(), userId)) ? "landlord" : "tenant";
++}
++
++export const trackProductEvent = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ event: z.string().max(60), props: z.record(z.string(), z.any()).optional() }).parse(i))
++  .handler(async ({ data, context }) => {
++    const { trackEvent } = await import("./product.server");
++    await trackEvent(context.userId, data.event, { role: await roleOf(context.supabase, context.userId), platform: "web", props: data.props });
++    return { ok: true };
++  });
++
++export const submitFeedback = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) =>
++    z.object({ kind: z.enum(["bug", "idea", "support", "other"]), body: z.string().min(3).max(2000), screen: z.string().max(120).optional() }).parse(i),
++  )
++  .handler(async ({ data, context }) => {
++    const P = await import("./product.server");
++    return P.saveFeedback(context.userId, P.parseFeedback({ ...data, platform: "web" }, await roleOf(context.supabase, context.userId)));
++  });
++
++export const adminListFeedback = createServerFn({ method: "GET" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ status: z.enum(["open", "in_progress", "resolved", "wont_fix", "all"]).default("open") }).parse(i ?? {}))
++  .handler(async ({ data, context }) => {
++    await assertAdmin(context.supabase, context.userId);
++    const { getAdmin } = await import("./whatsapp/db");
++    const admin = await getAdmin();
++    let q = admin
++      .from("feedback_items")
++      .select("id, role, kind, body, screen, platform, app_version, status, admin_notes, created_at")
++      .order("created_at", { ascending: false })
++      .limit(200);
++    if (data.status !== "all") q = q.eq("status", data.status);
++    const { data: rows, error } = await q;
++    if (error) throw new Error("Couldn't load feedback.");
++    return { items: rows ?? [] };
++  });
++
++export const adminUpdateFeedback = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) =>
++    z.object({ id: z.string().uuid(), status: z.enum(["open", "in_progress", "resolved", "wont_fix"]), notes: z.string().max(2000).optional() }).parse(i),
++  )
++  .handler(async ({ data, context }) => {
++    await assertAdmin(context.supabase, context.userId);
++    const { getAdmin } = await import("./whatsapp/db");
++    const admin = await getAdmin();
++    const patch: Record<string, unknown> = { status: data.status, updated_at: new Date().toISOString() };
++    if (data.notes !== undefined) patch.admin_notes = data.notes;
++    const { error } = await admin.from("feedback_items").update(patch).eq("id", data.id);
++    if (error) throw new Error("Couldn't update.");
++    return { ok: true };
++  });
++
++/** Admin: activation funnel + event counts for the last N days (distinct users per step). */
++export const adminFunnel = createServerFn({ method: "GET" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ days: z.number().int().min(1).max(90).default(30) }).parse(i ?? {}))
++  .handler(async ({ data, context }) => {
++    await assertAdmin(context.supabase, context.userId);
++    const { getAdmin } = await import("./whatsapp/db");
++    const admin = await getAdmin();
++    const since = new Date(Date.now() - data.days * 86400_000).toISOString();
++    const { data: rows, error } = await admin
++      .from("product_events")
++      .select("user_id, event, role")
++      .gte("created_at", since)
++      .limit(50000);
++    if (error) throw new Error("Couldn't load analytics.");
++    const users: Record<string, Set<string>> = {};
++    const totals: Record<string, number> = {};
++    for (const r of (rows ?? []) as { user_id: string | null; event: string }[]) {
++      totals[r.event] = (totals[r.event] ?? 0) + 1;
++      if (r.user_id) (users[r.event] ??= new Set()).add(r.user_id);
++    }
++    const steps = ["signup_completed", "onboarding_completed", "property_created", "room_created", "tenant_added", "bill_created", "payment_verified"];
++    return {
++      days: data.days,
++      truncated: (rows?.length ?? 0) >= 50000,
++      funnel: steps.map((e) => ({ event: e, users: users[e]?.size ?? 0 })),
++      totals,
++      activeUsers: new Set((rows ?? []).map((r: { user_id: string | null }) => r.user_id).filter(Boolean)).size,
++    };
++  });
+diff --git a/src/lib/product.server.ts b/src/lib/product.server.ts
+new file mode 100644
+index 0000000..2377da7
+--- /dev/null
++++ b/src/lib/product.server.ts
+@@ -0,0 +1,101 @@
++/** First-party product analytics + feedback helpers (server only). No PII goes into event props. */
++import { getAdmin } from "./whatsapp/db";
++
++export const EVENT_NAMES = [
++  "app_open",
++  "signup_completed",
++  "onboarding_completed",
++  "property_created",
++  "room_created",
++  "tenant_added",
++  "bill_created",
++  "bill_shared",
++  "payment_submitted",
++  "payment_verified",
++  "feedback_opened",
++  "feedback_submitted",
++  "push_registered",
++] as const;
++export type EventName = (typeof EVENT_NAMES)[number];
++
++const ROLES = ["landlord", "tenant", "admin", "unknown"] as const;
++const PLATFORMS = ["web", "android", "ios", "server"] as const;
++export type Role = (typeof ROLES)[number];
++
++/** Keeps only short scalar props with safe keys — never free text, so no accidental PII. */
++export function sanitizeProps(p: unknown): Record<string, string | number | boolean> {
++  const out: Record<string, string | number | boolean> = {};
++  if (!p || typeof p !== "object") return out;
++  for (const [k, v] of Object.entries(p as Record<string, unknown>).slice(0, 8)) {
++    if (!/^[a-z_]{1,30}$/.test(k)) continue;
++    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
++    else if (typeof v === "boolean") out[k] = v;
++    else if (typeof v === "string" && /^[A-Za-z0-9_.\-]{1,40}$/.test(v)) out[k] = v;
++  }
++  return out;
++}
++
++/** Best-effort: analytics must never break a user action. */
++export async function trackEvent(
++  userId: string | null,
++  event: string,
++  opts: { role?: string; platform?: string; props?: unknown } = {},
++): Promise<void> {
++  try {
++    if (!(EVENT_NAMES as readonly string[]).includes(event)) return;
++    const role = (ROLES as readonly string[]).includes(opts.role ?? "") ? (opts.role as Role) : "unknown";
++    const platform = (PLATFORMS as readonly string[]).includes(opts.platform ?? "") ? opts.platform! : "server";
++    const admin = await getAdmin();
++    await admin.from("product_events").insert({ user_id: userId, role, event, platform, props: sanitizeProps(opts.props) });
++  } catch {
++    /* ignore */
++  }
++}
++
++const KINDS = ["bug", "idea", "support", "other"] as const;
++export type FeedbackInput = {
++  kind: (typeof KINDS)[number];
++  body: string;
++  screen: string | null;
++  platform: "web" | "android" | "ios";
++  appVersion: string | null;
++  role: Role;
++};
++
++export function parseFeedback(b: Record<string, unknown>, role: Role): FeedbackInput {
++  const kind = (KINDS as readonly string[]).includes(String(b.kind)) ? (b.kind as FeedbackInput["kind"]) : "other";
++  const body = typeof b.body === "string" ? b.body.trim().slice(0, 2000) : "";
++  if (body.length < 3) throw new Error("Please write at least a few words.");
++  const screen = typeof b.screen === "string" && b.screen.trim() ? b.screen.trim().slice(0, 120) : null;
++  const platform = b.platform === "ios" ? "ios" : b.platform === "android" ? "android" : "web";
++  const appVersion = typeof b.appVersion === "string" && b.appVersion.trim() ? b.appVersion.trim().slice(0, 40) : null;
++  return { kind, body, screen, platform, appVersion, role };
++}
++
++/** Max 5 submissions/hour/user so the inbox can't be flooded. */
++export async function saveFeedback(userId: string, f: FeedbackInput): Promise<{ id: string }> {
++  const admin = await getAdmin();
++  const since = new Date(Date.now() - 3600_000).toISOString();
++  const { count } = await admin
++    .from("feedback_items")
++    .select("id", { count: "exact", head: true })
++    .eq("user_id", userId)
++    .gte("created_at", since);
++  if ((count ?? 0) >= 5) throw new Error("Bahut zyada feedback bheja — thodi der baad try karein.");
++  const { data, error } = await admin
++    .from("feedback_items")
++    .insert({
++      user_id: userId,
++      role: f.role,
++      kind: f.kind,
++      body: f.body,
++      screen: f.screen,
++      platform: f.platform,
++      app_version: f.appVersion,
++    })
++    .select("id")
++    .single();
++  if (error || !data) throw new Error("Couldn't save feedback. Please try again.");
++  await trackEvent(userId, "feedback_submitted", { role: f.role, platform: f.platform, props: { kind: f.kind } });
++  return { id: data.id as string };
++}
+diff --git a/src/routeTree.gen.ts b/src/routeTree.gen.ts
+index 4f5f425..b4a42c4 100644
+--- a/src/routeTree.gen.ts
++++ b/src/routeTree.gen.ts
+@@ -25,6 +25,7 @@ import { Route as TenantRouteImport } from './routes/tenant'
+ import { Route as AuthenticatedBillsRouteImport } from './routes/_authenticated/bills'
+ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+ import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated/deposits'
++import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
+ import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
+ import { Route as AuthenticatedMetersRouteImport } from './routes/_authenticated/meters'
+ import { Route as AuthenticatedMovesRouteImport } from './routes/_authenticated/moves'
+@@ -48,6 +49,7 @@ import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
+ import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
+ import { Route as AdminBookingsRouteImport } from './routes/admin/bookings'
+ import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
++import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
+ import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
+ import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
+ import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
+@@ -174,6 +176,11 @@ const AuthenticatedDepositsRoute = AuthenticatedDepositsRouteImport.update({
+   path: '/deposits',
+   getParentRoute: () => AuthenticatedRoute,
+ } as any)
++const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
++  id: '/feedback',
++  path: '/feedback',
++  getParentRoute: () => AuthenticatedRoute,
++} as any)
+ const AuthenticatedMaintenanceRoute =
+   AuthenticatedMaintenanceRouteImport.update({
+     id: '/maintenance',
+@@ -297,6 +304,11 @@ const AdminDiagnosticsRoute = AdminDiagnosticsRouteImport.update({
+   path: '/diagnostics',
+   getParentRoute: () => AdminRoute,
+ } as any)
++const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
++  id: '/feedback',
++  path: '/feedback',
++  getParentRoute: () => AdminRoute,
++} as any)
+ const AdminFraudRoute = AdminFraudRouteImport.update({
+   id: '/fraud',
+   path: '/fraud',
+@@ -547,6 +559,7 @@ export interface FileRoutesByFullPath {
+   '/bills': typeof AuthenticatedBillsRoute
+   '/bookings': typeof AuthenticatedBookingsRoute
+   '/deposits': typeof AuthenticatedDepositsRoute
++  '/feedback': typeof AuthenticatedFeedbackRoute
+   '/maintenance': typeof AuthenticatedMaintenanceRoute
+   '/meters': typeof AuthenticatedMetersRoute
+   '/moves': typeof AuthenticatedMovesRoute
+@@ -569,6 +582,7 @@ export interface FileRoutesByFullPath {
+   '/admin/audits': typeof AdminAuditsRoute
+   '/admin/bookings': typeof AdminBookingsRoute
+   '/admin/diagnostics': typeof AdminDiagnosticsRoute
++  '/admin/feedback': typeof AdminFeedbackRoute
+   '/admin/fraud': typeof AdminFraudRoute
+   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
+   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+@@ -630,6 +644,7 @@ export interface FileRoutesByTo {
+   '/bills': typeof AuthenticatedBillsRoute
+   '/bookings': typeof AuthenticatedBookingsRoute
+   '/deposits': typeof AuthenticatedDepositsRoute
++  '/feedback': typeof AuthenticatedFeedbackRoute
+   '/maintenance': typeof AuthenticatedMaintenanceRoute
+   '/meters': typeof AuthenticatedMetersRoute
+   '/moves': typeof AuthenticatedMovesRoute
+@@ -652,6 +667,7 @@ export interface FileRoutesByTo {
+   '/admin/audits': typeof AdminAuditsRoute
+   '/admin/bookings': typeof AdminBookingsRoute
+   '/admin/diagnostics': typeof AdminDiagnosticsRoute
++  '/admin/feedback': typeof AdminFeedbackRoute
+   '/admin/fraud': typeof AdminFraudRoute
+   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
+   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+@@ -716,6 +732,7 @@ export interface FileRoutesById {
+   '/_authenticated/bills': typeof AuthenticatedBillsRoute
+   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+   '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
++  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
+   '/_authenticated/maintenance': typeof AuthenticatedMaintenanceRoute
+   '/_authenticated/meters': typeof AuthenticatedMetersRoute
+   '/_authenticated/moves': typeof AuthenticatedMovesRoute
+@@ -738,6 +755,7 @@ export interface FileRoutesById {
+   '/admin/audits': typeof AdminAuditsRoute
+   '/admin/bookings': typeof AdminBookingsRoute
+   '/admin/diagnostics': typeof AdminDiagnosticsRoute
++  '/admin/feedback': typeof AdminFeedbackRoute
+   '/admin/fraud': typeof AdminFraudRoute
+   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
+   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
+@@ -804,6 +822,7 @@ export interface FileRouteTypes {
+     | '/bills'
+     | '/bookings'
+     | '/deposits'
++    | '/feedback'
+     | '/maintenance'
+     | '/meters'
+     | '/moves'
+@@ -826,6 +845,7 @@ export interface FileRouteTypes {
+     | '/admin/audits'
+     | '/admin/bookings'
+     | '/admin/diagnostics'
++    | '/admin/feedback'
+     | '/admin/fraud'
+     | '/admin/live-feed-review'
+     | '/admin/myr-verifications'
+@@ -887,6 +907,7 @@ export interface FileRouteTypes {
+     | '/bills'
+     | '/bookings'
+     | '/deposits'
++    | '/feedback'
+     | '/maintenance'
+     | '/meters'
+     | '/moves'
+@@ -909,6 +930,7 @@ export interface FileRouteTypes {
+     | '/admin/audits'
+     | '/admin/bookings'
+     | '/admin/diagnostics'
++    | '/admin/feedback'
+     | '/admin/fraud'
+     | '/admin/live-feed-review'
+     | '/admin/myr-verifications'
+@@ -972,6 +994,7 @@ export interface FileRouteTypes {
+     | '/_authenticated/bills'
+     | '/_authenticated/bookings'
+     | '/_authenticated/deposits'
++    | '/_authenticated/feedback'
+     | '/_authenticated/maintenance'
+     | '/_authenticated/meters'
+     | '/_authenticated/moves'
+@@ -994,6 +1017,7 @@ export interface FileRouteTypes {
+     | '/admin/audits'
+     | '/admin/bookings'
+     | '/admin/diagnostics'
++    | '/admin/feedback'
+     | '/admin/fraud'
+     | '/admin/live-feed-review'
+     | '/admin/myr-verifications'
+@@ -1175,6 +1199,13 @@ declare module '@tanstack/react-router' {
+       preLoaderRoute: typeof AuthenticatedDepositsRouteImport
+       parentRoute: typeof AuthenticatedRoute
+     }
++    '/_authenticated/feedback': {
++      id: '/_authenticated/feedback'
++      path: '/feedback'
++      fullPath: '/feedback'
++      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
++      parentRoute: typeof AuthenticatedRoute
++    }
+     '/_authenticated/maintenance': {
+       id: '/_authenticated/maintenance'
+       path: '/maintenance'
+@@ -1336,6 +1367,13 @@ declare module '@tanstack/react-router' {
+       preLoaderRoute: typeof AdminDiagnosticsRouteImport
+       parentRoute: typeof AdminRoute
+     }
++    '/admin/feedback': {
++      id: '/admin/feedback'
++      path: '/feedback'
++      fullPath: '/admin/feedback'
++      preLoaderRoute: typeof AdminFeedbackRouteImport
++      parentRoute: typeof AdminRoute
++    }
+     '/admin/fraud': {
+       id: '/admin/fraud'
+       path: '/fraud'
+@@ -1665,6 +1703,7 @@ interface AuthenticatedRouteChildren {
+   AuthenticatedBillsRoute: typeof AuthenticatedBillsRoute
+   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
+   AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
++  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
+   AuthenticatedMaintenanceRoute: typeof AuthenticatedMaintenanceRoute
+   AuthenticatedMetersRoute: typeof AuthenticatedMetersRoute
+   AuthenticatedMovesRoute: typeof AuthenticatedMovesRoute
+@@ -1689,6 +1728,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+   AuthenticatedBillsRoute: AuthenticatedBillsRoute,
+   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
+   AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
++  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
+   AuthenticatedMaintenanceRoute: AuthenticatedMaintenanceRoute,
+   AuthenticatedMetersRoute: AuthenticatedMetersRoute,
+   AuthenticatedMovesRoute: AuthenticatedMovesRoute,
+@@ -1719,6 +1759,7 @@ interface AdminRouteChildren {
+   AdminAuditsRoute: typeof AdminAuditsRoute
+   AdminBookingsRoute: typeof AdminBookingsRoute
+   AdminDiagnosticsRoute: typeof AdminDiagnosticsRoute
++  AdminFeedbackRoute: typeof AdminFeedbackRoute
+   AdminFraudRoute: typeof AdminFraudRoute
+   AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
+   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
+@@ -1739,6 +1780,7 @@ const AdminRouteChildren: AdminRouteChildren = {
+   AdminAuditsRoute: AdminAuditsRoute,
+   AdminBookingsRoute: AdminBookingsRoute,
+   AdminDiagnosticsRoute: AdminDiagnosticsRoute,
++  AdminFeedbackRoute: AdminFeedbackRoute,
+   AdminFraudRoute: AdminFraudRoute,
+   AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
+   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,
+diff --git a/src/routes/_authenticated.tsx b/src/routes/_authenticated.tsx
+index addfa2c..ff28530 100644
+--- a/src/routes/_authenticated.tsx
++++ b/src/routes/_authenticated.tsx
+@@ -8,6 +8,7 @@ import { useEntitlements } from "@/lib/subscription/use-entitlements";
+ import { featureForPath } from "@/lib/subscription/keys";
+ import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
+ import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
++import { trackProductEvent } from "@/lib/product.functions";
+ 
+ export const Route = createFileRoute("/_authenticated")({
+   component: AuthLayout,
+@@ -67,6 +68,15 @@ function AuthLayout() {
+         nav({ to: "/onboarding" });
+       }
+       setState("ready");
++      // Product analytics: one app_open per browser session; never blocks the UI.
++      try {
++        if (!sessionStorage.getItem("rentalos_open_tracked")) {
++          sessionStorage.setItem("rentalos_open_tracked", "1");
++          void trackProductEvent({ data: { event: "app_open" } }).catch(() => {});
++        }
++      } catch {
++        /* storage unavailable */
++      }
+     };
+ 
+     check();
+diff --git a/src/routes/_authenticated/feedback.tsx b/src/routes/_authenticated/feedback.tsx
+new file mode 100644
+index 0000000..a281dd6
+--- /dev/null
++++ b/src/routes/_authenticated/feedback.tsx
+@@ -0,0 +1,55 @@
++import { createFileRoute } from "@tanstack/react-router";
++import { useServerFn } from "@tanstack/react-start";
++import { useMutation } from "@tanstack/react-query";
++import { useState } from "react";
++import { submitFeedback } from "@/lib/product.functions";
++
++export const Route = createFileRoute("/_authenticated/feedback")({ component: FeedbackPage });
++
++const KINDS = [
++  ["bug", "Something is broken"],
++  ["support", "I need help"],
++  ["idea", "Suggestion / idea"],
++  ["other", "Other"],
++] as const;
++
++function FeedbackPage() {
++  const send = useServerFn(submitFeedback);
++  const [kind, setKind] = useState<(typeof KINDS)[number][0]>("bug");
++  const [body, setBody] = useState("");
++  const m = useMutation({
++    mutationFn: () => send({ data: { kind, body, screen: document.referrer ? new URL(document.referrer).pathname : undefined } }),
++    onSuccess: () => setBody(""),
++  });
++  return (
++    <div className="max-w-xl space-y-4">
++      <div>
++        <h1 className="text-xl font-semibold">Help & feedback</h1>
++        <p className="text-sm text-muted-foreground">Tell us what went wrong or what you need. Our team reads every message. Please don't include passwords.</p>
++      </div>
++      <div className="flex flex-wrap gap-2">
++        {KINDS.map(([k, label]) => (
++          <button key={k} onClick={() => setKind(k)} className={`rounded-full border px-3 py-1 text-sm ${kind === k ? "bg-primary text-primary-foreground" : ""}`}>
++            {label}
++          </button>
++        ))}
++      </div>
++      <textarea
++        className="w-full min-h-32 rounded-xl border bg-background p-3 text-sm"
++        maxLength={2000}
++        placeholder="Describe the problem or idea…"
++        value={body}
++        onChange={(e) => setBody(e.target.value)}
++      />
++      <button
++        disabled={body.trim().length < 3 || m.isPending}
++        onClick={() => m.mutate()}
++        className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
++      >
++        {m.isPending ? "Sending…" : "Send"}
++      </button>
++      {m.isSuccess && <p className="text-sm text-emerald-600">Thanks! We received your message.</p>}
++      {m.error && <p className="text-sm text-destructive">{(m.error as Error).message}</p>}
++    </div>
++  );
++}
+diff --git a/src/routes/admin.tsx b/src/routes/admin.tsx
+index 30417e9..531b9f4 100644
+--- a/src/routes/admin.tsx
++++ b/src/routes/admin.tsx
+@@ -106,6 +106,7 @@ function AdminLayout() {
+     { to: "/admin/live-feed-review", label: "Live Feed", icon: Video },
+     { to: "/admin/partners", label: "Partners", icon: Building2 },
+     { to: "/admin/activity", label: "Activity", icon: Activity },
++    { to: "/admin/feedback", label: "Feedback & analytics", icon: ClipboardList },
+     { to: "/admin/diagnostics", label: "Diagnostics", icon: Activity },
+     { to: "/admin/audits", label: "Audit logs", icon: ClipboardList },
+     { to: "/admin/security", label: "Security", icon: Lock },
+diff --git a/src/routes/admin/feedback.tsx b/src/routes/admin/feedback.tsx
+new file mode 100644
+index 0000000..077de73
+--- /dev/null
++++ b/src/routes/admin/feedback.tsx
+@@ -0,0 +1,109 @@
++import { createFileRoute } from "@tanstack/react-router";
++import { useServerFn } from "@tanstack/react-start";
++import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
++import { useState } from "react";
++import { adminFunnel, adminListFeedback, adminUpdateFeedback } from "@/lib/product.functions";
++
++export const Route = createFileRoute("/admin/feedback")({ component: AdminFeedback });
++
++const STATUSES = ["open", "in_progress", "resolved", "wont_fix"] as const;
++
++function AdminFeedback() {
++  const qc = useQueryClient();
++  const [status, setStatus] = useState<"open" | "in_progress" | "resolved" | "wont_fix" | "all">("open");
++  const list = useServerFn(adminListFeedback);
++  const upd = useServerFn(adminUpdateFeedback);
++  const funnelFn = useServerFn(adminFunnel);
++  const q = useQuery({ queryKey: ["admin-feedback", status], queryFn: () => list({ data: { status } }), retry: false });
++  const f = useQuery({ queryKey: ["admin-funnel"], queryFn: () => funnelFn({ data: { days: 30 } }), retry: false });
++  const m = useMutation({
++    mutationFn: (v: { id: string; status: (typeof STATUSES)[number]; notes?: string }) => upd({ data: v }),
++    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-feedback"] }),
++  });
++
++  return (
++    <div className="space-y-6">
++      <div>
++        <h1 className="text-xl font-semibold">Feedback & product analytics</h1>
++        <p className="text-sm text-muted-foreground">User-submitted bugs/ideas and an activation funnel (last 30 days, first-party events only).</p>
++      </div>
++
++      <section className="rounded-2xl border border-border bg-card p-4 space-y-2">
++        <h2 className="text-sm font-semibold">Activation funnel (distinct users)</h2>
++        {f.isLoading ? (
++          <p className="text-xs text-muted-foreground">Loading…</p>
++        ) : f.error ? (
++          <p className="text-xs text-destructive">Couldn't load analytics (migration applied?).</p>
++        ) : (
++          <>
++            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
++              {f.data!.funnel.map((s) => (
++                <div key={s.event} className="rounded-xl border p-3">
++                  <div className="text-[11px] text-muted-foreground">{s.event.replace(/_/g, " ")}</div>
++                  <div className="text-xl font-semibold">{s.users}</div>
++                </div>
++              ))}
++            </div>
++            <p className="text-xs text-muted-foreground">
++              Active users with any event: {f.data!.activeUsers}
++              {f.data!.truncated ? " (sample truncated at 50k events)" : ""}. Events only count from when tracking was deployed.
++            </p>
++          </>
++        )}
++      </section>
++
++      <div className="flex flex-wrap gap-2">
++        {(["open", "in_progress", "resolved", "wont_fix", "all"] as const).map((s) => (
++          <button
++            key={s}
++            onClick={() => setStatus(s)}
++            className={`rounded-full border px-3 py-1 text-xs ${status === s ? "bg-primary text-primary-foreground" : ""}`}
++          >
++            {s.replace("_", " ")}
++          </button>
++        ))}
++      </div>
++
++      {q.isLoading ? (
++        <p className="text-sm text-muted-foreground">Loading…</p>
++      ) : q.error ? (
++        <p className="text-sm text-destructive">Couldn't load feedback.</p>
++      ) : q.data!.items.length === 0 ? (
++        <p className="text-sm text-muted-foreground">Nothing here.</p>
++      ) : (
++        <ul className="space-y-3">
++          {q.data!.items.map((it) => (
++            <li key={it.id} className="rounded-2xl border border-border bg-card p-4 space-y-2">
++              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
++                <b className="text-foreground uppercase">{it.kind}</b>
++                <span>{it.role}</span>
++                <span>{it.platform}{it.app_version ? ` ${it.app_version}` : ""}</span>
++                {it.screen && <span>@ {it.screen}</span>}
++                <span>{new Date(it.created_at).toLocaleString()}</span>
++              </div>
++              <p className="text-sm whitespace-pre-wrap">{it.body}</p>
++              <div className="flex items-center gap-2">
++                <select
++                  className="rounded-md border bg-background px-2 py-1 text-xs"
++                  value={it.status}
++                  onChange={(e) => m.mutate({ id: it.id, status: e.target.value as (typeof STATUSES)[number] })}
++                >
++                  {STATUSES.map((s) => (
++                    <option key={s} value={s}>{s.replace("_", " ")}</option>
++                  ))}
++                </select>
++                <input
++                  className="flex-1 rounded-md border bg-background px-2 py-1 text-xs"
++                  placeholder="Admin note (saved on blur)"
++                  defaultValue={it.admin_notes ?? ""}
++                  maxLength={2000}
++                  onBlur={(e) => e.target.value !== (it.admin_notes ?? "") && m.mutate({ id: it.id, status: it.status as (typeof STATUSES)[number], notes: e.target.value })}
++                />
++              </div>
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/src/server.ts b/src/server.ts
+index 8777ff2..47c052f 100644
+--- a/src/server.ts
++++ b/src/server.ts
+@@ -140,11 +140,28 @@ async function handleSitemap(): Promise<Response> {
+   }
+ }
+ 
++/** Public liveness check: no secrets, no config detail. 200 = app + database reachable. */
++async function handleHealth(): Promise<Response> {
++  let db = false;
++  try {
++    const { supabaseAdmin } = await import("./integrations/supabase/client.server");
++    const { error } = await supabaseAdmin.from("admin_users").select("id", { head: true, count: "exact" }).limit(1);
++    db = !error;
++  } catch {
++    db = false;
++  }
++  return new Response(JSON.stringify({ ok: db, db, at: new Date().toISOString() }), {
++    status: db ? 200 : 503,
++    headers: { "content-type": "application/json", "cache-control": "no-store" },
++  });
++}
++
+ export default {
+   async fetch(request: Request, env: unknown, ctx: unknown) {
+     try {
+       const path = new URL(request.url).pathname;
+       if (path === "/sitemap.xml" && request.method === "GET") return await handleSitemap();
++      if (path === "/api/health" && request.method === "GET") return await handleHealth();
+       if (path.startsWith("/api/app/")) {
+         const { handleMobileApi } = await import("./lib/mobile-api.server");
+         return await handleMobileApi(request, path);
+diff --git a/supabase/migrations/20261101000000_product_events_feedback.sql b/supabase/migrations/20261101000000_product_events_feedback.sql
+new file mode 100644
+index 0000000..7ce88a1
+--- /dev/null
++++ b/supabase/migrations/20261101000000_product_events_feedback.sql
+@@ -0,0 +1,55 @@
++-- First-party product analytics + in-product feedback (audit items: analytics, feedback, support).
++-- No third-party tracking; props must never carry PII (enforced in the server layer by an allow-list).
++
++create table if not exists public.product_events (
++  id bigint generated always as identity primary key,
++  user_id uuid references auth.users(id) on delete set null,
++  role text not null default 'unknown' check (role in ('landlord','tenant','admin','unknown')),
++  event text not null check (char_length(event) between 1 and 60),
++  platform text not null default 'web' check (platform in ('web','android','ios','server')),
++  props jsonb not null default '{}'::jsonb,
++  created_at timestamptz not null default now()
++);
++create index if not exists idx_product_events_event_time on public.product_events (event, created_at desc);
++create index if not exists idx_product_events_user_time on public.product_events (user_id, created_at desc);
++alter table public.product_events enable row level security;
++
++-- Users may only insert their own events; only active admins can read. (Server also writes with the service role.)
++drop policy if exists "product_events insert own" on public.product_events;
++create policy "product_events insert own" on public.product_events
++  for insert to authenticated with check (user_id = auth.uid());
++drop policy if exists "product_events admin read" on public.product_events;
++create policy "product_events admin read" on public.product_events
++  for select to authenticated using (
++    exists (select 1 from public.admin_users a where a.user_id = auth.uid() and a.active)
++  );
++
++create table if not exists public.feedback_items (
++  id uuid primary key default gen_random_uuid(),
++  user_id uuid references auth.users(id) on delete set null,
++  role text not null default 'unknown' check (role in ('landlord','tenant','admin','unknown')),
++  kind text not null check (kind in ('bug','idea','support','other')),
++  body text not null check (char_length(body) between 3 and 2000),
++  screen text check (screen is null or char_length(screen) <= 120),
++  platform text not null default 'web' check (platform in ('web','android','ios')),
++  app_version text check (app_version is null or char_length(app_version) <= 40),
++  status text not null default 'open' check (status in ('open','in_progress','resolved','wont_fix')),
++  admin_notes text check (admin_notes is null or char_length(admin_notes) <= 2000),
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now()
++);
++create index if not exists idx_feedback_status_time on public.feedback_items (status, created_at desc);
++create index if not exists idx_feedback_user on public.feedback_items (user_id, created_at desc);
++alter table public.feedback_items enable row level security;
++
++drop policy if exists "feedback insert own" on public.feedback_items;
++create policy "feedback insert own" on public.feedback_items
++  for insert to authenticated with check (user_id = auth.uid() and status = 'open' and admin_notes is null);
++drop policy if exists "feedback read own" on public.feedback_items;
++create policy "feedback read own" on public.feedback_items
++  for select to authenticated using (user_id = auth.uid());
++drop policy if exists "feedback admin all" on public.feedback_items;
++create policy "feedback admin all" on public.feedback_items
++  for all to authenticated
++  using (exists (select 1 from public.admin_users a where a.user_id = auth.uid() and a.active))
++  with check (exists (select 1 from public.admin_users a where a.user_id = auth.uid() and a.active));

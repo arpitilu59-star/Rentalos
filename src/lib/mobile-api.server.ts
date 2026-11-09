@@ -64,6 +64,23 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       return json({ ok: true });
     }
 
+    if (path === "/api/app/feedback" || path === "/api/app/track") {
+      const P = await import("./product.server");
+      const { getAdmin } = await import("./whatsapp/db");
+      const admin = await getAdmin();
+      const role = (await (await import("./mobile-landlord.server")).isLandlord(admin, me)) ? "landlord" : "tenant";
+      const platform = body.platform === "ios" ? "ios" : "android";
+      if (path === "/api/app/track") {
+        await P.trackEvent(me, str(body.event, 60), { role, platform, props: body.props });
+        return json({ ok: true });
+      }
+      try {
+        return json(await P.saveFeedback(me, P.parseFeedback({ ...body, platform }, role)));
+      } catch (e) {
+        return json({ error: e instanceof Error ? e.message : "Couldn't save feedback." }, 400);
+      }
+    }
+
     if (path === "/api/app/home") {
       // Same ownership rules as the web tenant portal: linked by user id, mobile or email.
       const { getAdmin } = await import("./whatsapp/db");

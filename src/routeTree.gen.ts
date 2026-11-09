@@ -25,6 +25,7 @@ import { Route as TenantRouteImport } from './routes/tenant'
 import { Route as AuthenticatedBillsRouteImport } from './routes/_authenticated/bills'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated/deposits'
+import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
 import { Route as AuthenticatedMetersRouteImport } from './routes/_authenticated/meters'
 import { Route as AuthenticatedMovesRouteImport } from './routes/_authenticated/moves'
@@ -48,6 +49,7 @@ import { Route as AdminAdminsRouteImport } from './routes/admin/admins'
 import { Route as AdminAuditsRouteImport } from './routes/admin/audits'
 import { Route as AdminBookingsRouteImport } from './routes/admin/bookings'
 import { Route as AdminDiagnosticsRouteImport } from './routes/admin/diagnostics'
+import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminFraudRouteImport } from './routes/admin/fraud'
 import { Route as AdminLiveFeedReviewRouteImport } from './routes/admin/live-feed-review'
 import { Route as AdminMyrVerificationsRouteImport } from './routes/admin/myr-verifications'
@@ -174,6 +176,11 @@ const AuthenticatedDepositsRoute = AuthenticatedDepositsRouteImport.update({
   path: '/deposits',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedMaintenanceRoute =
   AuthenticatedMaintenanceRouteImport.update({
     id: '/maintenance',
@@ -295,6 +302,11 @@ const AdminBookingsRoute = AdminBookingsRouteImport.update({
 const AdminDiagnosticsRoute = AdminDiagnosticsRouteImport.update({
   id: '/diagnostics',
   path: '/diagnostics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminFraudRoute = AdminFraudRouteImport.update({
@@ -547,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/bills': typeof AuthenticatedBillsRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/deposits': typeof AuthenticatedDepositsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/maintenance': typeof AuthenticatedMaintenanceRoute
   '/meters': typeof AuthenticatedMetersRoute
   '/moves': typeof AuthenticatedMovesRoute
@@ -569,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
@@ -630,6 +644,7 @@ export interface FileRoutesByTo {
   '/bills': typeof AuthenticatedBillsRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/deposits': typeof AuthenticatedDepositsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/maintenance': typeof AuthenticatedMaintenanceRoute
   '/meters': typeof AuthenticatedMetersRoute
   '/moves': typeof AuthenticatedMovesRoute
@@ -652,6 +667,7 @@ export interface FileRoutesByTo {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
@@ -716,6 +732,7 @@ export interface FileRoutesById {
   '/_authenticated/bills': typeof AuthenticatedBillsRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
+  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/maintenance': typeof AuthenticatedMaintenanceRoute
   '/_authenticated/meters': typeof AuthenticatedMetersRoute
   '/_authenticated/moves': typeof AuthenticatedMovesRoute
@@ -738,6 +755,7 @@ export interface FileRoutesById {
   '/admin/audits': typeof AdminAuditsRoute
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/diagnostics': typeof AdminDiagnosticsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/fraud': typeof AdminFraudRoute
   '/admin/live-feed-review': typeof AdminLiveFeedReviewRoute
   '/admin/myr-verifications': typeof AdminMyrVerificationsRoute
@@ -804,6 +822,7 @@ export interface FileRouteTypes {
     | '/bills'
     | '/bookings'
     | '/deposits'
+    | '/feedback'
     | '/maintenance'
     | '/meters'
     | '/moves'
@@ -826,6 +845,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/bookings'
     | '/admin/diagnostics'
+    | '/admin/feedback'
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
@@ -887,6 +907,7 @@ export interface FileRouteTypes {
     | '/bills'
     | '/bookings'
     | '/deposits'
+    | '/feedback'
     | '/maintenance'
     | '/meters'
     | '/moves'
@@ -909,6 +930,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/bookings'
     | '/admin/diagnostics'
+    | '/admin/feedback'
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
@@ -972,6 +994,7 @@ export interface FileRouteTypes {
     | '/_authenticated/bills'
     | '/_authenticated/bookings'
     | '/_authenticated/deposits'
+    | '/_authenticated/feedback'
     | '/_authenticated/maintenance'
     | '/_authenticated/meters'
     | '/_authenticated/moves'
@@ -994,6 +1017,7 @@ export interface FileRouteTypes {
     | '/admin/audits'
     | '/admin/bookings'
     | '/admin/diagnostics'
+    | '/admin/feedback'
     | '/admin/fraud'
     | '/admin/live-feed-review'
     | '/admin/myr-verifications'
@@ -1175,6 +1199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDepositsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/feedback': {
+      id: '/_authenticated/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/maintenance': {
       id: '/_authenticated/maintenance'
       path: '/maintenance'
@@ -1334,6 +1365,13 @@ declare module '@tanstack/react-router' {
       path: '/diagnostics'
       fullPath: '/admin/diagnostics'
       preLoaderRoute: typeof AdminDiagnosticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/fraud': {
@@ -1665,6 +1703,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedBillsRoute: typeof AuthenticatedBillsRoute
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
+  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedMaintenanceRoute: typeof AuthenticatedMaintenanceRoute
   AuthenticatedMetersRoute: typeof AuthenticatedMetersRoute
   AuthenticatedMovesRoute: typeof AuthenticatedMovesRoute
@@ -1689,6 +1728,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBillsRoute: AuthenticatedBillsRoute,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
+  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedMaintenanceRoute: AuthenticatedMaintenanceRoute,
   AuthenticatedMetersRoute: AuthenticatedMetersRoute,
   AuthenticatedMovesRoute: AuthenticatedMovesRoute,
@@ -1719,6 +1759,7 @@ interface AdminRouteChildren {
   AdminAuditsRoute: typeof AdminAuditsRoute
   AdminBookingsRoute: typeof AdminBookingsRoute
   AdminDiagnosticsRoute: typeof AdminDiagnosticsRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminFraudRoute: typeof AdminFraudRoute
   AdminLiveFeedReviewRoute: typeof AdminLiveFeedReviewRoute
   AdminMyrVerificationsRoute: typeof AdminMyrVerificationsRoute
@@ -1739,6 +1780,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditsRoute: AdminAuditsRoute,
   AdminBookingsRoute: AdminBookingsRoute,
   AdminDiagnosticsRoute: AdminDiagnosticsRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminFraudRoute: AdminFraudRoute,
   AdminLiveFeedReviewRoute: AdminLiveFeedReviewRoute,
   AdminMyrVerificationsRoute: AdminMyrVerificationsRoute,

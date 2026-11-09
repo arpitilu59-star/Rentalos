@@ -140,11 +140,28 @@ async function handleSitemap(): Promise<Response> {
   }
 }
 
+/** Public liveness check: no secrets, no config detail. 200 = app + database reachable. */
+async function handleHealth(): Promise<Response> {
+  let db = false;
+  try {
+    const { supabaseAdmin } = await import("./integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("admin_users").select("id", { head: true, count: "exact" }).limit(1);
+    db = !error;
+  } catch {
+    db = false;
+  }
+  return new Response(JSON.stringify({ ok: db, db, at: new Date().toISOString() }), {
+    status: db ? 200 : 503,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const path = new URL(request.url).pathname;
       if (path === "/sitemap.xml" && request.method === "GET") return await handleSitemap();
+      if (path === "/api/health" && request.method === "GET") return await handleHealth();
       if (path.startsWith("/api/app/")) {
         const { handleMobileApi } = await import("./lib/mobile-api.server");
         return await handleMobileApi(request, path);

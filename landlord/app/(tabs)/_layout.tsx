@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { setAuthNotice } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { registerForPush } from "@/lib/push";
+import { track } from "@/lib/track";
 import { useColors } from "@/theme";
 
 type Home = { pending: { bookings: number; payments: number; meters: number; tickets: number } };
@@ -29,6 +31,13 @@ export default function TabsLayout() {
       void supabase.auth.signOut();
     }
   }, [me.data]);
+  // Landlords only: register for push (no-op in Expo Go/emulator/when denied) and log one app_open.
+  useEffect(() => {
+    if (me.data?.landlord === true) {
+      void registerForPush();
+      track("app_open");
+    }
+  }, [me.data?.landlord]);
   const router = useRouter();
   const unread = useQuery({
     queryKey: ["unread-count"],

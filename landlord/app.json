@@ -44,7 +44,8 @@
         {
           "locationWhenInUsePermission": "Photo property par hi li gayi hai ye verify karne ke liye location chahiye."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": false
