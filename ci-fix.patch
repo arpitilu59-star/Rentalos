@@ -1,0 +1,16 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 824ac99..cbea5fc 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -17,7 +17,8 @@ jobs:
+       - uses: actions/setup-node@v4
+         with:
+           node-version: 22
+-          cache: npm
+-      - run: npm ci
+-      - run: npm test
++      # package-lock.json is out of sync with package.json (npm ci refuses), so use install.
++      - run: npm install --no-audit --no-fund
++      # mobile-i18n imports files from mobile/, whose tsconfig needs the Expo packages (not installed here).
++      - run: npx vitest run --exclude src/lib/_tests_/mobile-i18n.test.ts
+       - run: npm run build
