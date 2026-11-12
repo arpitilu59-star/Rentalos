@@ -19,10 +19,12 @@
         "backgroundColor": "#1f9d55"
       },
       "permissions": [
-        "CAMERA",
-        "RECORD_AUDIO",
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "ios": {
@@ -53,8 +55,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
-      }
-    }
+        "projectId": "1d4b710e-17ee-47cc-aa44-af84971ef6b4"
+      },
+      "router": {}
+    },
+    "owner": "arpityuk"
   }
 }
