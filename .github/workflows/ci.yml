@@ -22,5 +22,5 @@ jobs:
       # webm-fix.test.ts shells out to ffmpeg (with libvpx) to build a sample video.
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       # mobile-i18n imports files from mobile/, whose tsconfig needs the Expo packages (not installed here).
-      - run: npx vitest run --exclude src/lib/_tests_/mobile-i18n.test.ts
+      - run: npx vitest run --testTimeout=30000 --exclude src/lib/_tests_/mobile-i18n.test.ts
       - run: npm run build

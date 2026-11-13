@@ -30,3 +30,11 @@ export const takeAuthNotice = () => {
   notice = null;
   return m;
 };
+
+// True while sign-up is still creating the landlord role on the server. The tabs screen mounts the instant
+// a session exists and asks "am I a landlord?" — without this guard it asks too early and signs the new user out.
+let claiming = false;
+export const setClaiming = (v: boolean) => {
+  claiming = v;
+};
+export const isClaiming = () => claiming;

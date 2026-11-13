@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View, Pressable } from "react-native";
 import { Text, TextInput } from "@/components/Text";
 import { supabase } from "@/lib/supabase";
-import { setAuthNotice, takeAuthNotice } from "@/lib/auth";
+import { setAuthNotice, takeAuthNotice, setClaiming } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useColors, R } from "@/theme";
 import { Button, ErrorText } from "@/components/ui";
@@ -10,6 +11,7 @@ import { Button, ErrorText } from "@/components/ui";
 /** Landlord-only entry: sign-up creates a landlord account; sign-in refuses tenant accounts. */
 export default function Login() {
   const c = useColors();
+  const qc = useQueryClient();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,18 +41,30 @@ export default function Login() {
         throw new Error("Email aur kam se kam 6 akshar ka password likhein.");
       if (mode === "up") {
         if (name.trim().length < 2) throw new Error("Apna naam likhein.");
+        setClaiming(true);
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: pw,
           options: { data: { full_name: name.trim(), intended_role: "landlord" } },
         });
-        if (error) throw new Error(error.message);
+        if (error) {
+          setClaiming(false);
+          throw new Error(error.message);
+        }
         if (!data.session) {
+          setClaiming(false);
           setInfo("Account ban gaya. Email confirm karke sign in karein.");
           setMode("in");
           return;
         }
-        await api("l/claim");
+        try {
+          await api("l/claim");
+        } finally {
+          setClaiming(false);
+        }
+        // The tabs screen may already have asked "landlord?" — ask again now that the role exists.
+        await qc.invalidateQueries({ queryKey: ["me"] });
+        await qc.invalidateQueries({ queryKey: ["home"] });
         return;
       }
       const { error } = await supabase.auth.signInWithPassword({
@@ -72,6 +86,7 @@ export default function Login() {
         );
       }
     } catch (e) {
+      setClaiming(false);
       setErr(e);
     } finally {
       setBusy(false);

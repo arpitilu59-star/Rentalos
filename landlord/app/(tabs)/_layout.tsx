@@ -5,7 +5,7 @@ import { Text } from "@/components/Text";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { setAuthNotice } from "@/lib/auth";
+import { setAuthNotice, isClaiming } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { registerForPush } from "@/lib/push";
 import { track } from "@/lib/track";
@@ -24,7 +24,7 @@ export default function TabsLayout() {
   });
   // A tenant account must never sit inside the landlord app.
   useEffect(() => {
-    if (me.data && !me.data.landlord) {
+    if (me.data && !me.data.landlord && !isClaiming()) {
       setAuthNotice(
         "Ye account landlord account nahi hai (is account par koi property ya landlord role nahi). Landlord banne ke liye 'Naya account' se signup karein, ya landlord wale email se login karein.",
       );
