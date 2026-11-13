@@ -33,7 +33,7 @@ async function post(payload: Record<string, unknown>, label: string): Promise<Se
     );
     return { ok: true, id: `mock_${crypto.randomUUID()}`, mocked: true };
   }
-  const version = process.env.META_GRAPH_API_VERSION || "v21.0";
+  const version = process.env.META_GRAPH_API_VERSION || "v25.0";
   const url = `https://graph.facebook.com/${version}/${process.env.META_WHATSAPP_PHONE_NUMBER_ID}/messages`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
@@ -94,7 +94,7 @@ export async function sendTemplateMessage(
   toE164: string,
   template: string,
   params: string[] = [],
-  language = "en",
+  language = process.env.META_TEMPLATE_LANGUAGE || "en_US",
 ): Promise<SendResult> {
   const to = toMetaPhone(toE164);
   if (!to) return { ok: false, error: "Invalid phone number", retryable: false };
@@ -116,6 +116,38 @@ export async function sendTemplateMessage(
       },
     },
     `template:${template}`,
+  );
+}
+
+/** Authentication templates work before a customer opens a 24h service window. */
+export async function sendVerificationCode(toE164: string, code: string): Promise<SendResult> {
+  const to = toMetaPhone(toE164);
+  if (!to || !/^\d{6}$/.test(code)) {
+    return { ok: false, error: "Invalid verification request", retryable: false };
+  }
+  const template = process.env.META_WHATSAPP_AUTH_TEMPLATE;
+  if (!isMetaConfigured() || !template) {
+    return { ok: false, error: "WhatsApp verification is not configured", retryable: false };
+  }
+  return post(
+    {
+      to,
+      type: "template",
+      template: {
+        name: template,
+        language: { code: process.env.META_TEMPLATE_LANGUAGE || "en_US" },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: code }] },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: code }],
+          },
+        ],
+      },
+    },
+    "verification",
   );
 }
 

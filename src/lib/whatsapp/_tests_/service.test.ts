@@ -1,8 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
-import { sendWithRetry } from "../service";
+import { sendWithRetry, sendWhatsAppNotification } from "../service";
 import { eventForNotificationKind, templateFor } from "../templates";
 
 describe("sendWithRetry", () => {
+  it("does not consume a real notification slot while credentials are missing", async () => {
+    vi.stubEnv("META_WHATSAPP_ACCESS_TOKEN", "");
+    vi.stubEnv("META_WHATSAPP_PHONE_NUMBER_ID", "");
+    try {
+      expect(await sendWhatsAppNotification({
+        userId: "test-user", event: "rent_new_bill", entityId: "test-notification", periodKey: "v1",
+        params: ["Bill", "Ready"],
+      })).toEqual({ status: "skipped", reason: "not_configured" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("retries transient failures then succeeds", async () => {
     const send = vi
       .fn()

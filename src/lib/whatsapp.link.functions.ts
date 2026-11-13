@@ -59,7 +59,10 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { getAdmin } = await import("./whatsapp/db");
-    const { sendTextMessage } = await import("./whatsapp/meta-client");
+    const { isMetaConfigured, sendVerificationCode } = await import("./whatsapp/meta-client");
+    if (!isMetaConfigured() || !process.env.META_WHATSAPP_AUTH_TEMPLATE) {
+      throw new Error("WhatsApp verification is not available yet. Please try again later.");
+    }
     const admin = await getAdmin();
 
     const { data: taken } = await admin
@@ -107,10 +110,7 @@ export const startWhatsAppLink = createServerFn({ method: "POST" })
     });
     if (codeErr) throw new Error("Couldn't create a verification code. Please try again.");
 
-    const sent = await sendTextMessage(
-      data.phone,
-      `Your Rentalos verification code is ${code}. It expires in 10 minutes.`,
-    );
+    const sent = await sendVerificationCode(data.phone, code);
     if (!sent.ok)
       throw new Error("Couldn't send the WhatsApp message. Check the number and try again.");
     // In mock mode nothing was delivered — say so rather than pretend.

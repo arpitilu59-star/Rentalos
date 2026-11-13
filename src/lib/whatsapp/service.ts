@@ -6,12 +6,12 @@
  * Every stage is guarded: a failure is logged + recorded, never thrown to
  * the caller, so the in-app notification flow can't be broken by WhatsApp.
  */
-import { sendTemplateMessage, type SendResult } from "./meta-client";
+import { isMetaConfigured, sendTemplateMessage, type SendResult } from "./meta-client";
 import { templateFor, type WhatsAppEventType } from "./templates";
 
 export type DispatchOutcome =
   | { status: "sent" | "mocked"; messageId: string }
-  | { status: "skipped"; reason: "no_link" | "not_opted_in" | "not_verified" | "duplicate" }
+  | { status: "skipped"; reason: "not_configured" | "no_link" | "not_opted_in" | "not_verified" | "duplicate" }
   | { status: "failed"; reason: string };
 
 const MAX_ATTEMPTS = 3;
@@ -44,6 +44,8 @@ export async function sendWhatsAppNotification(input: {
   periodKey: string;
   params: [string, string];
 }): Promise<DispatchOutcome> {
+  // A dry run must not consume the idempotency slot of a real notification.
+  if (!isMetaConfigured()) return { status: "skipped", reason: "not_configured" };
   const job = `whatsapp:${input.event}`;
   let slotClaimed = false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

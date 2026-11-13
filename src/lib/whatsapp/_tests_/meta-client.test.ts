@@ -5,11 +5,12 @@ import {
   sendTextMessage,
   toMetaPhone,
   isMetaConfigured,
+  sendVerificationCode,
 } from "../meta-client";
 
-const KEYS = ["META_WHATSAPP_ACCESS_TOKEN", "META_WHATSAPP_PHONE_NUMBER_ID"] as const;
+const KEYS = ["META_WHATSAPP_ACCESS_TOKEN", "META_WHATSAPP_PHONE_NUMBER_ID", "META_WHATSAPP_AUTH_TEMPLATE", "META_TEMPLATE_LANGUAGE", "META_GRAPH_API_VERSION"] as const;
 beforeEach(() => KEYS.forEach((k) => delete process.env[k]));
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { KEYS.forEach((k) => delete process.env[k]); vi.restoreAllMocks(); });
 
 describe("meta-client", () => {
   it("mock mode: no fetch, returns mock id", async () => {
@@ -58,6 +59,46 @@ describe("meta-client", () => {
       retryable: true,
       error: "boom",
     });
+  });
+  it("uses the approved template language and supported API version", async () => {
+    process.env.META_WHATSAPP_ACCESS_TOKEN = "test-token";
+    process.env.META_WHATSAPP_PHONE_NUMBER_ID = "123";
+    process.env.META_TEMPLATE_LANGUAGE = "hi";
+    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.test" }] })),
+    );
+    await sendTemplateMessage("+919876543210", "rentalos_new_bill", ["Bill ready", "Open Rentalos"]);
+    const [url, request] = fetcher.mock.calls[0];
+    expect(url).toBe("https://graph.facebook.com/v25.0/123/messages");
+    expect(JSON.parse(String(request?.body)).template.language.code).toBe("hi");
+  });
+  it("sends verification using an authentication template with the copy-code button", async () => {
+    process.env.META_WHATSAPP_ACCESS_TOKEN = "test-token";
+    process.env.META_WHATSAPP_PHONE_NUMBER_ID = "123";
+    process.env.META_WHATSAPP_AUTH_TEMPLATE = "rentalos_verify_code";
+    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.auth" }] })),
+    );
+    expect(await sendVerificationCode("+919876543210", "012345")).toMatchObject({ ok: true, mocked: false });
+    const body = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
+    expect(body).toMatchObject({
+      type: "template",
+      template: {
+        name: "rentalos_verify_code",
+        language: { code: "en_US" },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: "012345" }] },
+          { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: "012345" }] },
+        ],
+      },
+    });
+  });
+  it("never pretends a verification code was sent without an approved auth template", async () => {
+    process.env.META_WHATSAPP_ACCESS_TOKEN = "test-token";
+    process.env.META_WHATSAPP_PHONE_NUMBER_ID = "123";
+    const fetcher = vi.spyOn(globalThis, "fetch");
+    expect(await sendVerificationCode("+919876543210", "012345")).toMatchObject({ ok: false, retryable: false });
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
 
