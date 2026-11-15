@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ResilientVideo } from "./ResilientVideo";
 import { useServerFn } from "@tanstack/react-start";
-import { Play, ShieldCheck, X, Clock, Video } from "lucide-react";
+import { Play, ShieldCheck, Clock, Video, RefreshCw } from "lucide-react";
+import { ResilientVideo } from "./ResilientVideo";
+import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import {
   getCoverVideoId,
   getVerifiedVideoUrl,
   type LiveFeedTarget,
 } from "@/lib/live-feed.functions";
-import { PREVIEW_SECONDS } from "@/lib/video";
+import { EMPTY_VIDEO_ASSETS, type VideoAssets } from "@/lib/video-media";
 
 type Props = {
   target: LiveFeedTarget;
@@ -15,38 +16,10 @@ type Props = {
   alt?: string;
   aspectClass?: string;
   className?: string;
-  /** show "Verifying" state instead of nothing when there is no verified video yet */
   showPendingState?: boolean;
-  /**
-   * "preview" (default): muted, looping first PREVIEW_SECONDS — used on cards.
-   * "full": complete video with proper controls — used on the room detail page.
-   */
   mode?: "preview" | "full";
-  /** In preview mode, clicking opens a modal with the full video. Disable when the card itself is a link. */
   expandOnClick?: boolean;
 };
-
-// Simple in-memory caches so grid cards don't re-hit the server
-const idCache = new Map<string, string | null>();
-const urlCache = new Map<string, { url: string; at: number }>();
-const URL_TTL_MS = 5 * 60 * 60 * 1000; // signed links last 6h; refresh a bit before
-const cachedUrl = (id: string) => {
-  const c = urlCache.get(id);
-  return c && Date.now() - c.at < URL_TTL_MS ? c.url : null;
-};
-
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return reduced;
-}
 
 export function LiveFeedCover({
   target,
@@ -58,285 +31,224 @@ export function LiveFeedCover({
   mode = "preview",
   expandOnClick = true,
 }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const getId = useServerFn(getCoverVideoId);
-  const getUrl = useServerFn(getVerifiedVideoUrl);
-  const reducedMotion = usePrefersReducedMotion();
+  const root = useRef<HTMLDivElement>(null);
+  const getId = useServerFn(getCoverVideoId),
+    getUrl = useServerFn(getVerifiedVideoUrl);
+  const api = useRef({ getId, getUrl });
+  api.current = { getId, getUrl };
+  const [near, setNear] = useState(false),
+    [inView, setInView] = useState(false);
+  const [reduced, setReduced] = useState(false),
+    [visible, setVisible] = useState(true);
+  const [expanded, setExpanded] = useState(false),
+    [retry, setRetry] = useState(0);
+  const [state, setState] = useState<{
+    key: string;
+    id: string | null;
+    assets: VideoAssets;
+    error: boolean;
+    loaded: boolean;
+  }>({
+    key: "",
+    id: null,
+    assets: EMPTY_VIDEO_ASSETS,
+    error: false,
+    loaded: false,
+  });
+  const key = `${target.kind}:${target.id}`;
   const isFull = mode === "full";
+  const current =
+    state.key === key
+      ? state
+      : { id: null, assets: EMPTY_VIDEO_ASSETS, error: false, loaded: false };
+  const poster = current.assets.posterUrl || fallback;
 
-  const cacheKey = `${target.kind}:${target.id}`;
-  const [videoId, setVideoId] = useState<string | null | undefined>(() => idCache.get(cacheKey));
-  const [url, setUrl] = useState<string | null>(() =>
-    idCache.get(cacheKey) ? cachedUrl(idCache.get(cacheKey)!) : null,
-  );
-  const [near, setNear] = useState(false); // close to viewport → fetch URL
-  const [inView, setInView] = useState(false); // actually visible → play
-  const [ready, setReady] = useState(false); // first frame decoded
-  const [failed, setFailed] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  // Two observers: a generous margin to start loading just before the card
-  // scrolls in, and a tight one to play only while it's actually visible.
   useEffect(() => {
-    const el = rootRef.current;
+    const el = root.current;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const motion = () => setReduced(mq.matches);
+    const visibility = () => setVisible(!document.hidden);
+    motion();
+    visibility();
+    mq.addEventListener("change", motion);
+    document.addEventListener("visibilitychange", visibility);
+    let nearObserver: IntersectionObserver | undefined,
+      viewObserver: IntersectionObserver | undefined;
     if (!el || typeof IntersectionObserver === "undefined") {
       setNear(true);
       setInView(true);
-      return;
+    } else {
+      nearObserver = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) setNear(true);
+        },
+        { rootMargin: "200px 0px" },
+      );
+      viewObserver = new IntersectionObserver(
+        (entries) => setInView(entries[0]?.isIntersecting ?? false),
+        { threshold: 0.4 },
+      );
+      nearObserver.observe(el);
+      viewObserver.observe(el);
     }
-    const nearIo = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && setNear(true)),
-      { rootMargin: "200px 0px" },
-    );
-    const viewIo = new IntersectionObserver(
-      (entries) => entries.forEach((e) => setInView(e.isIntersecting)),
-      { threshold: 0.4 },
-    );
-    nearIo.observe(el);
-    viewIo.observe(el);
     return () => {
-      nearIo.disconnect();
-      viewIo.disconnect();
+      nearObserver?.disconnect();
+      viewObserver?.disconnect();
+      mq.removeEventListener("change", motion);
+      document.removeEventListener("visibilitychange", visibility);
     };
   }, []);
 
-  // Resolve verified video id, then signed URL — only once near the viewport (lazy)
+  // Resolve once per target, revalidate on focus/visibility and after upload events.
+  // Do not cache a missing video for the entire browser session.
   useEffect(() => {
-    if (!near || videoId !== undefined) return;
+    if (!near) return;
     let cancelled = false;
-    (async () => {
+    let request = 0;
+    const load = async () => {
+      const serial = ++request;
       try {
-        const { id } = await getId({ data: { target } });
-        if (cancelled) return;
-        idCache.set(cacheKey, id);
-        setVideoId(id);
-        if (id) {
-          const cached = cachedUrl(id);
-          if (cached) {
-            setUrl(cached);
-            return;
-          }
-          const { url: u } = await getUrl({ data: { id } });
-          if (cancelled) return;
-          if (u) {
-            urlCache.set(id, { url: u, at: Date.now() });
-            setUrl(u);
-          }
-        }
+        const { id } = await api.current.getId({
+          data: { target: { kind: target.kind, id: target.id } },
+        });
+        const assets = id ? await api.current.getUrl({ data: { id } }) : { ...EMPTY_VIDEO_ASSETS };
+        if (!cancelled && serial === request)
+          setState({ key, id, assets, error: !!id && !assets.url, loaded: true });
       } catch {
-        /* fall back to the photo */
+        if (!cancelled && serial === request)
+          setState((old) => ({
+            ...(old.key === key ? old : { key, id: null, assets: EMPTY_VIDEO_ASSETS }),
+            error: true,
+            loaded: true,
+          }));
       }
-    })();
+    };
+    void load();
+    const refresh = () => {
+      if (!document.hidden) void load();
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("room-video-updated", refresh);
+    const timer = setInterval(refresh, 60000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("room-video-updated", refresh);
     };
-  }, [near, videoId, cacheKey, target, getId, getUrl]);
+  }, [near, key, target.id, target.kind, retry]);
 
-  // If the id resolved earlier (cache) but the URL is missing, fetch it.
-  useEffect(() => {
-    if (!near || !videoId || url) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { url: u } = await getUrl({ data: { id: videoId } });
-        if (!cancelled && u) {
-          urlCache.set(videoId, { url: u, at: Date.now() });
-          setUrl(u);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [near, videoId, url, getUrl]);
-
-  // Preview: play only while visible, pause when scrolled away.
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !url || isFull) return;
-    if (inView && !reducedMotion) v.play().catch(() => {});
-    else v.pause();
-  }, [inView, url, isFull, reducedMotion, ready]);
-
-  const freshUrl = useCallback(async () => {
-    if (!videoId) return null;
-    urlCache.delete(videoId);
-    const { url: u } = await getUrl({ data: { id: videoId } });
-    if (u) urlCache.set(videoId, { url: u, at: Date.now() });
-    return u ?? null;
-  }, [videoId, getUrl]);
-
-  const hasVideo = !!url && !failed;
-  const isPending = videoId === null && showPendingState;
-  const openFull = () => hasVideo && !isFull && expandOnClick && setExpanded(true);
+  const fresh = useCallback(
+    async (preview: boolean) => {
+      if (!current.id) return null;
+      const assets = await api.current.getUrl({ data: { id: current.id } });
+      return preview ? assets.previewUrl : assets.url;
+    },
+    [current.id],
+  );
+  const source = isFull ? current.assets.url : current.assets.previewUrl;
+  const canExpand = !isFull && expandOnClick && !!current.assets.url;
 
   return (
     <>
-      <div
-        ref={rootRef}
-        className={`relative overflow-hidden bg-muted ${aspectClass} ${className}`}
-        onClick={(e) => {
-          if (hasVideo && !isFull && expandOnClick) {
-            e.preventDefault();
-            e.stopPropagation();
-            openFull();
-          }
-        }}
-      >
-        {/* Poster / fallback photo is always underneath so there is never an empty flash */}
-        {fallback ? (
+      <div ref={root} className={`relative overflow-hidden bg-muted ${aspectClass} ${className}`}>
+        {poster && (
           <img
-            src={fallback}
+            src={poster}
             alt={alt || ""}
             loading="lazy"
             className="absolute inset-0 w-full h-full object-cover"
           />
+        )}
+        {source ? (
+          <ResilientVideo
+            key={`${key}:${mode}`}
+            src={source}
+            getFreshUrl={() => fresh(!isFull)}
+            poster={poster}
+            muted={!isFull}
+            loop={!isFull}
+            controls={isFull}
+            playing={isFull ? undefined : inView && visible && !reduced && !expanded}
+            ariaLabel={alt ? `Video of ${alt}` : "Room video"}
+            className={`absolute inset-0 w-full h-full ${isFull ? "object-contain bg-black" : "object-cover"}`}
+          />
+        ) : current.error ? (
+          <div
+            className="absolute inset-0 grid place-items-center bg-black/60 text-white text-center p-3"
+            role="status"
+          >
+            <div>
+              <p className="text-sm">Could not load this video.</p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRetry((n) => n + 1);
+                }}
+                className="inline-flex min-h-11 items-center gap-2 px-3 focus-visible:outline focus-visible:outline-2"
+              >
+                <RefreshCw className="size-4" />
+                Try again
+              </button>
+            </div>
+          </div>
         ) : (
-          !hasVideo && (
-            <div className="absolute inset-0 grid place-items-center text-muted-foreground text-xs gap-1">
-              {videoId === undefined && near ? (
-                <div className="absolute inset-0 animate-pulse bg-muted" aria-hidden />
+          !poster && (
+            <div className="absolute inset-0 grid place-items-center text-muted-foreground text-xs p-3">
+              {!current.loaded && near ? (
+                <span role="status">Loading video...</span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <Video className="size-3.5" /> Video coming soon
+                  <Video className="size-4" />
+                  Video coming soon
                 </span>
               )}
             </div>
           )
         )}
-
-        {hasVideo && (
-          <VideoSlot
-            videoRef={videoRef}
-            url={url!}
-            isFull={isFull}
-            ready={ready}
-            fallback={fallback}
-            alt={alt}
-            freshUrl={freshUrl}
-            onReady={() => setReady(true)}
-            onFailed={() => setFailed(true)}
-          />
-        )}
-
-        {hasVideo && !isFull && (
-          <>
-            <div className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-medium">
-              <span className="relative inline-flex size-2">
-                <span className="absolute inset-0 rounded-full bg-green-400 opacity-70 animate-ping motion-reduce:hidden" />
-                <span className="relative inline-flex size-2 rounded-full bg-green-400" />
-              </span>
-              Live verified
-            </div>
-            <div className="absolute bottom-2 right-2 size-7 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white">
-              <Play className="size-3.5 fill-current" />
-            </div>
-          </>
-        )}
-        {hasVideo && isFull && (
-          <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-medium pointer-events-none">
-            <ShieldCheck className="size-3 text-green-400" /> Recorded live at the property
+        {source && (
+          <div className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/70 text-white text-[10px]">
+            <ShieldCheck className="size-3 text-green-400" />
+            {isFull ? "Recorded live at the property" : "Live verified"}
           </div>
         )}
-        {!hasVideo && isPending && (
-          <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/90 text-white text-[10px] font-medium">
-            <Clock className="size-3" /> Video being verified
+        {canExpand && (
+          <button
+            type="button"
+            aria-label="Watch full room video"
+            onClick={() => setExpanded(true)}
+            className="absolute bottom-2 right-2 min-h-11 min-w-11 grid place-items-center rounded-full bg-black/70 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <Play className="size-5" />
+          </button>
+        )}
+        {!source && current.loaded && !current.error && showPendingState && (
+          <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500 text-black text-[10px]">
+            <Clock className="size-3" />
+            Video being verified
           </div>
         )}
       </div>
-
-      {expanded && url && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Full room video"
-          className="fixed inset-0 z-[60] bg-black/90 grid place-items-center p-4"
-          onClick={() => setExpanded(false)}
-          onKeyDown={(e) => e.key === "Escape" && setExpanded(false)}
-        >
-          <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setExpanded(false)}
-              aria-label="Close video"
-              className="absolute -top-10 right-0 text-white p-1"
-              autoFocus
-            >
-              <X className="size-5" />
-            </button>
-            <div className="relative aspect-[9/16] max-h-[80vh] mx-auto rounded-xl overflow-hidden bg-black">
+      <Dialog open={expanded} onOpenChange={setExpanded}>
+        <DialogContent className="max-w-xl bg-black text-white border-white/20">
+          <DialogTitle>Full room video</DialogTitle>
+          {expanded && current.assets.url && (
+            <div className="relative aspect-[4/5] max-h-[75vh] overflow-hidden">
               <ResilientVideo
-                src={url}
-                getFreshUrl={freshUrl}
+                src={current.assets.url}
+                getFreshUrl={() => fresh(false)}
                 controls
                 autoPlay
-                poster={fallback}
+                poster={poster}
                 ariaLabel="Full room video"
-                className="absolute inset-0 w-full h-full object-contain bg-black"
+                className="absolute inset-0 w-full h-full object-contain"
               />
             </div>
-            <div className="mt-2 inline-flex items-center gap-1 text-white/90 text-xs">
-              <ShieldCheck className="size-3 text-green-400" /> Recorded live at the property
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </>
-  );
-}
-
-function VideoSlot({
-  videoRef,
-  url,
-  isFull,
-  ready,
-  fallback,
-  alt,
-  freshUrl,
-  onReady,
-  onFailed,
-}: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  url: string;
-  isFull: boolean;
-  ready: boolean;
-  fallback?: string | null;
-  alt?: string;
-  freshUrl: () => Promise<string | null>;
-  onReady: () => void;
-  onFailed: () => void;
-}) {
-  // ResilientVideo owns the <video>; mirror its element into the parent's ref for play/pause control.
-  const wrap = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const sync = () => {
-      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current =
-        wrap.current?.querySelector("video") ?? null;
-    };
-    sync();
-    const mo = new MutationObserver(sync);
-    if (wrap.current) mo.observe(wrap.current, { childList: true });
-    return () => mo.disconnect();
-  }, [videoRef, url]);
-  return (
-    <div
-      ref={wrap}
-      className={`absolute inset-0 transition-opacity duration-300 ${ready || isFull ? "opacity-100" : "opacity-0"}`}
-    >
-      <ResilientVideo
-        src={url}
-        getFreshUrl={freshUrl}
-        poster={fallback}
-        muted={!isFull}
-        controls={isFull}
-        previewSeconds={isFull ? undefined : PREVIEW_SECONDS}
-        ariaLabel={alt ? `Video of ${alt}` : "Room video"}
-        className={`absolute inset-0 w-full h-full ${isFull ? "object-contain bg-black" : "object-cover"}`}
-        onReady={onReady}
-        onFailed={onFailed}
-      />
-    </div>
   );
 }

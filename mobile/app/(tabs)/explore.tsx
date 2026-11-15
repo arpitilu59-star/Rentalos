@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, View } from "react-native";
 import { Text, TextInput } from "@/components/Text";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { Card, Chip, Empty, ErrorText } from "@/components/ui";
 import { useColors, inr, R } from "@/theme";
 import * as Location from "expo-location";
 import { useT } from "@/lib/i18n";
+import { RoomVideoCover } from "@/components/RoomVideo";
 import { Heart } from "@/components/Heart";
 
 const km = (a: number, b: number, c: number, d: number) => { const t = (x: number) => (x * Math.PI) / 180; const h = Math.sin(t(c - a) / 2) ** 2 + Math.cos(t(a)) * Math.cos(t(c)) * Math.sin(t(d - b) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
@@ -26,6 +27,11 @@ export default function Explore() {
   const c = useColors();
   const t = useT();
   const router = useRouter();
+  const [visibleRooms, setVisibleRooms] = useState<Set<string>>(new Set());
+  const viewability = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewableChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item: RoomRow }> }) => {
+    setVisibleRooms(new Set(viewableItems.map(({ item }) => item.id)));
+  }).current;
   const [city, setCity] = useState("");
   const [applied, setApplied] = useState("");
   const [occ, setOcc] = useState<string | null>(null);
@@ -77,6 +83,9 @@ export default function Explore() {
       <FlatList
         data={me ? [...rooms].sort((a, b) => (distOf(a) ?? 1e9) - (distOf(b) ?? 1e9)) : rooms}
         keyExtractor={(r) => r.id}
+        extraData={visibleRooms}
+        viewabilityConfig={viewability}
+        onViewableItemsChanged={viewableChanged}
         contentContainerStyle={{ padding: 16, gap: 14 }}
         refreshing={q.isRefetching}
         onRefresh={() => q.refetch()}
@@ -89,7 +98,7 @@ export default function Explore() {
           return (
             <Pressable onPress={() => router.push({ pathname: "/room/[id]", params: { id: r.id } })}>
               <Card style={{ padding: 0, overflow: "hidden" }}>
-                <View>{img ? <Image source={{ uri: img }} style={{ height: 170, width: "100%", backgroundColor: c.soft }} /> : <View style={{ height: 170, backgroundColor: c.soft, alignItems: "center", justifyContent: "center" }}><Text style={{ color: c.muted }}>No photo</Text></View>}<Heart roomId={r.id} style={{ position: "absolute", right: 10, top: 10 }} /></View>
+                <View><RoomVideoCover roomId={r.id} active={visibleRooms.has(r.id)} fallback={img} /><Heart roomId={r.id} style={{ position: "absolute", right: 10, top: 10 }} /></View>
                 <View style={{ padding: 14 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                     <Text style={{ color: c.text, fontWeight: "700", fontSize: 16, flex: 1 }} numberOfLines={1}>{r.properties?.name} · Room {r.room_number}</Text>

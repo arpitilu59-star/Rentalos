@@ -5,14 +5,16 @@
 // यह Cloudflare Workers की जगह Vercel का nitro preset use करता है।
 // ⚠️ Lovable का अपना preview/publish Cloudflare पर चलता है — इसलिए इसे अलग file रखा गया है
 // ताकि Lovable में कुछ न टूटे।
-import { defineConfig } from '@lovable.dev/vite-tanstack-config';
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  nitro: { preset: "vercel" },
   tanstackStart: {
-    server: { entry: 'server' },
-    target: 'vercel',
+    server: { entry: "server" },
+    target: "vercel",
   },
   vite: {
+    ssr: { external: ["ffmpeg-static"] },
     // Cloudflare plugin Vercel build में नहीं चाहिए
     plugins: [],
   },

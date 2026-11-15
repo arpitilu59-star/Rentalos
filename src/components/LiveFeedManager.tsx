@@ -28,6 +28,8 @@ type Row = {
   random_prompt: string;
   duration_seconds: number | null;
   created_at: string;
+  processing_status: string;
+  processing_error: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -123,6 +125,7 @@ export function LiveFeedManager({
         <ul className="divide-y divide-border">
           {rows.map((r) => (
             <li key={r.id} className="py-1.5 text-xs">
+              {r.processing_error && <p className="text-destructive mb-1">{r.processing_error}</p>}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {r.verification_status === "verified" && (
@@ -135,7 +138,7 @@ export function LiveFeedManager({
                     r.verification_status === "rejected") && (
                     <AlertTriangle className="size-3.5 text-destructive shrink-0" />
                   )}
-                  <span>{STATUS_LABEL[r.verification_status] ?? r.verification_status}</span>
+                  <span>{r.processing_status === "failed" ? "Recording needs replacing" : STATUS_LABEL[r.verification_status] ?? r.verification_status}</span>
                   <span className="text-muted-foreground truncate">
                     · {new Date(r.created_at).toLocaleDateString()}
                     {r.distance_m != null && ` · ${Math.round(r.distance_m)}m`}

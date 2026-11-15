@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
+import { useEvent } from "expo";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { VideoView, useVideoPlayer } from "expo-video";
@@ -20,20 +21,42 @@ type V = {
   duration_seconds: number;
   created_at: string;
   expires_at: string | null;
+  processing_status: string;
+  processing_error: string | null;
 };
 const MAX_BYTES = 60 * 1024 * 1024;
 
-function Player({ url }: { url: string }) {
+function Player({ url, refresh }: { url: string; refresh: () => Promise<string | null> }) {
   const player = useVideoPlayer(url, (p) => {
     p.loop = false;
   });
+  const { status } = useEvent(player, "statusChange", { status: player.status });
+  const [failed, setFailed] = useState(false);
   return (
-    <VideoView
-      player={player}
-      nativeControls
-      contentFit="contain"
-      style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#000" }}
-    />
+    <View style={{ gap: 6 }}>
+      <VideoView
+        player={player}
+        nativeControls
+        contentFit="contain"
+        fullscreenOptions={{ enable: true }}
+        style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#000" }}
+      />
+      {(status === "error" || failed) && (
+        <Button
+          title="Retry video"
+          onPress={async () => {
+            try {
+              setFailed(false);
+              const fresh = await refresh();
+              if (!fresh) throw new Error();
+              await player.replaceAsync(fresh);
+            } catch {
+              setFailed(true);
+            }
+          }}
+        />
+      )}
+    </View>
   );
 }
 
@@ -46,6 +69,7 @@ export default function Videos() {
     queryKey: ["videos", room_id],
     queryFn: () => api<{ videos: V[]; can_record: boolean }>("l/videos", { room_id }),
   });
+  const recording = useRef(false);
   const [err, setErr] = useState<unknown>(null);
   const [step, setStep] = useState("");
   const done = () => qc.invalidateQueries({ queryKey: ["videos", room_id] });
@@ -111,7 +135,10 @@ export default function Videos() {
     onError: (e) => {
       if ((e as Error).message !== "cancelled") setErr(e);
     },
-    onSettled: () => setStep(""),
+    onSettled: () => {
+      recording.current = false;
+      setStep("");
+    },
   });
   const del = useMutation({
     mutationFn: (id: string) => api("l/video/delete", { id }),
@@ -145,7 +172,12 @@ export default function Videos() {
         <Button
           title="🎥 Nayi video record karein"
           busy={rec.isPending}
-          onPress={() => rec.mutate()}
+          onPress={() => {
+            if (!recording.current) {
+              recording.current = true;
+              rec.mutate();
+            }
+          }}
         />
       )}
       {step ? <Text style={{ color: c.muted, textAlign: "center" }}>{step}</Text> : null}
@@ -153,12 +185,24 @@ export default function Videos() {
       {q.data && !q.data.videos.length ? <Empty text="Abhi koi video nahi." /> : null}
       {q.data?.videos.map((v) => (
         <Card key={v.id} style={{ gap: 8 }}>
-          {v.url ? <Player url={v.url} /> : null}
+          {v.url ? (
+            <Player
+              url={v.url}
+              refresh={async () =>
+                (await q.refetch({ throwOnError: true })).data?.videos.find(
+                  (item) => item.id === v.id,
+                )?.url ?? null
+              }
+            />
+          ) : null}
+          {v.processing_error && <ErrorText error={new Error(v.processing_error)} />}
           <View
             style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
           >
             <Pill
-              text={label(v.verification_status)}
+              text={
+                v.processing_status === "failed" ? "Record again" : label(v.verification_status)
+              }
               tone={
                 v.verification_status === "verified"
                   ? "ok"

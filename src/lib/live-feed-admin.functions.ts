@@ -24,7 +24,7 @@ export const listPendingLiveFeedVideos = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("live_feed_videos")
       .select(
-        "id, owner_id, storage_path, verification_status, distance_m, random_prompt, duration_seconds, created_at, myr_listing_id, myr_room_id, property_id, room_id",
+        "id, owner_id, storage_path, verification_status, distance_m, random_prompt, duration_seconds, created_at, processing_status, processing_error, myr_listing_id, myr_room_id, property_id, room_id",
       )
       .in("verification_status", ["pending", "flagged"])
       .order("created_at", { ascending: true })
@@ -46,11 +46,9 @@ export const signLiveFeedVideoForAdmin = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!row) throw new Error("Not found");
-    const { data: sig, error } = await supabaseAdmin.storage
-      .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 3600);
-    if (error) throw new Error(error.message);
-    return { url: sig.signedUrl };
+    const { processLiveVideo, signVideoAssets } = await import("./video-processing.server");
+    const ready = await processLiveVideo(supabaseAdmin, data.id);
+    return signVideoAssets(supabaseAdmin, ready, 3600);
   });
 
 const DecideSchema = z.object({
@@ -72,29 +70,15 @@ export const decideLiveFeedVideo = createServerFn({ method: "POST" })
       verification_notes: data.decision === "rejected" ? (data.reason ?? null) : null,
     };
     if (data.decision === "verified") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { processLiveVideo } = await import("./video-processing.server");
+      await processLiveVideo(supabaseAdmin, data.id);
       const expires = new Date();
       expires.setDate(expires.getDate() + VERIFICATION_VALIDITY_DAYS);
       patch.expires_at = expires.toISOString();
     }
     const { error } = await supabase.from("live_feed_videos").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
-    if (data.decision === "verified") {
-      // Old recordings (made before the duration fix) get repaired the moment they go public.
-      try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: row } = await supabaseAdmin
-          .from("live_feed_videos")
-          .select("storage_path, duration_seconds")
-          .eq("id", data.id)
-          .maybeSingle();
-        if (row?.storage_path) {
-          const { repairStoredVideo } = await import("@/lib/video-repair.server");
-          await repairStoredVideo(row.storage_path, (row.duration_seconds ?? 0) * 1000);
-        }
-      } catch (e) {
-        console.error("[live-feed] repair on verify skipped:", e instanceof Error ? e.message : e);
-      }
-    }
     return { ok: true };
   });
 
@@ -106,7 +90,9 @@ export const listPendingLivePhotos = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("live_feed_photos")
-      .select("id, owner_id, room_id, property_id, storage_path, verification_status, distance_m, created_at")
+      .select(
+        "id, owner_id, room_id, property_id, storage_path, verification_status, distance_m, created_at",
+      )
       .in("verification_status", ["pending", "flagged"])
       .order("created_at", { ascending: true })
       .limit(200);
@@ -114,7 +100,8 @@ export const listPendingLivePhotos = createServerFn({ method: "GET" })
     return {
       items: (data ?? []).map((p) => ({
         ...p,
-        url: supabaseAdmin.storage.from("live-feed-photos").getPublicUrl(p.storage_path as string).data.publicUrl as string,
+        url: supabaseAdmin.storage.from("live-feed-photos").getPublicUrl(p.storage_path as string)
+          .data.publicUrl as string,
       })),
     };
   });

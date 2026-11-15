@@ -20,6 +20,8 @@ vi.mock("../subscription/entitlements", () => ({
   getUserEntitlements: async () => ({}),
 }));
 
+vi.mock("../video-processing.server", () => ({ processLiveVideo: vi.fn().mockResolvedValue({ processing_status: "ready" }) }));
+
 const L = () => import("../mobile-landlord.server");
 const today = new Date().toISOString().slice(0, 10);
 const terms = {

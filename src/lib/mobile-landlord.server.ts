@@ -2772,7 +2772,7 @@ export async function listVideos(me: string, body: Record<string, unknown>) {
   const { data } = await a
     .from("live_feed_videos")
     .select(
-      "id, storage_path, verification_status, distance_m, duration_seconds, created_at, expires_at",
+      "id, storage_path, verification_status, distance_m, duration_seconds, created_at, expires_at, processing_status, processing_error, playback_path, preview_path, poster_path",
     )
     .eq("owner_id", me)
     .eq("room_id", r.id)
@@ -2780,8 +2780,8 @@ export async function listVideos(me: string, body: Record<string, unknown>) {
     .limit(10);
   const rows = await Promise.all(
     ((data ?? []) as any[]).map(async (v) => {
-      const sig = await a.storage.from("live-feed-videos").createSignedUrl(v.storage_path, 3600);
-      return { ...v, url: (sig.data?.signedUrl as string | undefined) ?? null };
+      const { signVideoAssets } = await import("./video-processing.server");
+      return { ...v, ...await signVideoAssets(a, v, 3600) };
     }),
   );
   return { videos: rows, can_record: await entitled(me, "live_feed_video") };
@@ -2824,6 +2824,8 @@ export async function addVideo(me: string, body: Record<string, unknown>) {
     .select("id, verification_status, distance_m")
     .single();
   if (error) throw new Error("Video save nahi hui. Dobara try karein.");
+  const { processLiveVideo } = await import("./video-processing.server");
+  await processLiveVideo(a, data.id, me);
   return data;
 }
 
@@ -2832,13 +2834,14 @@ export async function deleteVideo(me: string, body: Record<string, unknown>) {
   const id = uuid(body.id);
   const { data: row } = await a
     .from("live_feed_videos")
-    .select("storage_path")
+    .select("storage_path, playback_path, preview_path, poster_path")
     .eq("id", id)
     .eq("owner_id", me)
     .maybeSingle();
   if (!row) throw new Error("Video not found.");
   await a.from("live_feed_videos").delete().eq("id", id);
-  await a.storage.from("live-feed-videos").remove([row.storage_path]);
+  const { mediaPaths } = await import("./video-media");
+  await a.storage.from("live-feed-videos").remove(mediaPaths(row));
   return { ok: true };
 }
 

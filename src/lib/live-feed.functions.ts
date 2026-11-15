@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { assertOwnedVideoPath, EMPTY_VIDEO_ASSETS, mediaPaths } from "./video-media";
 import { createServerFn } from "@tanstack/react-start";
 import { requireEntitlement } from "@/lib/subscription/entitlements";
 import { createClient } from "@supabase/supabase-js";
@@ -25,16 +27,21 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 
 export const submitLiveVideo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (d: {
-      target: LiveFeedTarget;
-      storage_path: string;
-      captured_lat: number;
-      captured_lng: number;
-      random_prompt: string;
-      duration_seconds: number;
-      mime_type?: string;
-    }) => d,
+  .inputValidator((input) =>
+    z
+      .object({
+        target: z.object({
+          kind: z.enum(["myr_listing", "myr_room", "property", "room"]),
+          id: z.string().uuid(),
+        }),
+        storage_path: z.string().max(200),
+        captured_lat: z.number().finite().min(-90).max(90),
+        captured_lng: z.number().finite().min(-180).max(180),
+        random_prompt: z.string().min(1).max(200),
+        duration_seconds: z.number().finite().min(5).max(45),
+        mime_type: z.string().max(100).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -53,6 +60,8 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
       throw new Error("Video duration must be 5-45 seconds.");
     }
 
+    assertOwnedVideoPath(storage_path, userId);
+
     let target_lat: number | null = null;
     let target_lng: number | null = null;
     const targetCol: Record<LiveFeedTarget["kind"], string> = {
@@ -67,6 +76,7 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
         .from("properties")
         .select("id, latitude, longitude")
         .eq("id", target.id)
+        .eq("owner_id", userId)
         .maybeSingle();
       if (error || !p) throw new Error("Property not found or not yours");
       target_lat = p.latitude as number | null;
@@ -76,6 +86,7 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
         .from("rooms")
         .select("id, property_id, properties(latitude, longitude)")
         .eq("id", target.id)
+        .eq("owner_id", userId)
         .maybeSingle();
       if (error || !r) throw new Error("Room not found or not yours");
       const prop = (
@@ -87,6 +98,7 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
       const { data: l, error } = await supabase
         .from("myr_listings")
         .select("id, landlord_id")
+        .eq("landlord_id", userId)
         .eq("id", target.id)
         .maybeSingle();
       if (error || !l) throw new Error("Listing not found or not yours");
@@ -128,13 +140,9 @@ export const submitLiveVideo = createServerFn({ method: "POST" })
       .single();
     if (insErr) throw insErr;
 
-    // Best effort: make sure the stored WebM carries a duration so it plays/seeks properly everywhere.
-    try {
-      const { repairStoredVideo } = await import("@/lib/video-repair.server");
-      await repairStoredVideo(storage_path, Math.round(duration_seconds) * 1000);
-    } catch (e) {
-      console.error("[live-feed] repair skipped:", e instanceof Error ? e.message : e);
-    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { processLiveVideo } = await import("./video-processing.server");
+    await processLiveVideo(supabaseAdmin, row.id, userId);
 
     return {
       id: row.id as string,
@@ -157,7 +165,7 @@ export const listMyLiveVideos = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("live_feed_videos")
       .select(
-        "id, storage_path, verification_status, distance_m, random_prompt, duration_seconds, created_at",
+        "id, storage_path, verification_status, distance_m, random_prompt, duration_seconds, created_at, processing_status, processing_error",
       )
       .eq(col, data.target.id)
       .order("created_at", { ascending: false });
@@ -169,17 +177,22 @@ export const deleteLiveVideo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: row } = await supabase
+    const { supabase, userId } = context;
+    const { data: row, error: readError } = await supabase
       .from("live_feed_videos")
-      .select("storage_path")
+      .select("storage_path, playback_path, preview_path, poster_path")
       .eq("id", data.id)
+      .eq("owner_id", userId)
       .maybeSingle();
-    if (row?.storage_path) {
-      await supabase.storage.from("live-feed-videos").remove([row.storage_path]);
-    }
-    const { error } = await supabase.from("live_feed_videos").delete().eq("id", data.id);
+    if (readError || !row) throw new Error("Video not found.");
+    const { error } = await supabase
+      .from("live_feed_videos")
+      .delete()
+      .eq("id", data.id)
+      .eq("owner_id", userId);
     if (error) throw error;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.storage.from("live-feed-videos").remove(mediaPaths(row));
     return { ok: true };
   });
 
@@ -193,17 +206,17 @@ export const getVerifiedVideoUrl = createServerFn({ method: "GET" })
     );
     const { data: row } = await supabasePublic
       .from("live_feed_videos")
-      .select("storage_path, verification_status, expires_at")
+      .select(
+        "playback_path, preview_path, poster_path, processing_status, verification_status, expires_at",
+      )
       .eq("id", data.id)
       .maybeSingle();
     const notExpired = row?.expires_at ? new Date(row.expires_at).getTime() > Date.now() : false;
     if (!row || row.verification_status !== "verified" || !notExpired)
-      return { url: null as string | null };
+      return { ...EMPTY_VIDEO_ASSETS };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: sig } = await supabaseAdmin.storage
-      .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 21600);
-    return { url: sig?.signedUrl ?? null };
+    const { signVideoAssets } = await import("./video-processing.server");
+    return signVideoAssets(supabaseAdmin, row);
   });
 
 export const getCoverVideoId = createServerFn({ method: "GET" })
@@ -221,15 +234,17 @@ export const getCoverVideoId = createServerFn({ method: "GET" })
       room: "room_id",
     }[data.target.kind];
     const nowIso = new Date().toISOString();
-    const { data: row } = await supabasePublic
+    const { data: row, error } = await supabasePublic
       .from("live_feed_videos")
       .select("id, reviewed_at, created_at")
       .eq(col, data.target.id)
       .eq("verification_status", "verified")
+      .eq("processing_status", "ready")
       .gt("expires_at", nowIso)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (error) throw new Error("Could not load the room video. Please try again.");
     return {
       id: (row?.id as string | undefined) ?? null,
       verifiedAt:
@@ -257,7 +272,9 @@ export const getOwnLiveFeedVideoUrl = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data: row, error } = await supabase
       .from("live_feed_videos")
-      .select("id, owner_id, storage_path, verification_status")
+      .select(
+        "id, owner_id, storage_path, verification_status, processing_status, processing_error, playback_path, preview_path, poster_path",
+      )
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -268,19 +285,14 @@ export const getOwnLiveFeedVideoUrl = createServerFn({ method: "GET" })
       throw new Error("This recording has no stored file (upload may have failed).");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: sig, error: signErr } = await supabaseAdmin.storage
-      .from("live-feed-videos")
-      .createSignedUrl(row.storage_path, 3600);
-    if (signErr || !sig?.signedUrl) {
-      // Don't leak storage internals to the client — log server-side only.
-      console.error("getOwnLiveFeedVideoUrl: failed to sign", {
-        id: data.id,
-        storage_path: row.storage_path,
-        signErr,
-      });
-      throw new Error(
-        "Could not load this video right now — the file may be missing. Try again or contact support.",
-      );
-    }
-    return { url: sig.signedUrl, status: row.verification_status as string };
+    if (row.processing_status === "failed")
+      throw new Error(row.processing_error || "Please record this video again.");
+    const { signVideoAssets, processLiveVideo } = await import("./video-processing.server");
+    const ready =
+      row.processing_status === "ready"
+        ? row
+        : await processLiveVideo(supabaseAdmin, row.id, userId);
+    const assets = await signVideoAssets(supabaseAdmin, ready, 3600);
+    if (!assets.url) throw new Error("Your video is still processing. Please refresh shortly.");
+    return { ...assets, url: assets.url, status: row.verification_status as string };
   });

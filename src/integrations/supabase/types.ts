@@ -618,6 +618,14 @@ export type Database = {
       }
       live_feed_videos: {
         Row: {
+          processing_status: string
+          processing_error: string | null
+          playback_path: string | null
+          preview_path: string | null
+          poster_path: string | null
+          expires_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           captured_lat: number | null
           captured_lng: number | null
           created_at: string
@@ -639,6 +647,14 @@ export type Database = {
           verification_status: Database["public"]["Enums"]["live_feed_status"]
         }
         Insert: {
+          processing_status?: string
+          processing_error?: string | null
+          playback_path?: string | null
+          preview_path?: string | null
+          poster_path?: string | null
+          expires_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           captured_lat?: number | null
           captured_lng?: number | null
           created_at?: string
@@ -660,6 +676,14 @@ export type Database = {
           verification_status?: Database["public"]["Enums"]["live_feed_status"]
         }
         Update: {
+          processing_status?: string
+          processing_error?: string | null
+          playback_path?: string | null
+          preview_path?: string | null
+          poster_path?: string | null
+          expires_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           captured_lat?: number | null
           captured_lng?: number | null
           created_at?: string

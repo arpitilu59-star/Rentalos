@@ -282,13 +282,13 @@ export async function roomVideo(roomId: string) {
   if (!room || !room.is_public) return { url: null as string | null };
   const { data: row } = await a
     .from("live_feed_videos")
-    .select("storage_path, expires_at")
-    .eq("room_id", roomId).eq("verification_status", "verified")
+    .select("playback_path, preview_path, poster_path, processing_status, expires_at")
+    .eq("room_id", roomId).eq("verification_status", "verified").eq("processing_status", "ready")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!row) return { url: null as string | null };
-  const { data: sig } = await a.storage.from("live-feed-videos").createSignedUrl(row.storage_path, 21600);
-  return { url: (sig?.signedUrl as string | undefined) ?? null };
+  const { signVideoAssets } = await import("./video-processing.server");
+  return signVideoAssets(a, row);
 }
 
 /** Documents: terms the tenant accepted (immutable snapshots) and verified payment receipts. */

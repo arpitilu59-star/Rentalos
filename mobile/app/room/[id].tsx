@@ -71,7 +71,8 @@ export default function RoomScreen() {
         </Card>
         {r.myr_description ? <Text style={{ color: c.text, lineHeight: 21 }}>{r.myr_description}</Text> : null}
         {strArr(r.myr_amenities).length > 0 && <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>{strArr(r.myr_amenities).map((a) => <Pill key={a} t={a} />)}</View>}
-        {vid.data?.url ? <RoomVideo url={vid.data.url} /> : null}
+        {vid.error && <><ErrorText error={vid.error} /><Button title="Retry video" onPress={() => void vid.refetch()} /></>}
+        {vid.data?.url ? <RoomVideo url={vid.data.url} onRefresh={async () => (await vid.refetch({ throwOnError: true })).data?.url ?? null} /> : null}
         {live && live.length > 0 && (
           <View style={{ gap: 8 }}>
             <Text style={{ color: c.text, fontWeight: "700" }}>Live photos (camera se, verified)</Text>

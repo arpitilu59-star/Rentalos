@@ -2,7 +2,7 @@
  * Room-video helpers (video-first marketplace).
  *
  * Rule: the landlord records/uploads ONE full room video. Listing cards play
- * only the first PREVIEW_SECONDS of that same file (no second upload needed);
+ * a processed PREVIEW_SECONDS clip (no second upload needed);
  * the room detail page plays the complete video.
  */
 
@@ -11,7 +11,7 @@ export const PREVIEW_SECONDS = 5;
 /** Same limits the server enforces in submitLiveVideo (5–45 s). */
 export const MIN_VIDEO_SECONDS = 5;
 export const MAX_VIDEO_SECONDS = 45;
-export const MAX_VIDEO_BYTES = 120 * 1024 * 1024; // 120 MB
+export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // Matches the private storage bucket limit
 export const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
 export type VideoCheck = { ok: true } | { ok: false; message: string };
@@ -50,7 +50,7 @@ export function validateRoomVideo(input: {
 /** Turn any thrown value into a calm, actionable video message. */
 export function friendlyVideoError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e ?? "");
-  if (/duration/i.test(raw)) return raw;
+  if (/duration|damaged|incomplete|still processing|temporarily unavailable/i.test(raw)) return raw;
   if (/forbidden|not yours|not found/i.test(raw))
     return "We couldn't find this room under your account. Please refresh and try again.";
   if (/network|fetch|failed to load/i.test(raw))
