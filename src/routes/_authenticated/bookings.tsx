@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
-import { listLandlordBookings, decideBooking } from "@/lib/bookings.functions";
+import { listLandlordBookings, decideBooking, decideBookingOffer } from "@/lib/bookings.functions";
 import { landlordBookingTermsStatus } from "@/lib/terms.functions";
 import { Loader2, Check, X, Clock, Phone, Mail } from "lucide-react";
 import { useState } from "react";
@@ -12,6 +12,9 @@ export const Route = createFileRoute("/_authenticated/bookings")({ component: Bo
 function BookingsPage() {
   const list = useServerFn(listLandlordBookings);
   const decide = useServerFn(decideBooking);
+  const decideOffer = useServerFn(decideBookingOffer);
+  const [counterFor, setCounterFor] = useState<string | null>(null);
+  const [counterAmt, setCounterAmt] = useState("");
   const qc = useQueryClient();
   const termsFn = useServerFn(landlordBookingTermsStatus);
   const terms = useQuery({ queryKey: ["landlord-booking-terms"], queryFn: () => termsFn() });
@@ -24,6 +27,26 @@ function BookingsPage() {
       await decide({ data: { booking_id, decision } });
       qc.invalidateQueries({ queryKey: ["landlord-bookings"] });
     } catch (e) { alert((e as Error).message); }
+    setBusy(null);
+  };
+
+  const offerAct = async (booking_id: string, action: "approve" | "deny" | "counter", then?: "accept") => {
+    setBusy(booking_id);
+    try {
+      if (action === "counter") {
+        const n = Number(counterAmt.replace(/[, ₹]/g, ""));
+        if (!Number.isFinite(n) || n <= 0) throw new Error("Counter amount sahi likhein.");
+        await decideOffer({ data: { booking_id, action, counter_rent: n } });
+        setCounterFor(null);
+        setCounterAmt("");
+      } else {
+        await decideOffer({ data: { booking_id, action } });
+      }
+      if (then === "accept") await decide({ data: { booking_id, decision: "accept" } });
+    } catch (e) {
+      alert((e as Error).message);
+    }
+    qc.invalidateQueries({ queryKey: ["landlord-bookings"] });
     setBusy(null);
   };
 
@@ -61,11 +84,36 @@ function BookingsPage() {
                         : "No structured terms on this request"}
                     </div>
                   )}
+                  {b.offer_status && (
+                    <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
+                      {b.offer_status === "pending" && <div><b>Rent offer: ₹{Number(b.offered_rent).toLocaleString("en-IN")}</b> (listed ₹{Number(b.rooms?.rent_amount ?? 0).toLocaleString("en-IN")}). Approve, deny ya counter karein.</div>}
+                      {b.offer_status === "countered" && <div>Aapka counter ₹{Number(b.counter_rent).toLocaleString("en-IN")} — tenant ke jawab ka intezaar{b.offer_expires_at ? ` (till ${new Date(b.offer_expires_at).toLocaleString()})` : ""}.</div>}
+                      {b.offer_status === "approved" && <div><b>Agreed rent: ₹{Number(b.agreed_rent).toLocaleString("en-IN")}/month</b> — accept karne par yahi rent tenant par lagega.</div>}
+                      {["declined", "expired", "withdrawn"].includes(b.offer_status) && <div>Offer {b.offer_status}.</div>}
+                    </div>
+                  )}
                   {b.message && <div className="mt-2 text-xs text-muted-foreground italic">"{b.message}"</div>}
                 </div>
                 <StatusBadge status={b.status} />
               </div>
-              {b.status === "pending" && (
+              {b.status === "pending" && b.offer_status === "pending" && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button disabled={busy === b.id} onClick={() => offerAct(b.id, "deny")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-destructive/10 hover:text-destructive"><X className="size-3" /> Deny</button>
+                    <button disabled={busy === b.id} onClick={() => { setCounterFor(counterFor === b.id ? null : b.id); setCounterAmt(""); }} className="text-xs px-3 py-1.5 rounded-md border border-border">Counter</button>
+                    <button disabled={busy === b.id} onClick={() => offerAct(b.id, "approve", "accept")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium">
+                      {busy === b.id ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Approve &amp; accept
+                    </button>
+                  </div>
+                  {counterFor === b.id && (
+                    <div className="flex gap-2 justify-end">
+                      <input value={counterAmt} onChange={(e) => setCounterAmt(e.target.value)} inputMode="numeric" placeholder={`₹ (${Number(b.offered_rent) + 1} – ${Number(b.rooms?.rent_amount ?? 0)})`} className="w-40 px-2 py-1.5 rounded-md bg-background border border-input text-xs" />
+                      <button disabled={busy === b.id} onClick={() => offerAct(b.id, "counter")} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground">Send counter</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {b.status === "pending" && b.offer_status !== "pending" && b.offer_status !== "countered" && (
                 <div className="mt-3 flex gap-2 justify-end">
                   <button disabled={busy === b.id} onClick={() => act(b.id, "reject")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-destructive/10 hover:text-destructive"><X className="size-3" /> Reject</button>
                   <button disabled={busy === b.id} onClick={() => act(b.id, "accept")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium">

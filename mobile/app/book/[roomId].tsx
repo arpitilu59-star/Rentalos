@@ -12,7 +12,7 @@ import { termsRows } from "@/lib/terms";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useColors, R } from "@/theme";
 
-type TermsRes = { speech: string | null; terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
+type TermsRes = { offer?: { enabled: boolean; rent: number; min_allowed: number | null }; speech: string | null; terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
 
 export default function Book() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
@@ -25,14 +25,23 @@ export default function Book() {
   const [msg, setMsg] = useState("");
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
   const [done, setDone] = useState(false);
+  const [offerText, setOfferText] = useState("");
   const q = useQuery({ queryKey: ["room-terms", roomId], queryFn: () => api<TermsRes>("room/terms", { room_id: roomId }) });
   useEffect(() => { setName((n) => n || (session?.user.user_metadata?.full_name as string) || ""); }, [session]);
 
   const submit = useMutation({
-    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked, listened: heard }),
+    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked, listened: heard, offered_rent: offered ?? undefined }),
     onSuccess: () => { void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); qc.invalidateQueries({ queryKey: ["home"] }); qc.invalidateQueries({ queryKey: ["bookings"] }); setDone(true); },
   });
   const d = q.data;
+  // Optional rent offer. Only the public rule (min 50%) is known here; the landlord's floor never reaches the app.
+  const offered = d?.offer?.enabled && offerText.trim() ? Number(offerText.replace(/[^\d]/g, "")) : null;
+  const offerErr =
+    offered === null ? null
+    : !(offered > 0) ? "Offer amount sahi likhein."
+    : offered >= (d?.offer?.rent ?? 0) ? "Offer listed rent se kam hona chahiye (ya khali chhodein)."
+    : d?.offer?.min_allowed && offered < d.offer.min_allowed ? `Offer kam se kam ${d.offer.min_allowed} hona chahiye.`
+    : null;
   const [speaking, setSpeaking] = useState(false);
   const [heard, setHeard] = useState(false);
   useEffect(() => () => { Speech.stop(); }, []);
@@ -83,8 +92,18 @@ export default function Book() {
         <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={c.muted} style={input} />
         <TextInput value={mobile} onChangeText={setMobile} placeholder="Mobile number" keyboardType="phone-pad" placeholderTextColor={c.muted} style={input} />
         <TextInput value={msg} onChangeText={setMsg} placeholder="Owner ko message (optional) — kab shift hona hai, kitne log" multiline placeholderTextColor={c.muted} style={[input, { minHeight: 80, textAlignVertical: "top" }]} />
+        {d?.offer?.enabled ? (
+          <Card style={{ gap: 8 }}>
+            <Text style={{ color: c.text, fontWeight: "800" }}>Apna offer (optional)</Text>
+            <Text style={{ color: c.muted, fontSize: 12 }}>
+              Listed rent ₹{d.offer.rent}/month. Landlord approve, deny ya counter karega. Kam se kam ₹{d.offer.min_allowed}. Ek room par 7 din mein max 2 offers. Khali chhodein to poore rent par request jayegi.
+            </Text>
+            <TextInput value={offerText} onChangeText={setOfferText} placeholder="Monthly rent jo aap dena chahte hain" keyboardType="number-pad" placeholderTextColor={c.muted} style={input} />
+            {offerErr ? <Text style={{ color: c.danger, fontSize: 12 }}>{offerErr}</Text> : null}
+          </Card>
+        ) : null}
         <ErrorText error={submit.error} />
-        <Button title="Send booking request" busy={submit.isPending} disabled={!d || !allTicked || name.trim().length < 2 || mobile.replace(/\D/g, "").length < 10} onPress={() => submit.mutate()} />
+        <Button title={offered ? "Send request with my offer" : "Send booking request"} busy={submit.isPending} disabled={!!offerErr || !d || !allTicked || name.trim().length < 2 || mobile.replace(/\D/g, "").length < 10} onPress={() => submit.mutate()} />
         {!allTicked && <Text style={{ color: c.muted, fontSize: 12, textAlign: "center" }}>Request bhejne ke liye saare boxes tick karna zaroori hai.</Text>}
       </ScrollView>
     </KeyboardAvoidingView>

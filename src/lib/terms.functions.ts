@@ -150,9 +150,10 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const admin = await getAdmin();
+    await (await import("./offers.server")).expireOffers(admin);
     const { data: rows, error } = await admin
       .from("bookings")
-      .select("id, status, created_at, property_id, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)")
+      .select("id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)")
       .eq("tenant_user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -179,6 +180,7 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
         currentVersion: s.current_version ?? null,
         needsReaccept: needs,
         terms,
+        offer: (await import("./offers.server")).tenantOfferView(b),
       });
     }
     return out;

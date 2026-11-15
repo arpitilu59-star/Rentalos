@@ -400,6 +400,12 @@ export type Database = {
       }
       bookings: {
         Row: {
+          agreed_rent: number | null
+          counter_rent: number | null
+          offer_expires_at: string | null
+          offer_rounds: number
+          offer_status: string | null
+          offered_rent: number | null
           admin_note: string | null
           admin_review: string
           admin_reviewed_at: string | null
@@ -420,6 +426,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agreed_rent?: number | null
+          counter_rent?: number | null
+          offer_expires_at?: string | null
+          offer_rounds?: number
+          offer_status?: string | null
+          offered_rent?: number | null
           admin_note?: string | null
           admin_review?: string
           admin_reviewed_at?: string | null
@@ -440,6 +452,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agreed_rent?: number | null
+          counter_rent?: number | null
+          offer_expires_at?: string | null
+          offer_rounds?: number
+          offer_status?: string | null
+          offered_rent?: number | null
           admin_note?: string | null
           admin_review?: string
           admin_reviewed_at?: string | null

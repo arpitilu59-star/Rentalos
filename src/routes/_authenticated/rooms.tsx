@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, getOwnerId, type Property, type Room, type Tenant } from "@/lib/db";
 import { publishRoom } from "@/lib/bookings.functions";
+import { RoomOfferSettings } from "@/components/RoomOfferSettings";
 import { Plus, Pencil, Trash2, X, Globe2, EyeOff, Loader2, Video } from "lucide-react";
 import { LiveFeedManager } from "@/components/LiveFeedManager";
 import {
@@ -454,6 +455,7 @@ function RoomForm({
               className={input}
             />
           </Field>
+          {initial?.id && <RoomOfferSettings roomId={initial.id} />}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

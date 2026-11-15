@@ -1,0 +1,236 @@
+[
+  {
+    "name": "rentalos_rent_due_soon",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos rent reminder: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Rent due soon",
+              "Your rent bill is due on 20 November. Open Rentalos for the amount and payment details."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_rent_overdue",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos overdue rent update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Rent overdue",
+              "Your rent bill is overdue. Review its status in Rentalos."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_new_bill",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos new bill update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Your bill is ready",
+              "A new rent bill is available. Open Rentalos to review it."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_payment_submitted",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos payment submission update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Payment submitted",
+              "Your payment submission is waiting for landlord verification."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_payment_verified",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos payment verification update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Payment verified",
+              "Your submitted rent payment has been verified."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_maintenance_update",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos maintenance request update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Request updated",
+              "Your reported maintenance request has been marked in progress."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_booking_update",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos booking update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Booking confirmed",
+              "Your booking is confirmed. Review your accepted rental terms in Rentalos."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_lease_expiring",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos lease reminder: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Lease expiring",
+              "Your recorded lease ends in 30 days. Review the lease details in Rentalos."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_verification_update",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos account verification update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Verification updated",
+              "Your submitted profile verification is now complete."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_subscription_update",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos subscription status update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Subscription updated",
+              "Your existing Rentalos subscription is active."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_generic_update",
+    "language": "en_US",
+    "category": "UTILITY",
+    "components": [
+      {
+        "type": "BODY",
+        "text": "Rentalos account update: {{1}}\n\n{{2}}\n\nOpen your Rentalos account to review the details. You can turn off WhatsApp updates in Settings.",
+        "example": {
+          "body_text": [
+            [
+              "Account updated",
+              "An update to your Rentalos account is available."
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "rentalos_verify_code",
+    "language": "en_US",
+    "category": "AUTHENTICATION",
+    "components": [
+      {
+        "type": "BODY",
+        "add_security_recommendation": true
+      },
+      {
+        "type": "FOOTER",
+        "code_expiration_minutes": 10
+      },
+      {
+        "type": "BUTTONS",
+        "buttons": [
+          {
+            "type": "OTP",
+            "otp_type": "COPY_CODE",
+            "text": "Copy code"
+          }
+        ]
+      }
+    ]
+  }
+]

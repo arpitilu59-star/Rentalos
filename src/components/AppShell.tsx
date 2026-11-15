@@ -26,6 +26,13 @@ import { useEntitlements } from "@/lib/subscription/use-entitlements";
 import { featureForPath } from "@/lib/subscription/keys";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const NAV = [
   { to: "/rentdesk", label: "Dashboard", icon: LayoutDashboard },
@@ -97,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="text-xs text-muted-foreground">PG & Rent Manager</div>
           </div>
         </div>
-        <nav className="px-3 py-2 space-y-1">
+        <nav aria-label="RentDesk" className="px-3 py-2 space-y-1">
           {NAV.map((item) => {
             const active =
               pathname === item.to || (item.to !== "/rentdesk" && pathname.startsWith(item.to));
@@ -106,7 +113,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                aria-current={active ? "page" : undefined}
+                className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/60"
@@ -154,37 +162,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="font-semibold">RentDesk</div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={toggle} className="p-2 rounded-lg hover:bg-sidebar-accent">
+          <button
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+            onClick={toggle}
+            className="min-h-11 min-w-11 grid place-items-center p-2 rounded-lg hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
-          <button
-            onClick={() => setMenu((m) => !m)}
-            className="p-2 rounded-lg hover:bg-sidebar-accent"
-          >
-            <UserCircle className="size-5" />
-          </button>
+          <DropdownMenu open={menu} onOpenChange={setMenu}>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Account menu"
+                className="min-h-11 min-w-11 grid place-items-center p-2 rounded-lg hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <UserCircle className="size-5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="break-words">{name || "Account"}</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="min-h-11">
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={logout} className="min-h-11 text-destructive">
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {menu && (
-          <div className="absolute right-3 top-14 z-50 w-48 rounded-xl bg-card border border-border shadow-elevated py-1 text-sm">
-            <div className="px-3 py-2 text-xs text-muted-foreground truncate">{name}</div>
-            <Link
-              to="/profile"
-              onClick={() => setMenu(false)}
-              className="block px-3 py-2 hover:bg-accent"
-            >
-              Profile
-            </Link>
-            <button
-              onClick={logout}
-              className="w-full text-left px-3 py-2 text-destructive hover:bg-destructive/10"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
       </header>
 
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar border-t border-sidebar-border flex justify-around py-1 overflow-x-auto">
+      <nav
+        aria-label="RentDesk mobile"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar border-t border-sidebar-border flex gap-1 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] overflow-x-auto"
+      >
         {NAV.map((item) => {
           const active =
             pathname === item.to || (item.to !== "/rentdesk" && pathname.startsWith(item.to));
@@ -193,9 +205,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1.5 text-[10px] rounded-md shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`}
+              aria-current={active ? "page" : undefined}
+              className={`flex min-h-12 min-w-14 flex-col justify-center items-center gap-0.5 px-2 py-1.5 text-[10px] rounded-md shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "text-primary bg-sidebar-accent font-semibold" : "text-muted-foreground"}`}
             >
-              <Icon className="size-5" /> {item.label}
+              <Icon className="size-5" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1">
+                {item.label}
+                {locked(item.to) && <Lock className="size-3" aria-label="Not in your plan" />}
+              </span>
             </Link>
           );
         })}

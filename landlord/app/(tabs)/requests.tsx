@@ -17,6 +17,11 @@ type Req = {
   tenant_mobile: string;
   message: string | null;
   verified: boolean;
+  offer_status: string | null;
+  offered_rent: number | null;
+  counter_rent: number | null;
+  agreed_rent: number | null;
+  offer_expires_at: string | null;
   rooms: { room_number: string; rent_amount: number } | null;
   properties: { name: string } | null;
   terms: { accepted: number | null; current: number | null; needs: boolean } | null;
@@ -72,6 +77,37 @@ function Bookings() {
         qc.invalidateQueries({ queryKey: [k] });
     },
   });
+  const [counterFor, setCounterFor] = useState<string | null>(null);
+  const [counterAmt, setCounterAmt] = useState("");
+  const offer = useMutation({
+    mutationFn: async (p: { id: string; action: "approve" | "deny" | "counter"; amount?: number }) => {
+      await api("l/offer/decide", { booking_id: p.id, action: p.action, counter_rent: p.amount });
+      // Approve = agree the price AND confirm the booking at that rent in one tap.
+      if (p.action === "approve") await api("l/request/decide", { booking_id: p.id, decision: "accept" });
+    },
+    onSuccess: () => {
+      setCounterFor(null);
+      setCounterAmt("");
+    },
+    onSettled: () => {
+      for (const k of ["requests", "home", "tenants", "props"]) qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+  const askOffer = (r: Req, action: "approve" | "deny") =>
+    Alert.alert(
+      action === "approve" ? `${inr(r.offered_rent)} par approve karein?` : "Offer deny karein?",
+      action === "approve"
+        ? `Tenant ${r.tenant_name} ${inr(r.offered_rent)}/month par add ho jayega (listed ${inr(r.rooms?.rent_amount)}).`
+        : "Ye request band ho jayegi. Tenant ko wajah ya aapka minimum nahi bataya jayega.",
+      [
+        { text: "Nahi" },
+        {
+          text: action === "approve" ? "Approve & accept" : "Deny",
+          style: action === "deny" ? "destructive" : "default",
+          onPress: () => offer.mutate({ id: r.id, action }),
+        },
+      ],
+    );
   const ask = (r: Req, decision: "accept" | "reject") =>
     Alert.alert(
       decision === "accept" ? `${r.tenant_name} ko accept karein?` : "Request reject karein?",
@@ -93,7 +129,7 @@ function Bookings() {
       contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 12 }}
       refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} />}
     >
-      <ErrorText error={q.error ?? decide.error} />
+      <ErrorText error={q.error ?? decide.error ?? offer.error} />
       {q.isLoading ? <SkeletonList n={3} height={120} /> : null}
       {q.data && !rows.length ? <Empty text="Abhi koi booking request nahi aayi." /> : null}
       {rows.map((r) => (
@@ -120,6 +156,29 @@ function Bookings() {
           <Row k="Mobile" v={r.tenant_mobile} />
           <Row k="Request" v={dmy(r.created_at)} />
           {r.message ? <Row k="Message" v={r.message} /> : null}
+          {r.offer_status ? (
+            <View style={{ backgroundColor: c.bg, borderRadius: 10, padding: 10, gap: 4 }}>
+              {r.offer_status === "pending" ? (
+                <Text style={{ color: c.text, fontWeight: "700" }}>
+                  Rent offer: {inr(r.offered_rent)} (listed {inr(r.rooms?.rent_amount)})
+                </Text>
+              ) : null}
+              {r.offer_status === "countered" ? (
+                <Text style={{ color: c.text }}>
+                  Aapka counter {inr(r.counter_rent)} — tenant ke jawab ka intezaar
+                  {r.offer_expires_at ? ` (till ${dmy(r.offer_expires_at)})` : ""}.
+                </Text>
+              ) : null}
+              {r.offer_status === "approved" ? (
+                <Text style={{ color: c.text, fontWeight: "700" }}>
+                  Agreed rent: {inr(r.agreed_rent)}/month — accept karne par yahi lagega.
+                </Text>
+              ) : null}
+              {["declined", "expired", "withdrawn"].includes(r.offer_status) ? (
+                <Text style={{ color: c.muted }}>Offer {r.offer_status}.</Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
             {r.verified ? (
               <Pill text="ID verified tenant ✓" tone="ok" />
@@ -144,7 +203,32 @@ function Bookings() {
               onPress={() => Linking.openURL(`tel:${r.tenant_mobile}`)}
               style={{ flex: 1, paddingVertical: 10 }}
             />
-            {r.status === "pending" ? (
+            {r.status === "pending" && r.offer_status === "pending" ? (
+              <>
+                <Button
+                  kind="danger"
+                  title="Deny"
+                  onPress={() => askOffer(r, "deny")}
+                  style={{ flex: 1, paddingVertical: 10 }}
+                />
+                <Button
+                  kind="ghost"
+                  title="Counter"
+                  onPress={() => {
+                    setCounterFor(counterFor === r.id ? null : r.id);
+                    setCounterAmt("");
+                  }}
+                  style={{ flex: 1, paddingVertical: 10 }}
+                />
+                <Button
+                  title="Approve"
+                  busy={offer.isPending}
+                  onPress={() => askOffer(r, "approve")}
+                  style={{ flex: 1, paddingVertical: 10 }}
+                />
+              </>
+            ) : null}
+            {r.status === "pending" && r.offer_status !== "pending" && r.offer_status !== "countered" ? (
               <>
                 <Button
                   kind="danger"
@@ -160,6 +244,25 @@ function Bookings() {
               </>
             ) : null}
           </View>
+          {counterFor === r.id && r.status === "pending" && r.offer_status === "pending" ? (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              <Field
+                label={`Counter amount (${inr((r.offered_rent ?? 0) + 1)} se ${inr(r.rooms?.rent_amount)} tak)`}
+                value={counterAmt}
+                onChange={setCounterAmt}
+                keyboard="numeric"
+                placeholder="₹"
+              />
+              <Button
+                title="Counter bhejein (24 ghante)"
+                busy={offer.isPending}
+                onPress={() => {
+                  const n = Number(counterAmt.replace(/[^\d]/g, ""));
+                  if (n > 0) offer.mutate({ id: r.id, action: "counter", amount: n });
+                }}
+              />
+            </View>
+          ) : null}
         </Card>
       ))}
     </ScrollView>

@@ -221,6 +221,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await t.reacceptBooking(me, body));
         case "booking/cancel":
           return json(await t.cancelBooking(me, uuid(body.booking_id)));
+        case "offer/respond":
+          return json(await t.respondOfferFromApp(me, body));
         case "bills":
           return json(await t.myBills(me));
         case "pay/info":
@@ -330,6 +332,12 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await L.listRequests(me));
         case "request/decide":
           return json(await L.decideRequest(me, body));
+        case "offer/decide":
+          return json(await L.decideOfferFromApp(me, body));
+        case "offer/settings":
+          return json(await L.offerSettings(me, body));
+        case "offer/settings/save":
+          return json(await L.saveOfferSettings(me, body));
         case "tenants":
           return json(await L.listTenants(me));
         case "tenant/save":

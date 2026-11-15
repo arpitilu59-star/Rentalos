@@ -1,0 +1,1893 @@
+diff --git a/landlord/app/(tabs)/requests.tsx b/landlord/app/(tabs)/requests.tsx
+index 69b538f..c6c326e 100644
+--- a/landlord/app/(tabs)/requests.tsx
++++ b/landlord/app/(tabs)/requests.tsx
+@@ -17,6 +17,11 @@ type Req = {
+   tenant_mobile: string;
+   message: string | null;
+   verified: boolean;
++  offer_status: string | null;
++  offered_rent: number | null;
++  counter_rent: number | null;
++  agreed_rent: number | null;
++  offer_expires_at: string | null;
+   rooms: { room_number: string; rent_amount: number } | null;
+   properties: { name: string } | null;
+   terms: { accepted: number | null; current: number | null; needs: boolean } | null;
+@@ -72,6 +77,37 @@ function Bookings() {
+         qc.invalidateQueries({ queryKey: [k] });
+     },
+   });
++  const [counterFor, setCounterFor] = useState<string | null>(null);
++  const [counterAmt, setCounterAmt] = useState("");
++  const offer = useMutation({
++    mutationFn: async (p: { id: string; action: "approve" | "deny" | "counter"; amount?: number }) => {
++      await api("l/offer/decide", { booking_id: p.id, action: p.action, counter_rent: p.amount });
++      // Approve = agree the price AND confirm the booking at that rent in one tap.
++      if (p.action === "approve") await api("l/request/decide", { booking_id: p.id, decision: "accept" });
++    },
++    onSuccess: () => {
++      setCounterFor(null);
++      setCounterAmt("");
++    },
++    onSettled: () => {
++      for (const k of ["requests", "home", "tenants", "props"]) qc.invalidateQueries({ queryKey: [k] });
++    },
++  });
++  const askOffer = (r: Req, action: "approve" | "deny") =>
++    Alert.alert(
++      action === "approve" ? `${inr(r.offered_rent)} par approve karein?` : "Offer deny karein?",
++      action === "approve"
++        ? `Tenant ${r.tenant_name} ${inr(r.offered_rent)}/month par add ho jayega (listed ${inr(r.rooms?.rent_amount)}).`
++        : "Ye request band ho jayegi. Tenant ko wajah ya aapka minimum nahi bataya jayega.",
++      [
++        { text: "Nahi" },
++        {
++          text: action === "approve" ? "Approve & accept" : "Deny",
++          style: action === "deny" ? "destructive" : "default",
++          onPress: () => offer.mutate({ id: r.id, action }),
++        },
++      ],
++    );
+   const ask = (r: Req, decision: "accept" | "reject") =>
+     Alert.alert(
+       decision === "accept" ? `${r.tenant_name} ko accept karein?` : "Request reject karein?",
+@@ -93,7 +129,7 @@ function Bookings() {
+       contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 12 }}
+       refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} />}
+     >
+-      <ErrorText error={q.error ?? decide.error} />
++      <ErrorText error={q.error ?? decide.error ?? offer.error} />
+       {q.isLoading ? <SkeletonList n={3} height={120} /> : null}
+       {q.data && !rows.length ? <Empty text="Abhi koi booking request nahi aayi." /> : null}
+       {rows.map((r) => (
+@@ -120,6 +156,29 @@ function Bookings() {
+           <Row k="Mobile" v={r.tenant_mobile} />
+           <Row k="Request" v={dmy(r.created_at)} />
+           {r.message ? <Row k="Message" v={r.message} /> : null}
++          {r.offer_status ? (
++            <View style={{ backgroundColor: c.bg, borderRadius: 10, padding: 10, gap: 4 }}>
++              {r.offer_status === "pending" ? (
++                <Text style={{ color: c.text, fontWeight: "700" }}>
++                  Rent offer: {inr(r.offered_rent)} (listed {inr(r.rooms?.rent_amount)})
++                </Text>
++              ) : null}
++              {r.offer_status === "countered" ? (
++                <Text style={{ color: c.text }}>
++                  Aapka counter {inr(r.counter_rent)} — tenant ke jawab ka intezaar
++                  {r.offer_expires_at ? ` (till ${dmy(r.offer_expires_at)})` : ""}.
++                </Text>
++              ) : null}
++              {r.offer_status === "approved" ? (
++                <Text style={{ color: c.text, fontWeight: "700" }}>
++                  Agreed rent: {inr(r.agreed_rent)}/month — accept karne par yahi lagega.
++                </Text>
++              ) : null}
++              {["declined", "expired", "withdrawn"].includes(r.offer_status) ? (
++                <Text style={{ color: c.muted }}>Offer {r.offer_status}.</Text>
++              ) : null}
++            </View>
++          ) : null}
+           <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+             {r.verified ? (
+               <Pill text="ID verified tenant ✓" tone="ok" />
+@@ -144,7 +203,32 @@ function Bookings() {
+               onPress={() => Linking.openURL(`tel:${r.tenant_mobile}`)}
+               style={{ flex: 1, paddingVertical: 10 }}
+             />
+-            {r.status === "pending" ? (
++            {r.status === "pending" && r.offer_status === "pending" ? (
++              <>
++                <Button
++                  kind="danger"
++                  title="Deny"
++                  onPress={() => askOffer(r, "deny")}
++                  style={{ flex: 1, paddingVertical: 10 }}
++                />
++                <Button
++                  kind="ghost"
++                  title="Counter"
++                  onPress={() => {
++                    setCounterFor(counterFor === r.id ? null : r.id);
++                    setCounterAmt("");
++                  }}
++                  style={{ flex: 1, paddingVertical: 10 }}
++                />
++                <Button
++                  title="Approve"
++                  busy={offer.isPending}
++                  onPress={() => askOffer(r, "approve")}
++                  style={{ flex: 1, paddingVertical: 10 }}
++                />
++              </>
++            ) : null}
++            {r.status === "pending" && r.offer_status !== "pending" && r.offer_status !== "countered" ? (
+               <>
+                 <Button
+                   kind="danger"
+@@ -160,6 +244,25 @@ function Bookings() {
+               </>
+             ) : null}
+           </View>
++          {counterFor === r.id && r.status === "pending" && r.offer_status === "pending" ? (
++            <View style={{ gap: 8, marginTop: 4 }}>
++              <Field
++                label={`Counter amount (${inr((r.offered_rent ?? 0) + 1)} se ${inr(r.rooms?.rent_amount)} tak)`}
++                value={counterAmt}
++                onChange={setCounterAmt}
++                keyboard="numeric"
++                placeholder="₹"
++              />
++              <Button
++                title="Counter bhejein (24 ghante)"
++                busy={offer.isPending}
++                onPress={() => {
++                  const n = Number(counterAmt.replace(/[^\d]/g, ""));
++                  if (n > 0) offer.mutate({ id: r.id, action: "counter", amount: n });
++                }}
++              />
++            </View>
++          ) : null}
+         </Card>
+       ))}
+     </ScrollView>
+diff --git a/landlord/app/room-form.tsx b/landlord/app/room-form.tsx
+index 8645624..3412cb3 100644
+--- a/landlord/app/room-form.tsx
++++ b/landlord/app/room-form.tsx
+@@ -8,6 +8,7 @@ import { Switch, View } from "react-native";
+ import { Text } from "@/components/Text";
+ import { useColors } from "@/theme";
+ import { Choice, Field, useUnsavedGuard } from "@/lib/ui2";
++import { OfferSettings } from "@/components/OfferSettings";
+ 
+ const OCC: Array<[string, string]> = [
+   ["boys", "Boys only"],
+@@ -198,6 +199,7 @@ export default function RoomForm() {
+           />
+         </>
+       ) : null}
++      {id ? <OfferSettings roomId={id} /> : null}
+       <ErrorText error={save.error} />
+       <Button
+         title={id ? "Save karein" : "Room banayein aur details bharein"}
+diff --git a/landlord/src/components/OfferSettings.tsx b/landlord/src/components/OfferSettings.tsx
+new file mode 100644
+index 0000000..644fe8d
+--- /dev/null
++++ b/landlord/src/components/OfferSettings.tsx
+@@ -0,0 +1,69 @@
++import React, { useEffect, useState } from "react";
++import { Switch, View } from "react-native";
++import { useMutation, useQuery } from "@tanstack/react-query";
++import { Text } from "@/components/Text";
++import { api } from "@/lib/api";
++import { Button, Card, ErrorText } from "@/components/ui";
++import { Field } from "@/lib/ui2";
++import { useColors, inr } from "@/theme";
++
++type S = { rent: number; offers_enabled: boolean; min_rent: number | null; auto_approve: boolean };
++
++/** Per-room negotiation settings. The minimum (floor) is private: the server never sends it to tenants. */
++export function OfferSettings({ roomId }: { roomId: string }) {
++  const c = useColors();
++  const q = useQuery({ queryKey: ["offer-settings", roomId], queryFn: () => api<S>("l/offer/settings", { room_id: roomId }) });
++  const [on, setOn] = useState(false);
++  const [min, setMin] = useState("");
++  const [auto, setAuto] = useState(false);
++  const [saved, setSaved] = useState(false);
++  useEffect(() => {
++    if (q.data) {
++      setOn(q.data.offers_enabled);
++      setMin(q.data.min_rent != null ? String(q.data.min_rent) : "");
++      setAuto(q.data.auto_approve);
++    }
++  }, [q.data]);
++  const save = useMutation({
++    mutationFn: () =>
++      api("l/offer/settings/save", {
++        room_id: roomId,
++        offers_enabled: on,
++        min_rent: min.trim() ? Number(min.replace(/[^\d]/g, "")) : null,
++        auto_approve: auto,
++      }),
++    onSuccess: () => {
++      setSaved(true);
++      void q.refetch();
++    },
++  });
++  return (
++    <Card style={{ gap: 10 }}>
++      <Text style={{ color: c.text, fontWeight: "800" }}>Tenant offers (negotiation)</Text>
++      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
++        <Text style={{ color: c.text, flex: 1, paddingRight: 8 }}>Is room par tenants ko offer dene dein</Text>
++        <Switch value={on} onValueChange={(v) => { setOn(v); setSaved(false); }} />
++      </View>
++      {on ? (
++        <>
++          <Field
++            label="Aapka minimum rent (floor) — tenant ko kabhi nahi dikhega"
++            value={min}
++            onChange={(v) => { setMin(v); setSaved(false); }}
++            keyboard="numeric"
++            placeholder={q.data?.rent ? `jaise ${Math.round(q.data.rent * 0.9)} (listed ${inr(q.data.rent)})` : "minimum rent"}
++          />
++          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
++            <Text style={{ color: c.text, flex: 1, paddingRight: 8, fontSize: 13 }}>
++              Floor ya upar ke offer ka rent auto-approve karein (booking aap phir bhi khud accept karenge)
++            </Text>
++            <Switch value={auto} onValueChange={(v) => { setAuto(v); setSaved(false); }} />
++          </View>
++        </>
++      ) : null}
++      <ErrorText error={q.error ?? save.error} />
++      {saved ? <Text style={{ color: c.ok }}>Offer settings save ho gayi.</Text> : null}
++      <Button title="Offer settings save karein" busy={save.isPending} onPress={() => save.mutate()} />
++    </Card>
++  );
++}
+diff --git a/mobile/app/book/[roomId].tsx b/mobile/app/book/[roomId].tsx
+index 2588d13..f38b972 100644
+--- a/mobile/app/book/[roomId].tsx
++++ b/mobile/app/book/[roomId].tsx
+@@ -12,7 +12,7 @@ import { termsRows } from "@/lib/terms";
+ import { Button, Card, ErrorText } from "@/components/ui";
+ import { useColors, R } from "@/theme";
+ 
+-type TermsRes = { speech: string | null; terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
++type TermsRes = { offer?: { enabled: boolean; rent: number; min_allowed: number | null }; speech: string | null; terms: any; version: number | null; rent: number; deposit: number | null; acks: Array<{ key: string; label: string }> };
+ 
+ export default function Book() {
+   const { roomId } = useLocalSearchParams<{ roomId: string }>();
+@@ -25,14 +25,23 @@ export default function Book() {
+   const [msg, setMsg] = useState("");
+   const [ticked, setTicked] = useState<Record<string, boolean>>({});
+   const [done, setDone] = useState(false);
++  const [offerText, setOfferText] = useState("");
+   const q = useQuery({ queryKey: ["room-terms", roomId], queryFn: () => api<TermsRes>("room/terms", { room_id: roomId }) });
+   useEffect(() => { setName((n) => n || (session?.user.user_metadata?.full_name as string) || ""); }, [session]);
+ 
+   const submit = useMutation({
+-    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked, listened: heard }),
++    mutationFn: () => api("booking/create", { room_id: roomId, tenant_name: name, tenant_mobile: mobile, tenant_email: session?.user.email, message: msg, acknowledgements: ticked, listened: heard, offered_rent: offered ?? undefined }),
+     onSuccess: () => { void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); qc.invalidateQueries({ queryKey: ["home"] }); qc.invalidateQueries({ queryKey: ["bookings"] }); setDone(true); },
+   });
+   const d = q.data;
++  // Optional rent offer. Only the public rule (min 50%) is known here; the landlord's floor never reaches the app.
++  const offered = d?.offer?.enabled && offerText.trim() ? Number(offerText.replace(/[^\d]/g, "")) : null;
++  const offerErr =
++    offered === null ? null
++    : !(offered > 0) ? "Offer amount sahi likhein."
++    : offered >= (d?.offer?.rent ?? 0) ? "Offer listed rent se kam hona chahiye (ya khali chhodein)."
++    : d?.offer?.min_allowed && offered < d.offer.min_allowed ? `Offer kam se kam ${d.offer.min_allowed} hona chahiye.`
++    : null;
+   const [speaking, setSpeaking] = useState(false);
+   const [heard, setHeard] = useState(false);
+   useEffect(() => () => { Speech.stop(); }, []);
+@@ -83,8 +92,18 @@ export default function Book() {
+         <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={c.muted} style={input} />
+         <TextInput value={mobile} onChangeText={setMobile} placeholder="Mobile number" keyboardType="phone-pad" placeholderTextColor={c.muted} style={input} />
+         <TextInput value={msg} onChangeText={setMsg} placeholder="Owner ko message (optional) — kab shift hona hai, kitne log" multiline placeholderTextColor={c.muted} style={[input, { minHeight: 80, textAlignVertical: "top" }]} />
++        {d?.offer?.enabled ? (
++          <Card style={{ gap: 8 }}>
++            <Text style={{ color: c.text, fontWeight: "800" }}>Apna offer (optional)</Text>
++            <Text style={{ color: c.muted, fontSize: 12 }}>
++              Listed rent ₹{d.offer.rent}/month. Landlord approve, deny ya counter karega. Kam se kam ₹{d.offer.min_allowed}. Ek room par 7 din mein max 2 offers. Khali chhodein to poore rent par request jayegi.
++            </Text>
++            <TextInput value={offerText} onChangeText={setOfferText} placeholder="Monthly rent jo aap dena chahte hain" keyboardType="number-pad" placeholderTextColor={c.muted} style={input} />
++            {offerErr ? <Text style={{ color: c.danger, fontSize: 12 }}>{offerErr}</Text> : null}
++          </Card>
++        ) : null}
+         <ErrorText error={submit.error} />
+-        <Button title="Send booking request" busy={submit.isPending} disabled={!d || !allTicked || name.trim().length < 2 || mobile.replace(/\D/g, "").length < 10} onPress={() => submit.mutate()} />
++        <Button title={offered ? "Send request with my offer" : "Send booking request"} busy={submit.isPending} disabled={!!offerErr || !d || !allTicked || name.trim().length < 2 || mobile.replace(/\D/g, "").length < 10} onPress={() => submit.mutate()} />
+         {!allTicked && <Text style={{ color: c.muted, fontSize: 12, textAlign: "center" }}>Request bhejne ke liye saare boxes tick karna zaroori hai.</Text>}
+       </ScrollView>
+     </KeyboardAvoidingView>
+diff --git a/mobile/app/bookings.tsx b/mobile/app/bookings.tsx
+index b8df983..57c629a 100644
+--- a/mobile/app/bookings.tsx
++++ b/mobile/app/bookings.tsx
+@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
+ import { Button, Card, Empty, ErrorText } from "@/components/ui";
+ import { useColors, inr } from "@/theme";
+ 
+-type B = { needsReaccept: boolean; terms: any; version: number | null; id: string; status: string; created_at: string; rooms: { room_number: string; rent_amount: number; myr_deposit?: number | null; properties: { name: string; myr_city: string | null; city: string | null } | null } | null };
++type Offer = { status: string; offered_rent: number | null; counter_rent: number | null; agreed_rent: number | null; expires_at: string | null };
++type B = { offer?: Offer | null; needsReaccept: boolean; terms: any; version: number | null; id: string; status: string; created_at: string; rooms: { room_number: string; rent_amount: number; myr_deposit?: number | null; properties: { name: string; myr_city: string | null; city: string | null } | null } | null };
+ 
+ function Reaccept({ b, acks }: { b: B; acks: Array<{ key: string; label: string }> }) {
+   const c = useColors();
+@@ -42,6 +43,40 @@ function Reaccept({ b, acks }: { b: B; acks: Array<{ key: string; label: string
+   );
+ }
+ 
++function OfferBox({ b }: { b: B }) {
++  const c = useColors();
++  const qc = useQueryClient();
++  const o = b.offer;
++  const respond = useMutation({
++    mutationFn: (action: "accept" | "decline") => api("offer/respond", { booking_id: b.id, action }),
++    onSettled: () => { qc.invalidateQueries({ queryKey: ["bookings"] }); qc.invalidateQueries({ queryKey: ["home"] }); },
++  });
++  if (!o) return null;
++  const text: Record<string, string> = {
++    pending: `Aapka offer ${inr(o.offered_rent)} landlord ke jawab ka intezaar kar raha hai.`,
++    approved: `Offer approve: ${inr(o.agreed_rent)}/month. Landlord booking confirm karega.`,
++    declined: "Landlord ne ye offer accept nahi kiya.",
++    expired: "Counter offer expire ho gaya, request band ho gayi.",
++    withdrawn: "Offer wapas le liya gaya.",
++    countered: `Landlord ka counter offer: ${inr(o.counter_rent)}/month (listed ${inr(b.rooms?.rent_amount)}).`,
++  };
++  return (
++    <View style={{ marginTop: 10, backgroundColor: c.bg, borderRadius: 10, padding: 10, gap: 8 }}>
++      <Text style={{ color: c.text }}>{text[o.status] ?? ""}</Text>
++      {o.status === "countered" ? (
++        <>
++          {o.expires_at ? <Text style={{ color: c.muted, fontSize: 12 }}>24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString("en-IN")}).</Text> : null}
++          <ErrorText error={respond.error} />
++          <View style={{ flexDirection: "row", gap: 8 }}>
++            <Button kind="ghost" title="Decline" busy={respond.isPending} onPress={() => respond.mutate("decline")} style={{ flex: 1 }} />
++            <Button title={`Accept ${inr(o.counter_rent)}`} busy={respond.isPending} onPress={() => respond.mutate("accept")} style={{ flex: 1 }} />
++          </View>
++        </>
++      ) : null}
++    </View>
++  );
++}
++
+ export default function Bookings() {
+   const c = useColors();
+   const t = useT();
+@@ -63,6 +98,7 @@ export default function Bookings() {
+             <Text style={{ color: col(b.status), fontWeight: "800", textTransform: "capitalize" }}>{b.status}</Text>
+             {b.status === "pending" && <Button kind="ghost" title="Cancel" onPress={() => Alert.alert(t("Request cancel karein?"), "", [{ text: t("Nahi"), style: "cancel" }, { text: t("Haan, cancel"), style: "destructive", onPress: () => cancel.mutate(b.id) }])} />}
+           </View>
++          <OfferBox b={b} />
+           {b.needsReaccept && b.terms ? <Reaccept b={b} acks={q.data?.acks ?? []} /> : null}
+         </Card>
+       )}
+diff --git a/src/components/RoomOfferSettings.tsx b/src/components/RoomOfferSettings.tsx
+new file mode 100644
+index 0000000..d6e14b9
+--- /dev/null
++++ b/src/components/RoomOfferSettings.tsx
+@@ -0,0 +1,76 @@
++import { useEffect, useState } from "react";
++import { useServerFn } from "@tanstack/react-start";
++import { getMyRoomOfferSettings, saveMyRoomOfferSettings } from "@/lib/bookings.functions";
++
++/** Landlord-only, per room. The floor is private: the server never sends it to tenants. */
++export function RoomOfferSettings({ roomId }: { roomId: string }) {
++  const load = useServerFn(getMyRoomOfferSettings);
++  const save = useServerFn(saveMyRoomOfferSettings);
++  const [rent, setRent] = useState(0);
++  const [enabled, setEnabled] = useState(false);
++  const [min, setMin] = useState("");
++  const [auto, setAuto] = useState(false);
++  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [ready, setReady] = useState(false);
++
++  useEffect(() => {
++    load({ data: { room_id: roomId } })
++      .then((s) => {
++        setRent(s.rent);
++        setEnabled(s.offers_enabled);
++        setMin(s.min_rent != null ? String(s.min_rent) : "");
++        setAuto(s.auto_approve);
++        setReady(true);
++      })
++      .catch(() => setReady(true));
++  }, [roomId, load]);
++
++  const submit = async () => {
++    setBusy(true);
++    setMsg(null);
++    try {
++      const n = min.trim() ? Number(min.replace(/[, ₹]/g, "")) : null;
++      await save({ data: { room_id: roomId, offers_enabled: enabled, min_rent: n, auto_approve: auto } });
++      setMsg({ ok: true, text: "Offer settings saved." });
++    } catch (e) {
++      setMsg({ ok: false, text: (e as Error).message });
++    }
++    setBusy(false);
++  };
++
++  if (!ready) return null;
++  return (
++    <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
++      <div className="text-sm font-medium">Tenant offers (negotiation)</div>
++      <label className="flex items-center gap-2 text-sm">
++        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
++        Is room par tenants ko offer dene dein
++      </label>
++      {enabled && (
++        <>
++          <label className="block text-xs text-muted-foreground">
++            Aapka minimum rent (floor) — tenant ko kabhi nahi dikhega
++            <input
++              value={min}
++              onChange={(e) => setMin(e.target.value)}
++              inputMode="numeric"
++              placeholder={rent ? `e.g. ${Math.round(rent * 0.9)} (listed ${rent})` : "minimum rent"}
++              className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input text-foreground"
++            />
++          </label>
++          <label className="flex items-center gap-2 text-xs">
++            <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
++            Floor ya usse upar ke offer ka rent auto-approve karein (booking aap phir bhi khud accept karenge)
++          </label>
++        </>
++      )}
++      <div className="flex items-center gap-3">
++        <button type="button" onClick={submit} disabled={busy} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground disabled:opacity-60">
++          {busy ? "Saving…" : "Save offer settings"}
++        </button>
++        {msg && <span className={`text-xs ${msg.ok ? "text-emerald-600" : "text-destructive"}`}>{msg.text}</span>}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index d085b5f..27c98fa 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -400,6 +400,12 @@ export type Database = {
+       }
+       bookings: {
+         Row: {
++          agreed_rent: number | null
++          counter_rent: number | null
++          offer_expires_at: string | null
++          offer_rounds: number
++          offer_status: string | null
++          offered_rent: number | null
+           admin_note: string | null
+           admin_review: string
+           admin_reviewed_at: string | null
+@@ -420,6 +426,12 @@ export type Database = {
+           updated_at: string
+         }
+         Insert: {
++          agreed_rent?: number | null
++          counter_rent?: number | null
++          offer_expires_at?: string | null
++          offer_rounds?: number
++          offer_status?: string | null
++          offered_rent?: number | null
+           admin_note?: string | null
+           admin_review?: string
+           admin_reviewed_at?: string | null
+@@ -440,6 +452,12 @@ export type Database = {
+           updated_at?: string
+         }
+         Update: {
++          agreed_rent?: number | null
++          counter_rent?: number | null
++          offer_expires_at?: string | null
++          offer_rounds?: number
++          offer_status?: string | null
++          offered_rent?: number | null
+           admin_note?: string | null
+           admin_review?: string
+           admin_reviewed_at?: string | null
+diff --git a/src/lib/_tests_/offers-server.test.ts b/src/lib/_tests_/offers-server.test.ts
+new file mode 100644
+index 0000000..69dda94
+--- /dev/null
++++ b/src/lib/_tests_/offers-server.test.ts
+@@ -0,0 +1,112 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- test stubs */
++import { describe, it, expect } from "vitest";
++import {
++  offerError,
++  parseAmount,
++  rentForAccept,
++  getRoomOfferInfo,
++  getOwnerOfferSettings,
++  saveOwnerOfferSettings,
++  tenantOfferView,
++  decideOffer,
++  respondOffer,
++} from "../offers.server";
++
++/** Minimal chainable stub of the supabase client. */
++function fake(tables: Record<string, any>, rpcs: Record<string, (a: any) => any> = {}) {
++  const upserts: any[] = [];
++  const client: any = {
++    from: (t: string) => {
++      const row = tables[t];
++      const chain: any = {
++        select: () => chain,
++        eq: () => chain,
++        maybeSingle: async () => ({ data: row ?? null }),
++        upsert: async (v: any) => {
++          upserts.push({ t, v });
++          return { error: null };
++        },
++      };
++      return chain;
++    },
++    rpc: async (n: string, a: any) => (rpcs[n] ? rpcs[n](a) : { data: null, error: null }),
++  };
++  return { client, upserts };
++}
++
++describe("offerError / parseAmount", () => {
++  it("maps database codes to friendly messages and hides unknown errors", () => {
++    expect(offerError({ message: "OFFER_TOO_LOW: offers below 50%" }).message).toMatch(/50%/);
++    expect(offerError({ message: "OFFER_OPEN: decide the rent offer" }).message).toMatch(/decision/);
++    expect(offerError({ message: "relation \"x\" does not exist" }).message).toBe("Offer process nahi ho paya. Dobara try karein.");
++  });
++  it("parses whole rupees and rejects junk", () => {
++    expect(parseAmount("₹ 8,500")).toBe(8500);
++    expect(parseAmount(7999.6)).toBe(8000);
++    for (const bad of [0, -5, "abc", "", null, undefined, 1e12]) expect(parseAmount(bad)).toBeNull();
++  });
++});
++
++describe("rentForAccept", () => {
++  it("uses the agreed rent when present, otherwise the fallback", async () => {
++    expect(await rentForAccept(fake({}, { offer_agreed_rent: () => ({ data: 8500, error: null }) }).client, "b", 10000)).toBe(8500);
++    expect(await rentForAccept(fake({}, { offer_agreed_rent: () => ({ data: null, error: null }) }).client, "b", 10000)).toBe(10000);
++  });
++  it("blocks while an offer is still open", async () => {
++    const c = fake({}, { offer_agreed_rent: () => ({ data: null, error: { message: "OFFER_OPEN: decide" } }) }).client;
++    await expect(rentForAccept(c, "b", 10000)).rejects.toThrow(/decision/);
++  });
++});
++
++describe("tenant-facing data never contains the floor", () => {
++  it("getRoomOfferInfo returns only enabled / rent / public minimum", async () => {
++    const { client } = fake({ room_offer_settings: { offers_enabled: true, min_rent: 8000, auto_approve: true }, rooms: { rent_amount: 10000 } });
++    const info = await getRoomOfferInfo(client, "r");
++    expect(info).toEqual({ enabled: true, rent: 10000, min_allowed: 5000 });
++    expect(JSON.stringify(info)).not.toContain("8000");
++  });
++  it("tenantOfferView exposes only offer amounts and status", () => {
++    const v = tenantOfferView({ offer_status: "countered", offered_rent: 7000, counter_rent: 8000, agreed_rent: null, offer_expires_at: "x", min_rent: 8000, floor: 1 });
++    expect(Object.keys(v!).sort()).toEqual(["agreed_rent", "counter_rent", "expires_at", "offered_rent", "status"]);
++    expect(tenantOfferView({ offer_status: null })).toBeNull();
++  });
++  it("offers off => disabled", async () => {
++    expect((await getRoomOfferInfo(fake({ room_offer_settings: { offers_enabled: false }, rooms: { rent_amount: 10000 } }).client, "r")).enabled).toBe(false);
++  });
++});
++
++describe("owner settings", () => {
++  const room = { id: "r", owner_id: "L", rent_amount: 10000 };
++  it("only the owner can read or save", async () => {
++    await expect(getOwnerOfferSettings(fake({ rooms: room }).client, "OTHER", "r")).rejects.toThrow(/permission/);
++    await expect(saveOwnerOfferSettings(fake({ rooms: room }).client, "OTHER", { room_id: "r", offers_enabled: true, min_rent: 8000, auto_approve: false })).rejects.toThrow(/permission/);
++  });
++  it("validates the floor", async () => {
++    const f = () => fake({ rooms: room }).client;
++    await expect(saveOwnerOfferSettings(f(), "L", { room_id: "r", offers_enabled: true, min_rent: null, auto_approve: false })).rejects.toThrow(/floor/);
++    await expect(saveOwnerOfferSettings(f(), "L", { room_id: "r", offers_enabled: true, min_rent: 12000, auto_approve: false })).rejects.toThrow(/zyada/);
++    await expect(saveOwnerOfferSettings(f(), "L", { room_id: "r", offers_enabled: true, min_rent: "abc", auto_approve: false })).rejects.toThrow(/number/);
++  });
++  it("saves with the caller as owner and turns auto-approve off when offers are off", async () => {
++    const { client, upserts } = fake({ rooms: room });
++    await saveOwnerOfferSettings(client, "L", { room_id: "r", offers_enabled: false, min_rent: 8000, auto_approve: true });
++    expect(upserts[0].v).toMatchObject({ room_id: "r", owner_id: "L", offers_enabled: false, min_rent: 8000, auto_approve: false });
++  });
++});
++
++describe("actions pass the caller identity, never a client-supplied one", () => {
++  it("decideOffer rejects unknown actions and forwards landlord id + counter only for counters", async () => {
++    await expect(decideOffer(fake({}).client, "L", "b", "hack")).rejects.toThrow();
++    let seen: any;
++    const c = fake({}, { offer_decide: (a) => ((seen = a), { data: { offer_status: "approved" }, error: null }) }).client;
++    await decideOffer(c, "L", "b", "approve", 123);
++    expect(seen).toEqual({ _booking: "b", _landlord: "L", _action: "approve", _counter: null });
++    await decideOffer(c, "L", "b", "counter", "8,000");
++    expect(seen._counter).toBe(8000);
++  });
++  it("respondOffer turns an expired result into an error", async () => {
++    const c = fake({}, { offer_respond: () => ({ data: { offer_status: "expired" }, error: null }) }).client;
++    await expect(respondOffer(c, "T", "b", "accept")).rejects.toThrow(/expire/);
++    await expect(respondOffer(c, "T", "b", "x")).rejects.toThrow();
++  });
++});
+diff --git a/src/lib/_tests_/tenant-offers-db.test.ts b/src/lib/_tests_/tenant-offers-db.test.ts
+new file mode 100644
+index 0000000..3395daa
+--- /dev/null
++++ b/src/lib/_tests_/tenant-offers-db.test.ts
+@@ -0,0 +1,228 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- test stubs */
++/** Real migration SQL against in-memory Postgres (PGlite). Not a live Supabase test. */
++import { describe, it, expect, beforeAll } from "vitest";
++import { PGlite } from "@electric-sql/pglite";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const mig = (f: string) => readFileSync(join(process.cwd(), "supabase/migrations", f), "utf8");
++const L = "00000000-0000-0000-0000-0000000000b1";
++const L2 = "00000000-0000-0000-0000-0000000000b2";
++const T = "00000000-0000-0000-0000-0000000000c1";
++const T2 = "00000000-0000-0000-0000-0000000000c2";
++let db: PGlite;
++let prop: string, room: string, room2: string;
++const q = async (s: string) => (await db.query<any>(s)).rows;
++const pg = async () => {
++  await db.exec("SET SESSION AUTHORIZATION postgres; RESET ROLE;");
++};
++const as = async (role: string, uid: string | null) => {
++  await pg();
++  await db.exec(
++    `select set_config('request.jwt.claim.role','${role}',false), set_config('request.jwt.claim.sub','${uid ?? ""}',false);`,
++  );
++  await db.exec(`SET SESSION AUTHORIZATION authenticator; SET ROLE ${role};`);
++};
++const fails = async (fn: () => Promise<unknown>, re: RegExp) => {
++  let msg = "";
++  try {
++    await fn();
++  } catch (e) {
++    msg = (e as Error).message;
++  }
++  expect(msg).toMatch(re);
++};
++const svc = async (sql: string) => {
++  await as("service_role", null);
++  return q(sql);
++};
++
++beforeAll(async () => {
++  db = new PGlite();
++  await db.exec(`
++    CREATE ROLE authenticator LOGIN; CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
++    GRANT anon, authenticated, service_role TO authenticator;
++    CREATE SCHEMA auth;
++    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
++    CREATE TABLE public.notes_log (uid uuid, kind text, body text);
++    CREATE FUNCTION public.notify_user(u uuid, k text, t text, b text, l text) RETURNS void LANGUAGE sql AS $$ INSERT INTO public.notes_log VALUES (u,k,b) $$;
++    CREATE TABLE public.properties (id uuid primary key default gen_random_uuid(), owner_id uuid not null);
++    CREATE TABLE public.rooms (id uuid primary key default gen_random_uuid(), owner_id uuid, property_id uuid, room_number text, rent_amount numeric);
++    CREATE TABLE public.bookings (
++      id uuid PRIMARY KEY DEFAULT gen_random_uuid(), room_id uuid, property_id uuid, landlord_id uuid, tenant_user_id uuid,
++      tenant_name text, tenant_mobile text, status text NOT NULL DEFAULT 'pending', decided_at timestamptz, tenant_id uuid,
++      created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
++    GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
++    GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
++    CREATE POLICY x ON public.bookings USING (true); ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
++  `);
++  // permissive test policy above stands in for the real tenant/landlord policies; the trigger is what we test.
++  await db.exec(mig("20261115000000_tenant_offers.sql"));
++  prop = (await q(`insert into properties (owner_id) values ('${L}') returning id`))[0].id;
++  room = (await q(`insert into rooms (owner_id,property_id,room_number,rent_amount) values ('${L}','${prop}','101',10000) returning id`))[0].id;
++  room2 = (await q(`insert into rooms (owner_id,property_id,room_number,rent_amount) values ('${L}','${prop}','102',10000) returning id`))[0].id;
++  await db.exec(`insert into room_offer_settings (room_id, owner_id, offers_enabled, min_rent, auto_approve) values ('${room}','${L}',true,8000,false)`);
++});
++
++const mk = async (user = T, r = room) =>
++  (await q(
++    `insert into bookings (landlord_id,property_id,room_id,tenant_user_id,tenant_name) values ('${L}','${prop}','${r}','${user}','Ravi') returning id`,
++  ))[0].id as string;
++
++describe("direct writes are locked", () => {
++  it("a tenant cannot forge offer columns on insert", async () => {
++    await as("authenticated", T);
++    const r = await q(
++      `insert into bookings (landlord_id,property_id,room_id,tenant_user_id,tenant_name,offer_status,agreed_rent,offered_rent)
++       values ('${L}','${prop}','${room}','${T}','Ravi','approved',1,1) returning offer_status, agreed_rent, offered_rent`,
++    );
++    expect(r[0]).toEqual({ offer_status: null, agreed_rent: null, offered_rent: null });
++  });
++  it("a tenant cannot edit the agreed rent or accept their own request; can cancel", async () => {
++    const id = await mk();
++    await as("authenticated", T);
++    await fails(() => db.exec(`update bookings set agreed_rent = 1 where id='${id}'`), /OFFER_FIELDS_LOCKED/);
++    await fails(() => db.exec(`update bookings set offer_status='approved' where id='${id}'`), /OFFER_FIELDS_LOCKED/);
++    await fails(() => db.exec(`update bookings set status='accepted' where id='${id}'`), /BOOKING_STATUS_LOCKED/);
++    await db.exec(`update bookings set status='cancelled' where id='${id}'`);
++    expect((await q(`select status from bookings where id='${id}'`))[0].status).toBe("cancelled");
++  });
++  it("a landlord cannot write offer fields directly either", async () => {
++    const id = await mk();
++    await as("authenticated", L);
++    await fails(() => db.exec(`update bookings set agreed_rent = 1 where id='${id}'`), /OFFER_FIELDS_LOCKED/);
++  });
++  it("offer functions are not callable by app users", async () => {
++    const id = await mk();
++    await as("authenticated", T);
++    await fails(() => q(`select offer_submit('${id}','${T}',9000)`), /permission denied/);
++    await fails(() => q(`select offer_decide('${id}','${L}','approve')`), /permission denied/);
++  });
++  it("the private floor is invisible to tenants and other landlords", async () => {
++    await as("authenticated", T);
++    expect(await q(`select * from room_offer_settings`)).toHaveLength(0);
++    await as("authenticated", L2);
++    expect(await q(`select * from room_offer_settings`)).toHaveLength(0);
++    await fails(() => db.exec(`update room_offer_settings set min_rent = 1 where room_id='${room}'`).then(async () => {
++      expect((await q(`select min_rent from room_offer_settings`)).length).toBe(0);
++      throw new Error("no-row");
++    }), /no-row/);
++    await as("authenticated", L);
++    expect((await q(`select min_rent from room_offer_settings`))[0].min_rent).toBe("8000");
++  });
++});
++
++describe("offer_submit rules", () => {
++  it("rejects rooms with offers off, offers >= rent, and offers below 50%", async () => {
++    const off = await mk(T, room2);
++    await svc(`select 1`);
++    await fails(() => q(`select offer_submit('${off}','${T}',9000)`), /OFFERS_OFF/);
++    const id = await mk(T2);
++    await fails(() => q(`select offer_submit('${id}','${T2}',10000)`), /OFFER_NOT_LOWER/);
++    await fails(() => q(`select offer_submit('${id}','${T2}',4999)`), /OFFER_TOO_LOW/);
++    await fails(() => q(`select offer_submit('${id}','${L}',9000)`), /FORBIDDEN/);
++  });
++  it("limits a tenant to 2 offers per room per 7 days", async () => {
++    const T3 = "00000000-0000-0000-0000-0000000000c3";
++    for (let i = 0; i < 2; i++) {
++      const id = await mk(T3);
++      await svc(`select offer_submit('${id}','${T3}',9000)`);
++    }
++    const third = await mk(T3);
++    await fails(() => q(`select offer_submit('${third}','${T3}',9000)`), /OFFER_LIMIT/);
++  });
++  it("pending offer notifies the landlord; floor and result are not leaked in the return", async () => {
++    const T4 = "00000000-0000-0000-0000-0000000000c4";
++    const id = await mk(T4);
++    const r = (await svc(`select offer_submit('${id}','${T4}',7000) as r`))[0].r;
++    expect(r).toEqual({ offer_status: "pending" });
++    expect(JSON.stringify(r)).not.toContain("8000");
++    const n = await q(`select * from notes_log where uid='${L}' and kind='booking_offer_new' order by body`);
++    expect(n.length).toBeGreaterThan(0);
++  });
++  it("auto-approves the price when enabled and offer >= floor", async () => {
++    await pg();
++    await db.exec(`update room_offer_settings set auto_approve = true where room_id='${room}'`);
++    const T5 = "00000000-0000-0000-0000-0000000000c5";
++    const hi = await mk(T5);
++    const r1 = (await svc(`select offer_submit('${hi}','${T5}',8500) as r`))[0].r;
++    expect(r1.offer_status).toBe("approved");
++    expect(Number((await q(`select agreed_rent from bookings where id='${hi}'`))[0].agreed_rent)).toBe(8500);
++    const T6 = "00000000-0000-0000-0000-0000000000c6";
++    const lo = await mk(T6);
++    const r2 = (await svc(`select offer_submit('${lo}','${T6}',7000) as r`))[0].r;
++    expect(r2.offer_status).toBe("pending");
++    await pg();
++    await db.exec(`update room_offer_settings set auto_approve = false where room_id='${room}'`);
++  });
++});
++
++describe("landlord decisions and accepting", () => {
++  const offered = async (user: string, amt: number) => {
++    const id = await mk(user);
++    await svc(`select offer_submit('${id}','${user}',${amt})`);
++    return id;
++  };
++  it("accept is blocked while an offer is open; approve then accept uses the agreed rent", async () => {
++    const id = await offered("00000000-0000-0000-0000-0000000000d1", 9000);
++    await svc(`select 1`);
++    await fails(() => q(`update bookings set status='accepted' where id='${id}'`), /OFFER_OPEN/);
++    await fails(() => q(`select offer_agreed_rent('${id}')`), /OFFER_OPEN/);
++    await fails(() => q(`select offer_decide('${id}','${L2}','approve')`), /FORBIDDEN/);
++    await q(`select offer_decide('${id}','${L}','approve')`);
++    expect(Number((await q(`select offer_agreed_rent('${id}') as r`))[0].r)).toBe(9000);
++    await q(`update bookings set status='accepted' where id='${id}'`);
++    expect((await q(`select status, offer_status from bookings where id='${id}'`))[0]).toEqual({ status: "accepted", offer_status: "approved" });
++  });
++  it("a normal booking (no offer) has no agreed rent", async () => {
++    const id = await mk("00000000-0000-0000-0000-0000000000d9", room2);
++    await svc(`select 1`);
++    expect((await q(`select offer_agreed_rent('${id}') as r`))[0].r).toBeNull();
++  });
++  it("deny rejects the request and tells the tenant without any reason", async () => {
++    const t = "00000000-0000-0000-0000-0000000000d2";
++    const id = await offered(t, 6000);
++    await svc(`select offer_decide('${id}','${L}','deny')`);
++    expect((await q(`select status, offer_status from bookings where id='${id}'`))[0]).toEqual({ status: "rejected", offer_status: "declined" });
++    const n = await q(`select body from notes_log where uid='${t}' and kind='booking_offer_declined'`);
++    expect(n[0].body).not.toMatch(/\d{4}/);
++  });
++  it("counter: valid range, only once; tenant can accept; accept then lets the landlord confirm", async () => {
++    const t = "00000000-0000-0000-0000-0000000000d3";
++    const id = await offered(t, 6000);
++    await svc(`select 1`);
++    await fails(() => q(`select offer_decide('${id}','${L}','counter',5000)`), /COUNTER_INVALID/);
++    await fails(() => q(`select offer_decide('${id}','${L}','counter',10001)`), /COUNTER_INVALID/);
++    await q(`select offer_decide('${id}','${L}','counter',8000)`);
++    await fails(() => q(`select offer_decide('${id}','${L}','counter',8500)`), /OFFER_INVALID_STATE/);
++    await fails(() => q(`select offer_respond('${id}','${T}','accept')`), /FORBIDDEN/);
++    await q(`select offer_respond('${id}','${t}','accept')`);
++    expect(Number((await q(`select agreed_rent from bookings where id='${id}'`))[0].agreed_rent)).toBe(8000);
++  });
++  it("tenant declining a counter closes the request", async () => {
++    const t = "00000000-0000-0000-0000-0000000000d4";
++    const id = await offered(t, 6000);
++    await svc(`select offer_decide('${id}','${L}','counter',7500)`);
++    await q(`select offer_respond('${id}','${t}','decline')`);
++    expect((await q(`select status, offer_status from bookings where id='${id}'`))[0]).toEqual({ status: "cancelled", offer_status: "declined" });
++  });
++  it("an unanswered counter expires after 24h and closes the request", async () => {
++    const t = "00000000-0000-0000-0000-0000000000d5";
++    const id = await offered(t, 6000);
++    await svc(`select offer_decide('${id}','${L}','counter',7500)`);
++    await q(`update bookings set offer_expires_at = now() - interval '1 minute' where id='${id}'`);
++    expect((await q(`select offer_respond('${id}','${t}','accept') as r`))[0].r).toEqual({ offer_status: "expired" });
++    expect((await q(`select status, offer_status from bookings where id='${id}'`))[0]).toEqual({ status: "cancelled", offer_status: "expired" });
++  });
++  it("a landlord rejecting through the old path closes the offer; tenant cancelling withdraws it", async () => {
++    const id = await offered("00000000-0000-0000-0000-0000000000d6", 9000);
++    await as("authenticated", L);
++    await db.exec(`update bookings set status='rejected' where id='${id}'`);
++    expect((await q(`select offer_status from bookings where id='${id}'`))[0].offer_status).toBe("declined");
++    const t = "00000000-0000-0000-0000-0000000000d7";
++    const id2 = await offered(t, 9000);
++    await as("authenticated", t);
++    await db.exec(`update bookings set status='cancelled' where id='${id2}'`);
++    expect((await q(`select offer_status from bookings where id='${id2}'`))[0].offer_status).toBe("withdrawn");
++  });
++});
+diff --git a/src/lib/bookings.functions.ts b/src/lib/bookings.functions.ts
+index b4679a7..723bfc0 100644
+--- a/src/lib/bookings.functions.ts
++++ b/src/lib/bookings.functions.ts
+@@ -92,6 +92,8 @@ const CreateBookingSchema = z.object({
+   message: z.string().max(1000).optional(),
+   acknowledgements: z.record(z.string(), z.boolean()).optional(),
+   listened: z.boolean().optional(),
++  /** Optional rent offer (below the listed rent). Validated again in the database. */
++  offered_rent: z.number().positive().max(10_000_000).optional(),
+ });
+ 
+ export const createBooking = createServerFn({ method: "POST" })
+@@ -179,6 +181,17 @@ export const createBooking = createServerFn({ method: "POST" })
+           "Couldn't record the terms. Please try again.",
+       );
+     }
++    // Optional rent offer: rules (enabled, >= 50%, 2 per week) live in the database. No offer, no request.
++    let offerStatus: string | null = null;
++    if (data.offered_rent != null) {
++      try {
++        const { submitOffer } = await import("./offers.server");
++        offerStatus = (await submitOffer(adminForTerms, ins.id, userId, data.offered_rent)).offer_status;
++      } catch (e) {
++        await adminForTerms.from("bookings").delete().eq("id", ins.id);
++        throw e;
++      }
++    }
+     // Admin visibility: every new booking is surfaced so a human can confirm it is genuine.
+     try {
+       const { data: admins } = await adminForTerms.from("admin_users").select("user_id").eq("active", true);
+@@ -195,7 +208,7 @@ export const createBooking = createServerFn({ method: "POST" })
+     } catch {
+       /* best-effort: the Admin → Bookings page is the source of truth */
+     }
+-    return { booking_id: ins.id };
++    return { booking_id: ins.id, offer: offerStatus ? "sent" : null };
+   });
+ 
+ // Tenant lists own bookings
+@@ -203,10 +216,14 @@ export const listMyBookings = createServerFn({ method: "GET" })
+   .middleware([requireSupabaseAuth])
+   .handler(async ({ context }) => {
+     const { supabase, userId } = context;
++    {
++      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++      await (await import("./offers.server")).expireOffers(supabaseAdmin);
++    }
+     const { data, error } = await supabase
+       .from("bookings")
+       .select(
+-        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
++        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
+       )
+       .eq("tenant_user_id", userId)
+       .order("created_at", { ascending: false });
+@@ -219,10 +236,14 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
+   .middleware([requireSupabaseAuth])
+   .handler(async ({ context }) => {
+     const { supabase, userId } = context;
++    {
++      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++      await (await import("./offers.server")).expireOffers(supabaseAdmin);
++    }
+     const { data, error } = await supabase
+       .from("bookings")
+       .select(
+-        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)",
++        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
+       )
+       .eq("landlord_id", userId)
+       .order("created_at", { ascending: false });
+@@ -282,14 +303,16 @@ export const decideBooking = createServerFn({ method: "POST" })
+     ]);
+     if ((occupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1))
+       throw new Error("This room is already full. Reject the request or free a slot first.");
+-    const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
+-    const tenantCode = (codeRow as string) ?? null;
+-
+     const { data: room } = await supabaseAdmin
+       .from("rooms")
+       .select("rent_amount")
+       .eq("id", b.room_id)
+       .single();
++    // Agreed offer rent wins; an unresolved offer blocks the accept (before any tenant row is created).
++    const { rentForAccept } = await import("./offers.server");
++    const rentShare = await rentForAccept(supabaseAdmin, b.id, data.rent_share ?? room?.rent_amount ?? null);
++    const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
++    const tenantCode = (codeRow as string) ?? null;
+ 
+     const { data: newTenant, error: tErr } = await supabaseAdmin
+       .from("tenants")
+@@ -301,7 +324,7 @@ export const decideBooking = createServerFn({ method: "POST" })
+         email: b.tenant_email,
+         persons: 1,
+         move_in_date: data.move_in_date ?? new Date().toISOString().slice(0, 10),
+-        rent_share: data.rent_share ?? room?.rent_amount ?? null,
++        rent_share: rentShare,
+         active: true,
+         tenant_user_id: b.tenant_user_id,
+         tenant_code: tenantCode,
+@@ -353,3 +376,68 @@ export const decideBooking = createServerFn({ method: "POST" })
+ 
+     return { ok: true, tenant_id: newTenant.id, tenant_code: tenantCode };
+   });
++
++
++// ============================================================
++// Tenant rent offers (negotiation) — rules live in the database
++// ============================================================
++
++/** Tenant-safe: is the room taking offers and the public minimum. Never returns the landlord's floor. */
++export const getRoomOffer = createServerFn({ method: "GET" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ room_id: z.string().uuid() }).parse(i))
++  .handler(async ({ data }) => {
++    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++    const { getRoomOfferInfo } = await import("./offers.server");
++    return getRoomOfferInfo(supabaseAdmin, data.room_id);
++  });
++
++export const decideBookingOffer = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) =>
++    z
++      .object({ booking_id: z.string().uuid(), action: z.enum(["approve", "deny", "counter"]), counter_rent: z.number().positive().optional() })
++      .parse(i),
++  )
++  .handler(async ({ data, context }) => {
++    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++    const { decideOffer } = await import("./offers.server");
++    return decideOffer(supabaseAdmin, context.userId, data.booking_id, data.action, data.counter_rent);
++  });
++
++export const respondBookingOffer = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ booking_id: z.string().uuid(), action: z.enum(["accept", "decline"]) }).parse(i))
++  .handler(async ({ data, context }) => {
++    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++    const { respondOffer } = await import("./offers.server");
++    return respondOffer(supabaseAdmin, context.userId, data.booking_id, data.action);
++  });
++
++/** Owner only: includes the private floor. */
++export const getMyRoomOfferSettings = createServerFn({ method: "GET" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ room_id: z.string().uuid() }).parse(i))
++  .handler(async ({ data, context }) => {
++    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++    const { getOwnerOfferSettings } = await import("./offers.server");
++    return getOwnerOfferSettings(supabaseAdmin, context.userId, data.room_id);
++  });
++
++export const saveMyRoomOfferSettings = createServerFn({ method: "POST" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) =>
++    z
++      .object({
++        room_id: z.string().uuid(),
++        offers_enabled: z.boolean(),
++        min_rent: z.number().nonnegative().nullable(),
++        auto_approve: z.boolean(),
++      })
++      .parse(i),
++  )
++  .handler(async ({ data, context }) => {
++    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
++    const { saveOwnerOfferSettings } = await import("./offers.server");
++    return saveOwnerOfferSettings(supabaseAdmin, context.userId, data);
++  });
+diff --git a/src/lib/mobile-api.server.ts b/src/lib/mobile-api.server.ts
+index 434408f..f54bbd3 100644
+--- a/src/lib/mobile-api.server.ts
++++ b/src/lib/mobile-api.server.ts
+@@ -221,6 +221,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
+           return json(await t.reacceptBooking(me, body));
+         case "booking/cancel":
+           return json(await t.cancelBooking(me, uuid(body.booking_id)));
++        case "offer/respond":
++          return json(await t.respondOfferFromApp(me, body));
+         case "bills":
+           return json(await t.myBills(me));
+         case "pay/info":
+@@ -330,6 +332,12 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
+           return json(await L.listRequests(me));
+         case "request/decide":
+           return json(await L.decideRequest(me, body));
++        case "offer/decide":
++          return json(await L.decideOfferFromApp(me, body));
++        case "offer/settings":
++          return json(await L.offerSettings(me, body));
++        case "offer/settings/save":
++          return json(await L.saveOfferSettings(me, body));
+         case "tenants":
+           return json(await L.listTenants(me));
+         case "tenant/save":
+diff --git a/src/lib/mobile-landlord.server.ts b/src/lib/mobile-landlord.server.ts
+index bbbef86..9374f8f 100644
+--- a/src/lib/mobile-landlord.server.ts
++++ b/src/lib/mobile-landlord.server.ts
+@@ -873,10 +873,11 @@ export async function publishListing(me: string, body: Record<string, unknown>)
+ 
+ export async function listRequests(me: string) {
+   const a = await admin();
++  await (await import("./offers.server")).expireOffers(a);
+   const { data } = await a
+     .from("bookings")
+     .select(
+-      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)",
++      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
+     )
+     .eq("landlord_id", me)
+     .order("created_at", { ascending: false })
+@@ -950,6 +951,12 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
+     .eq("active", true);
+   if ((occ ?? 0) >= (rr?.capacity ?? 1))
+     throw new Error("Room full hai. Request reject karein ya pehle jagah khali karein.");
++  // Agreed offer rent wins; an unresolved offer blocks the accept before any tenant row exists.
++  const rentShare = await (await import("./offers.server")).rentForAccept(
++    a,
++    b.id,
++    num(body.rent_share) ?? rr?.rent_amount ?? null,
++  );
+   const { data: code } = await a.rpc("generate_tenant_code");
+   const { data: t, error } = await a
+     .from("tenants")
+@@ -961,7 +968,7 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
+       email: b.tenant_email,
+       persons: 1,
+       move_in_date: iso(body.move_in_date) ?? d2(new Date()),
+-      rent_share: num(body.rent_share) ?? rr?.rent_amount ?? null,
++      rent_share: rentShare,
+       active: true,
+       tenant_user_id: b.tenant_user_id,
+       tenant_code: (code as string) ?? null,
+@@ -1007,6 +1014,31 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
+   return { ok: true, tenant_id: t.id as string };
+ }
+ 
++// ---------------------------------------------------------------- rent offers
++
++/** Landlord: approve / deny / counter a tenant's rent offer. Approve then lets the normal accept run at the agreed rent. */
++export async function decideOfferFromApp(me: string, body: Record<string, unknown>) {
++  const a = await admin();
++  const O = await import("./offers.server");
++  return O.decideOffer(a, me, uuid(body.booking_id), body.action, body.counter_rent);
++}
++
++/** Landlord's private offer settings for one room (includes the floor). */
++export async function offerSettings(me: string, body: Record<string, unknown>) {
++  const a = await admin();
++  return (await import("./offers.server")).getOwnerOfferSettings(a, me, uuid(body.room_id));
++}
++
++export async function saveOfferSettings(me: string, body: Record<string, unknown>) {
++  const a = await admin();
++  return (await import("./offers.server")).saveOwnerOfferSettings(a, me, {
++    room_id: uuid(body.room_id),
++    offers_enabled: body.offers_enabled === true,
++    min_rent: body.min_rent as unknown,
++    auto_approve: body.auto_approve === true,
++  });
++}
++
+ // ---------------------------------------------------------------- tenants
+ 
+ export async function listTenants(me: string) {
+diff --git a/src/lib/mobile-tenant.server.ts b/src/lib/mobile-tenant.server.ts
+index 67d22b0..f20e72d 100644
+--- a/src/lib/mobile-tenant.server.ts
++++ b/src/lib/mobile-tenant.server.ts
+@@ -61,6 +61,8 @@ export async function roomTerms(roomId: string) {
+     deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null,
+     speech: terms ? termsToSpeech(terms, { rent: Number(r.rent_amount ?? 0), deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null }) : null,
+     acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })),
++    // Public offer rules only (never the landlord's floor).
++    offer: await (await import("./offers.server")).getRoomOfferInfo(a, roomId),
+   };
+ }
+ 
+@@ -104,6 +106,21 @@ export async function createBookingFromApp(me: string, body: Record<string, unkn
+     await a.from("bookings").delete().eq("id", ins.id); // never a request without its terms record
+     throw new Error(cleanDb(accErr.message) || "Couldn't record the terms. Please try again.");
+   }
++  // Optional rent offer (rules enforced in the database). If it is refused, the request is not created at all.
++  const O = await import("./offers.server");
++  const offered = O.parseAmount(body.offered_rent);
++  if (body.offered_rent != null && body.offered_rent !== "" && offered === null) {
++    await a.from("bookings").delete().eq("id", ins.id);
++    throw O.offerError("OFFER_INVALID");
++  }
++  if (offered !== null) {
++    try {
++      await O.submitOffer(a, ins.id, me, offered);
++    } catch (e) {
++      await a.from("bookings").delete().eq("id", ins.id);
++      throw e;
++    }
++  }
+   try {
+     const { data: admins } = await a.from("admin_users").select("user_id").eq("active", true);
+     if (admins?.length)
+@@ -114,14 +131,16 @@ export async function createBookingFromApp(me: string, body: Record<string, unkn
+         })),
+       );
+   } catch { /* best-effort */ }
+-  return { booking_id: ins.id as string };
++  return { booking_id: ins.id as string, offer: offered !== null ? "sent" : null };
+ }
+ 
+ export async function myBookings(me: string) {
+   const a = await admin();
++  const O = await import("./offers.server");
++  await O.expireOffers(a);
+   const { data } = await a
+     .from("bookings")
+-    .select("id, status, created_at, property_id, rooms(room_number, rent_amount, myr_deposit, properties(name, myr_city, city, terms_summary, current_terms_version))")
++    .select("id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount, myr_deposit, properties(name, myr_city, city, terms_summary, current_terms_version))")
+     .eq("tenant_user_id", me)
+     .order("created_at", { ascending: false })
+     .limit(50);
+@@ -139,7 +158,7 @@ export async function myBookings(me: string) {
+       }
+     }
+     const { terms_summary: _t, current_terms_version: _v, ...prop } = b.rooms?.properties ?? {};
+-    bookings.push({ id: b.id, status: b.status, created_at: b.created_at, rooms: b.rooms ? { ...b.rooms, properties: prop } : null, needsReaccept, terms, version });
++    bookings.push({ id: b.id, status: b.status, created_at: b.created_at, rooms: b.rooms ? { ...b.rooms, properties: prop } : null, needsReaccept, terms, version, offer: O.tenantOfferView(b) });
+   }
+   return { bookings, acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })) };
+ }
+@@ -154,6 +173,13 @@ export async function reacceptBooking(me: string, body: Record<string, unknown>)
+   return { ok: true };
+ }
+ 
++/** Tenant answers the landlord's counter offer: accept or decline. */
++export async function respondOfferFromApp(me: string, body: Record<string, unknown>) {
++  const a = await admin();
++  const { respondOffer } = await import("./offers.server");
++  return respondOffer(a, me, uuid(body.booking_id), body.action);
++}
++
+ export async function cancelBooking(me: string, id: string) {
+   const a = await admin();
+   const { data: b } = await a.from("bookings").select("id, status, tenant_user_id").eq("id", id).maybeSingle();
+diff --git a/src/lib/offers.server.ts b/src/lib/offers.server.ts
+new file mode 100644
+index 0000000..87e1964
+--- /dev/null
++++ b/src/lib/offers.server.ts
+@@ -0,0 +1,155 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed service-role client */
++/**
++ * Tenant rent offers — thin server layer over the SECURITY DEFINER functions in
++ * supabase/migrations/20261115000000_tenant_offers.sql (the database owns the rules and the state machine).
++ *
++ * Privacy rule: the landlord's floor (room_offer_settings.min_rent) is NEVER returned by anything the tenant
++ * side can call. Only getOwnerOfferSettings() returns it, and only to the owner of the room.
++ */
++
++export const MIN_OFFER_RATIO = 0.5;
++
++/** Friendly message for the database's OFFER_* / COUNTER_* error codes. Unknown errors become a generic line. */
++export function offerError(e: unknown): Error {
++  const raw = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as any).message) : String(e ?? "");
++  const code = /(OFFERS_OFF|OFFER_NOT_LOWER|OFFER_TOO_LOW|OFFER_LIMIT|OFFER_INVALID_STATE|OFFER_INVALID_ACTION|OFFER_INVALID|OFFER_OPEN|OFFER_EXPIRED|COUNTER_INVALID|COUNTER_LIMIT|FORBIDDEN)/.exec(raw)?.[1];
++  const map: Record<string, string> = {
++    OFFERS_OFF: "Ye room abhi offers nahi le raha.",
++    OFFER_NOT_LOWER: "Offer listed rent se kam hona chahiye. Poore rent par seedha request bhejein.",
++    OFFER_TOO_LOW: "Itna kam offer accept nahi hota. Rent ke kam se kam 50% ka offer dein.",
++    OFFER_LIMIT: "Is room par 7 din mein maximum 2 offers bhej sakte hain.",
++    OFFER_INVALID_STATE: "Ye offer ab decide ya update nahi ho sakta (shayad pehle hi decide ho chuka hai).",
++    OFFER_INVALID_ACTION: "Galat action.",
++    OFFER_INVALID: "Offer amount sahi nahi hai.",
++    OFFER_OPEN: "Pehle rent offer par decision lein (approve, deny ya counter), phir request accept karein.",
++    OFFER_EXPIRED: "Ye counter offer expire ho chuka hai.",
++    COUNTER_INVALID: "Counter amount offer se zyada aur listed rent se zyada nahi hona chahiye.",
++    COUNTER_LIMIT: "Sirf ek counter offer allowed hai.",
++    FORBIDDEN: "Aapko ye karne ki permission nahi hai.",
++  };
++  return new Error(code ? map[code] : "Offer process nahi ho paya. Dobara try karein.");
++}
++
++/** A positive whole-rupee amount, or null if absent/invalid. */
++export function parseAmount(v: unknown): number | null {
++  if (v === null || v === undefined || v === "") return null;
++  const n = typeof v === "number" ? v : Number(String(v).replace(/[, ₹]/g, ""));
++  if (!Number.isFinite(n) || n <= 0 || n > 10_000_000) return null;
++  return Math.round(n);
++}
++
++export async function expireOffers(a: any): Promise<void> {
++  try {
++    await a.rpc("expire_booking_offers");
++  } catch {
++    /* cron also does this; never block a read on it */
++  }
++}
++
++/** Attach an offer to a just-created booking. Caller deletes the booking if this throws (same as the terms rule). */
++export async function submitOffer(a: any, bookingId: string, tenantId: string, amount: number) {
++  const { data, error } = await a.rpc("offer_submit", { _booking: bookingId, _tenant: tenantId, _offered: amount });
++  if (error) throw offerError(error);
++  return data as { offer_status: "pending" | "approved" };
++}
++
++export async function decideOffer(a: any, landlordId: string, bookingId: string, action: unknown, counter?: unknown) {
++  if (action !== "approve" && action !== "deny" && action !== "counter") throw offerError("OFFER_INVALID_ACTION");
++  const { data, error } = await a.rpc("offer_decide", {
++    _booking: bookingId,
++    _landlord: landlordId,
++    _action: action,
++    _counter: action === "counter" ? parseAmount(counter) : null,
++  });
++  if (error) throw offerError(error);
++  return data as { offer_status: string; agreed_rent?: number; counter_rent?: number };
++}
++
++export async function respondOffer(a: any, tenantId: string, bookingId: string, action: unknown) {
++  if (action !== "accept" && action !== "decline") throw offerError("OFFER_INVALID_ACTION");
++  const { data, error } = await a.rpc("offer_respond", { _booking: bookingId, _tenant: tenantId, _action: action });
++  if (error) throw offerError(error);
++  if ((data as any)?.offer_status === "expired") throw offerError("OFFER_EXPIRED");
++  return data as { offer_status: string; agreed_rent?: number };
++}
++
++/**
++ * Rent to store on the tenant when a request is accepted: the agreed rent if an offer was approved,
++ * otherwise `fallback` (the listed rent or the landlord's manual value). Throws if an offer is still open.
++ * An agreed rent always wins — the landlord's manual override can't contradict what the tenant agreed to.
++ */
++export async function rentForAccept(a: any, bookingId: string, fallback: number | null): Promise<number | null> {
++  const { data, error } = await a.rpc("offer_agreed_rent", { _booking: bookingId });
++  if (error) throw offerError(error);
++  return data != null ? Number(data) : fallback;
++}
++
++/** Tenant-safe: is this room taking offers, and what is the (public) minimum allowed. Never the floor. */
++export async function getRoomOfferInfo(a: any, roomId: string) {
++  const [{ data: s }, { data: r }] = await Promise.all([
++    a.from("room_offer_settings").select("offers_enabled").eq("room_id", roomId).maybeSingle(),
++    a.from("rooms").select("rent_amount").eq("id", roomId).maybeSingle(),
++  ]);
++  const rent = Number(r?.rent_amount ?? 0);
++  const enabled = !!s?.offers_enabled && rent > 0;
++  return { enabled, rent, min_allowed: enabled ? Math.ceil(rent * MIN_OFFER_RATIO) : null };
++}
++
++/** Owner-only: includes the floor. */
++export async function getOwnerOfferSettings(a: any, ownerId: string, roomId: string) {
++  const { data: room } = await a.from("rooms").select("id, owner_id, rent_amount").eq("id", roomId).maybeSingle();
++  if (!room || room.owner_id !== ownerId) throw offerError("FORBIDDEN");
++  const { data: s } = await a
++    .from("room_offer_settings")
++    .select("offers_enabled, min_rent, auto_approve")
++    .eq("room_id", roomId)
++    .maybeSingle();
++  return {
++    room_id: roomId,
++    rent: Number(room.rent_amount ?? 0),
++    offers_enabled: !!s?.offers_enabled,
++    min_rent: s?.min_rent != null ? Number(s.min_rent) : null,
++    auto_approve: !!s?.auto_approve,
++  };
++}
++
++export async function saveOwnerOfferSettings(
++  a: any,
++  ownerId: string,
++  input: { room_id: string; offers_enabled: boolean; min_rent: unknown; auto_approve: boolean },
++) {
++  const cur = await getOwnerOfferSettings(a, ownerId, input.room_id); // also checks ownership
++  const min = input.min_rent === null || input.min_rent === "" || input.min_rent === undefined ? null : parseAmount(input.min_rent);
++  if (input.min_rent !== null && input.min_rent !== "" && input.min_rent !== undefined && min === null)
++    throw new Error("Minimum rent sahi number hona chahiye.");
++  if (min != null && cur.rent > 0 && min > cur.rent) throw new Error("Minimum rent listed rent se zyada nahi ho sakta.");
++  if (input.offers_enabled && min == null) throw new Error("Offers on karne ke liye apna minimum (floor) rent set karein.");
++  if (input.auto_approve && min == null) throw new Error("Auto-approve ke liye minimum rent zaroori hai.");
++  const { error } = await a.from("room_offer_settings").upsert(
++    {
++      room_id: input.room_id,
++      owner_id: ownerId,
++      offers_enabled: input.offers_enabled,
++      min_rent: min,
++      auto_approve: input.offers_enabled ? input.auto_approve : false,
++      updated_at: new Date().toISOString(),
++    },
++    { onConflict: "room_id" },
++  );
++  if (error) throw new Error("Settings save nahi ho payi. Dobara try karein.");
++  return { ok: true };
++}
++
++/** What the TENANT may see about an offer on their own booking. Never the floor. */
++export function tenantOfferView(b: any) {
++  if (!b || !b.offer_status) return null;
++  return {
++    status: b.offer_status as string,
++    offered_rent: b.offered_rent != null ? Number(b.offered_rent) : null,
++    counter_rent: b.counter_rent != null ? Number(b.counter_rent) : null,
++    agreed_rent: b.agreed_rent != null ? Number(b.agreed_rent) : null,
++    expires_at: b.offer_expires_at ?? null,
++  };
++}
++
++export const OFFER_COLUMNS = "offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, offer_rounds";
+diff --git a/src/lib/terms.functions.ts b/src/lib/terms.functions.ts
+index 8a6abdc..9285bd2 100644
+--- a/src/lib/terms.functions.ts
++++ b/src/lib/terms.functions.ts
+@@ -150,9 +150,10 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
+   .middleware([requireSupabaseAuth])
+   .handler(async ({ context }) => {
+     const admin = await getAdmin();
++    await (await import("./offers.server")).expireOffers(admin);
+     const { data: rows, error } = await admin
+       .from("bookings")
+-      .select("id, status, created_at, property_id, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)")
++      .select("id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)")
+       .eq("tenant_user_id", context.userId)
+       .order("created_at", { ascending: false })
+       .limit(50);
+@@ -179,6 +180,7 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
+         currentVersion: s.current_version ?? null,
+         needsReaccept: needs,
+         terms,
++        offer: (await import("./offers.server")).tenantOfferView(b),
+       });
+     }
+     return out;
+diff --git a/src/routes/_authenticated/bookings.tsx b/src/routes/_authenticated/bookings.tsx
+index 8b45a0a..47a305a 100644
+--- a/src/routes/_authenticated/bookings.tsx
++++ b/src/routes/_authenticated/bookings.tsx
+@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
+ import { useServerFn } from "@tanstack/react-start";
+ import { useQuery, useQueryClient } from "@tanstack/react-query";
+ import { AppShell } from "@/components/AppShell";
+-import { listLandlordBookings, decideBooking } from "@/lib/bookings.functions";
++import { listLandlordBookings, decideBooking, decideBookingOffer } from "@/lib/bookings.functions";
+ import { landlordBookingTermsStatus } from "@/lib/terms.functions";
+ import { Loader2, Check, X, Clock, Phone, Mail } from "lucide-react";
+ import { useState } from "react";
+@@ -12,6 +12,9 @@ export const Route = createFileRoute("/_authenticated/bookings")({ component: Bo
+ function BookingsPage() {
+   const list = useServerFn(listLandlordBookings);
+   const decide = useServerFn(decideBooking);
++  const decideOffer = useServerFn(decideBookingOffer);
++  const [counterFor, setCounterFor] = useState<string | null>(null);
++  const [counterAmt, setCounterAmt] = useState("");
+   const qc = useQueryClient();
+   const termsFn = useServerFn(landlordBookingTermsStatus);
+   const terms = useQuery({ queryKey: ["landlord-booking-terms"], queryFn: () => termsFn() });
+@@ -27,6 +30,26 @@ function BookingsPage() {
+     setBusy(null);
+   };
+ 
++  const offerAct = async (booking_id: string, action: "approve" | "deny" | "counter", then?: "accept") => {
++    setBusy(booking_id);
++    try {
++      if (action === "counter") {
++        const n = Number(counterAmt.replace(/[, ₹]/g, ""));
++        if (!Number.isFinite(n) || n <= 0) throw new Error("Counter amount sahi likhein.");
++        await decideOffer({ data: { booking_id, action, counter_rent: n } });
++        setCounterFor(null);
++        setCounterAmt("");
++      } else {
++        await decideOffer({ data: { booking_id, action } });
++      }
++      if (then === "accept") await decide({ data: { booking_id, decision: "accept" } });
++    } catch (e) {
++      alert((e as Error).message);
++    }
++    qc.invalidateQueries({ queryKey: ["landlord-bookings"] });
++    setBusy(null);
++  };
++
+   return (
+     <AppShell>
+       <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Booking requests</h1>
+@@ -61,11 +84,36 @@ function BookingsPage() {
+                         : "No structured terms on this request"}
+                     </div>
+                   )}
++                  {b.offer_status && (
++                    <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
++                      {b.offer_status === "pending" && <div><b>Rent offer: ₹{Number(b.offered_rent).toLocaleString("en-IN")}</b> (listed ₹{Number(b.rooms?.rent_amount ?? 0).toLocaleString("en-IN")}). Approve, deny ya counter karein.</div>}
++                      {b.offer_status === "countered" && <div>Aapka counter ₹{Number(b.counter_rent).toLocaleString("en-IN")} — tenant ke jawab ka intezaar{b.offer_expires_at ? ` (till ${new Date(b.offer_expires_at).toLocaleString()})` : ""}.</div>}
++                      {b.offer_status === "approved" && <div><b>Agreed rent: ₹{Number(b.agreed_rent).toLocaleString("en-IN")}/month</b> — accept karne par yahi rent tenant par lagega.</div>}
++                      {["declined", "expired", "withdrawn"].includes(b.offer_status) && <div>Offer {b.offer_status}.</div>}
++                    </div>
++                  )}
+                   {b.message && <div className="mt-2 text-xs text-muted-foreground italic">"{b.message}"</div>}
+                 </div>
+                 <StatusBadge status={b.status} />
+               </div>
+-              {b.status === "pending" && (
++              {b.status === "pending" && b.offer_status === "pending" && (
++                <div className="mt-3 space-y-2">
++                  <div className="flex flex-wrap gap-2 justify-end">
++                    <button disabled={busy === b.id} onClick={() => offerAct(b.id, "deny")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-destructive/10 hover:text-destructive"><X className="size-3" /> Deny</button>
++                    <button disabled={busy === b.id} onClick={() => { setCounterFor(counterFor === b.id ? null : b.id); setCounterAmt(""); }} className="text-xs px-3 py-1.5 rounded-md border border-border">Counter</button>
++                    <button disabled={busy === b.id} onClick={() => offerAct(b.id, "approve", "accept")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium">
++                      {busy === b.id ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Approve &amp; accept
++                    </button>
++                  </div>
++                  {counterFor === b.id && (
++                    <div className="flex gap-2 justify-end">
++                      <input value={counterAmt} onChange={(e) => setCounterAmt(e.target.value)} inputMode="numeric" placeholder={`₹ (${Number(b.offered_rent) + 1} – ${Number(b.rooms?.rent_amount ?? 0)})`} className="w-40 px-2 py-1.5 rounded-md bg-background border border-input text-xs" />
++                      <button disabled={busy === b.id} onClick={() => offerAct(b.id, "counter")} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground">Send counter</button>
++                    </div>
++                  )}
++                </div>
++              )}
++              {b.status === "pending" && b.offer_status !== "pending" && b.offer_status !== "countered" && (
+                 <div className="mt-3 flex gap-2 justify-end">
+                   <button disabled={busy === b.id} onClick={() => act(b.id, "reject")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-destructive/10 hover:text-destructive"><X className="size-3" /> Reject</button>
+                   <button disabled={busy === b.id} onClick={() => act(b.id, "accept")} className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium">
+diff --git a/src/routes/_authenticated/rooms.tsx b/src/routes/_authenticated/rooms.tsx
+index 0092bf3..e281a42 100644
+--- a/src/routes/_authenticated/rooms.tsx
++++ b/src/routes/_authenticated/rooms.tsx
+@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
+ import { supabase } from "@/integrations/supabase/client";
+ import { formatINR, getOwnerId, type Property, type Room, type Tenant } from "@/lib/db";
+ import { publishRoom } from "@/lib/bookings.functions";
++import { RoomOfferSettings } from "@/components/RoomOfferSettings";
+ import { Plus, Pencil, Trash2, X, Globe2, EyeOff, Loader2, Video } from "lucide-react";
+ import { LiveFeedManager } from "@/components/LiveFeedManager";
+ import {
+@@ -454,6 +455,7 @@ function RoomForm({
+               className={input}
+             />
+           </Field>
++          {initial?.id && <RoomOfferSettings roomId={initial.id} />}
+           <div className="flex justify-end gap-2 pt-2">
+             <button
+               type="button"
+diff --git a/src/routes/myr/bookings.tsx b/src/routes/myr/bookings.tsx
+index 585a681..464a5fe 100644
+--- a/src/routes/myr/bookings.tsx
++++ b/src/routes/myr/bookings.tsx
+@@ -9,6 +9,7 @@ import { CalendarCheck, Loader2, Clock } from "lucide-react";
+ import { useQuery, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ import { listMyRoomRequests, reacceptTerms } from "@/lib/terms.functions";
++import { respondBookingOffer } from "@/lib/bookings.functions";
+ import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
+ 
+ export const Route = createFileRoute("/myr/bookings")({ component: BookingsPage });
+@@ -25,11 +26,52 @@ const STATUS_STYLE: Record<string, string> = {
+   accepted: "bg-success text-success-foreground",
+ };
+ 
++type OfferView = { status: string; offered_rent: number | null; counter_rent: number | null; agreed_rent: number | null; expires_at: string | null };
++
++function OfferLine({ o, rent, busy, onAnswer }: { o: OfferView; rent: number; busy: boolean; onAnswer: (a: "accept" | "decline") => void }) {
++  const inr = (n: number | null) => (n == null ? "—" : formatINR(n));
++  const text: Record<string, string> = {
++    pending: `Aapka offer ${inr(o.offered_rent)} landlord ke jawab ka intezaar kar raha hai.`,
++    approved: `Offer approve: ${inr(o.agreed_rent)}/month. Landlord booking confirm karega.`,
++    declined: "Landlord ne ye offer accept nahi kiya.",
++    expired: "Counter offer expire ho gaya, request band ho gayi.",
++    withdrawn: "Offer wapas le liya gaya.",
++    countered: `Landlord ka counter offer: ${inr(o.counter_rent)}/month (listed ${formatINR(rent)}).`,
++  };
++  return (
++    <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
++      <div>{text[o.status] ?? ""}</div>
++      {o.status === "countered" && (
++        <>
++          {o.expires_at && <div className="mt-1 text-muted-foreground">24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString()}).</div>}
++          <div className="mt-2 flex gap-2">
++            <button disabled={busy} onClick={() => onAnswer("accept")} className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50">Accept {inr(o.counter_rent)}</button>
++            <button disabled={busy} onClick={() => onAnswer("decline")} className="rounded-md border border-border px-3 py-1.5 disabled:opacity-50">Decline</button>
++          </div>
++        </>
++      )}
++    </div>
++  );
++}
++
+ function RoomRequests() {
+   const qc = useQueryClient();
+   const list = useServerFn(listMyRoomRequests);
+   const reaccept = useServerFn(reacceptTerms);
++  const respond = useServerFn(respondBookingOffer);
+   const q = useQuery({ queryKey: ["my-room-requests"], queryFn: () => list() });
++  const answer = async (id: string, action: "accept" | "decline") => {
++    setBusy(true);
++    try {
++      await respond({ data: { booking_id: id, action } });
++      toast.success(action === "accept" ? "Counter offer accept ho gaya. Landlord booking confirm karega." : "Counter offer decline kar diya.");
++      await qc.invalidateQueries({ queryKey: ["my-room-requests"] });
++    } catch (e) {
++      toast.error(e instanceof Error ? e.message : "Couldn't save. Please try again.");
++    } finally {
++      setBusy(false);
++    }
++  };
+   const [open, setOpen] = useState<string | null>(null);
+   const [gate, setGate] = useState<GateValue | null>(null);
+   const [busy, setBusy] = useState(false);
+@@ -63,6 +105,7 @@ function RoomRequests() {
+               </div>
+               <div className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${STATUS_STYLE[r.status] ?? "bg-muted text-muted-foreground"}`}>{r.status}</div>
+             </div>
++            {r.offer && <OfferLine o={r.offer} rent={r.rent} busy={busy} onAnswer={(a) => answer(r.id, a)} />}
+             <div className="mt-2 text-xs text-muted-foreground">
+               {r.acceptedVersion ? `You accepted rental terms v${r.acceptedVersion}.` : "No structured terms were published for this request."}
+             </div>
+diff --git a/src/routes/myr/room.$id.tsx b/src/routes/myr/room.$id.tsx
+index 84e2f9c..f913d65 100644
+--- a/src/routes/myr/room.$id.tsx
++++ b/src/routes/myr/room.$id.tsx
+@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+ import { useEffect, useState } from "react";
+ import { useServerFn } from "@tanstack/react-start";
+ import { supabase } from "@/integrations/supabase/client";
+-import { createBooking } from "@/lib/bookings.functions";
++import { createBooking, getRoomOffer } from "@/lib/bookings.functions";
+ import { getPublicTerms } from "@/lib/terms.functions";
+ import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
+ import { PublicTermsSection } from "@/components/terms/PublicTermsSection";
+@@ -721,7 +721,11 @@ function BookModal({
+   onDone: () => void;
+ }) {
+   const create = useServerFn(createBooking);
++  const fetchOffer = useServerFn(getRoomOffer);
+   const fetchTerms = useServerFn(getPublicTerms);
++  // Public offer rules only (never the landlord's floor).
++  const [offerInfo, setOfferInfo] = useState<{ enabled: boolean; min_allowed: number | null } | null>(null);
++  const [offerText, setOfferText] = useState("");
+   const [termsInfo, setTermsInfo] = useState<{
+     terms: Terms | null;
+     version: number | null;
+@@ -738,6 +742,12 @@ function BookModal({
+   const [busy, setBusy] = useState(false);
+   const [err, setErr] = useState<string | null>(null);
+ 
++  useEffect(() => {
++    fetchOffer({ data: { room_id: roomId } })
++      .then((o) => setOfferInfo({ enabled: o.enabled, min_allowed: o.min_allowed }))
++      .catch(() => setOfferInfo({ enabled: false, min_allowed: null }));
++  }, [roomId, fetchOffer]);
++
+   useEffect(() => {
+     if (!propertyId) {
+       setTermsInfo({ terms: null, version: null });
+@@ -770,11 +780,19 @@ function BookModal({
+       setErr("Please read the terms and tick every box to continue.");
+       return;
+     }
++    const offered = offerInfo?.enabled && offerText.trim() ? Number(offerText.replace(/[, ₹]/g, "")) : null;
++    if (offered !== null) {
++      if (!Number.isFinite(offered) || offered <= 0) return setErr("Offer amount sahi likhein.");
++      if (offered >= rent) return setErr("Offer rent se kam hona chahiye. Poore rent par seedha request bhejein (offer khali chhodein).");
++      if (offerInfo?.min_allowed && offered < offerInfo.min_allowed)
++        return setErr(`Offer kam se kam ₹${offerInfo.min_allowed.toLocaleString("en-IN")} hona chahiye.`);
++    }
+     setBusy(true);
+     setErr(null);
+     try {
+       await create({
+         data: {
++          ...(offered !== null ? { offered_rent: offered } : {}),
+           acknowledgements: termsInfo?.terms
+             ? (gate.acknowledgements as Record<string, boolean>)
+             : undefined,
+@@ -843,6 +861,25 @@ function BookModal({
+             className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input"
+           />
+         </label>
++        {offerInfo?.enabled && (
++          <label className="block rounded-lg border border-border bg-muted/30 p-3">
++            <span className="text-xs font-medium text-muted-foreground">
++              Apna offer (optional) — listed rent ₹{rent.toLocaleString("en-IN")}
++            </span>
++            <input
++              value={offerText}
++              onChange={(e) => setOfferText(e.target.value)}
++              inputMode="numeric"
++              placeholder="Monthly rent jo aap dena chahte hain"
++              className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input"
++            />
++            <span className="mt-1 block text-[11px] text-muted-foreground">
++              Landlord approve, deny ya counter karega. Kam se kam ₹
++              {(offerInfo.min_allowed ?? 0).toLocaleString("en-IN")}. Ek room par 7 din mein max 2 offers.
++              Khali chhodein to listed rent par request jayegi.
++            </span>
++          </label>
++        )}
+         {termsInfo === null && (
+           <div className="text-xs text-muted-foreground">Loading rental terms…</div>
+         )}
+diff --git a/supabase/migrations/20261115000000_tenant_offers.sql b/supabase/migrations/20261115000000_tenant_offers.sql
+new file mode 100644
+index 0000000..85a29a1
+--- /dev/null
++++ b/supabase/migrations/20261115000000_tenant_offers.sql
+@@ -0,0 +1,247 @@
++-- Tenant rent OFFERS (negotiation) on booking requests.
++--
++-- Design rules (see docs): the landlord's floor lives in a PRIVATE table (rooms is publicly readable, so it
++-- must never be a column there); all state changes go through SECURITY DEFINER functions that only the
++-- service role can execute; direct writes to the offer columns by tenants/landlords are blocked by a trigger.
++
++-- ---------------------------------------------------------------- private per-room settings
++create table if not exists public.room_offer_settings (
++  room_id uuid primary key references public.rooms(id) on delete cascade,
++  owner_id uuid not null,
++  offers_enabled boolean not null default false,
++  min_rent numeric check (min_rent is null or min_rent >= 0), -- the floor; NEVER shown to tenants
++  auto_approve boolean not null default false,               -- auto-approve the PRICE when offer >= floor
++  updated_at timestamptz not null default now()
++);
++alter table public.room_offer_settings enable row level security;
++grant select, insert, update, delete on public.room_offer_settings to authenticated;
++grant all on public.room_offer_settings to service_role;
++
++drop policy if exists "offer settings owner read" on public.room_offer_settings;
++create policy "offer settings owner read" on public.room_offer_settings
++  for select to authenticated using (owner_id = auth.uid());
++drop policy if exists "offer settings owner write" on public.room_offer_settings;
++create policy "offer settings owner write" on public.room_offer_settings
++  for all to authenticated
++  using (owner_id = auth.uid())
++  with check (owner_id = auth.uid() and exists (select 1 from public.rooms r where r.id = room_id and r.owner_id = auth.uid()));
++
++-- ---------------------------------------------------------------- offer columns on bookings
++alter table public.bookings
++  add column if not exists offer_status text,
++  add column if not exists offered_rent numeric,
++  add column if not exists counter_rent numeric,
++  add column if not exists agreed_rent numeric,
++  add column if not exists offer_expires_at timestamptz,
++  add column if not exists offer_rounds int not null default 0;
++
++do $$ begin
++  alter table public.bookings add constraint bookings_offer_status_chk
++    check (offer_status is null or offer_status in ('pending','countered','approved','declined','expired','withdrawn'));
++exception when duplicate_object then null; end $$;
++do $$ begin
++  alter table public.bookings add constraint bookings_offer_amounts_chk
++    check ((offered_rent is null or offered_rent > 0) and (counter_rent is null or counter_rent > 0) and (agreed_rent is null or agreed_rent > 0));
++exception when duplicate_object then null; end $$;
++
++create index if not exists idx_bookings_offer_open on public.bookings (offer_status, offer_expires_at)
++  where offer_status in ('pending','countered');
++create index if not exists idx_bookings_offer_attempts on public.bookings (tenant_user_id, room_id, created_at)
++  where offered_rent is not null;
++
++-- ---------------------------------------------------------------- guard trigger
++-- Untrusted callers (PostgREST roles authenticated/anon) can never write the offer columns, and a tenant can
++-- only cancel their own pending request. Server-side (service role) code is trusted.
++create or replace function public.bookings_offer_guard() returns trigger
++language plpgsql as $$
++declare
++  _untrusted boolean := current_user in ('authenticated', 'anon');
++begin
++  if tg_op = 'INSERT' then
++    if _untrusted then
++      new.offer_status := null; new.offered_rent := null; new.counter_rent := null;
++      new.agreed_rent := null; new.offer_expires_at := null; new.offer_rounds := 0;
++    end if;
++    return new;
++  end if;
++
++  if _untrusted then
++    if new.offer_status is distinct from old.offer_status
++       or new.offered_rent is distinct from old.offered_rent
++       or new.counter_rent is distinct from old.counter_rent
++       or new.agreed_rent is distinct from old.agreed_rent
++       or new.offer_expires_at is distinct from old.offer_expires_at
++       or new.offer_rounds is distinct from old.offer_rounds then
++      raise exception 'OFFER_FIELDS_LOCKED: offer fields can only be changed through the offer actions';
++    end if;
++    -- a tenant (who is not also the landlord) may only cancel their own pending request
++    if auth.uid() is not null and auth.uid() = old.tenant_user_id and auth.uid() is distinct from old.landlord_id then
++      if new.status is distinct from old.status and not (old.status = 'pending' and new.status = 'cancelled') then
++        raise exception 'BOOKING_STATUS_LOCKED: a tenant can only cancel a pending request';
++      end if;
++      if new.landlord_id is distinct from old.landlord_id or new.room_id is distinct from old.room_id
++         or new.tenant_user_id is distinct from old.tenant_user_id or new.tenant_id is distinct from old.tenant_id
++         or new.decided_at is distinct from old.decided_at then
++        raise exception 'BOOKING_STATUS_LOCKED: protected booking fields';
++      end if;
++    end if;
++  end if;
++
++  -- Accepting a booking while an offer is still open would silently ignore the tenant's offer.
++  if new.status = 'accepted' and old.status is distinct from 'accepted' and new.offer_status in ('pending','countered') then
++    raise exception 'OFFER_OPEN: decide the rent offer (approve, deny or counter) before accepting this request';
++  end if;
++
++  -- request closed => offer closed
++  if new.status in ('rejected','cancelled') and old.status = 'pending' and new.offer_status in ('pending','countered') then
++    new.offer_status := case when new.status = 'rejected' then 'declined' else 'withdrawn' end;
++    new.offer_expires_at := null;
++  end if;
++  return new;
++end $$;
++
++drop trigger if exists bookings_offer_guard_trg on public.bookings;
++create trigger bookings_offer_guard_trg before insert or update on public.bookings
++  for each row execute function public.bookings_offer_guard();
++
++-- ---------------------------------------------------------------- actions (service role only)
++create or replace function public.offer_submit(_booking uuid, _tenant uuid, _offered numeric) returns jsonb
++language plpgsql security definer set search_path = public as $$
++declare
++  b public.bookings; _rent numeric; s public.room_offer_settings; _tries int; _rn text; _tname text;
++begin
++  select * into b from public.bookings where id = _booking for update;
++  if not found or b.tenant_user_id <> _tenant then raise exception 'FORBIDDEN'; end if;
++  if b.status <> 'pending' or b.offer_status is not null then raise exception 'OFFER_INVALID_STATE'; end if;
++  select rent_amount, room_number into _rent, _rn from public.rooms where id = b.room_id;
++  select * into s from public.room_offer_settings where room_id = b.room_id;
++  if s.room_id is null or not s.offers_enabled then raise exception 'OFFERS_OFF: this room is not taking offers'; end if;
++  if _offered is null or _offered <= 0 or _rent is null or _rent <= 0 then raise exception 'OFFER_INVALID'; end if;
++  if _offered >= _rent then raise exception 'OFFER_NOT_LOWER: the offer must be lower than the listed rent'; end if;
++  if _offered < ceil(_rent * 0.5) then raise exception 'OFFER_TOO_LOW: offers below 50%% of the rent are not accepted'; end if;
++  select count(*) into _tries from public.bookings
++   where tenant_user_id = _tenant and room_id = b.room_id and offered_rent is not null
++     and created_at > now() - interval '7 days';
++  if _tries >= 2 then raise exception 'OFFER_LIMIT: you can send at most 2 offers per room in 7 days'; end if;
++
++  _offered := round(_offered);
++  _tname := b.tenant_name;
++  if s.auto_approve and s.min_rent is not null and _offered >= s.min_rent then
++    update public.bookings set offer_status = 'approved', offered_rent = _offered, agreed_rent = _offered where id = _booking;
++    perform public.notify_user(b.landlord_id, 'booking_offer_new', 'Offer auto-approved: Rs ' || _offered::bigint,
++      _tname || ' offered Rs ' || _offered::bigint || ' for room ' || coalesce(_rn, '') || ' (listed Rs ' || _rent::bigint || '). The price was auto-approved; accept the request to confirm.', '/bookings');
++    return jsonb_build_object('offer_status', 'approved');
++  end if;
++  update public.bookings set offer_status = 'pending', offered_rent = _offered where id = _booking;
++  perform public.notify_user(b.landlord_id, 'booking_offer_new', 'New rent offer: Rs ' || _offered::bigint,
++    _tname || ' offered Rs ' || _offered::bigint || ' for room ' || coalesce(_rn, '') || ' (listed Rs ' || _rent::bigint || '). Approve, deny or counter.', '/bookings');
++  return jsonb_build_object('offer_status', 'pending');
++end $$;
++
++create or replace function public.offer_decide(_booking uuid, _landlord uuid, _action text, _counter numeric default null) returns jsonb
++language plpgsql security definer set search_path = public as $$
++declare b public.bookings; _rent numeric; _rn text;
++begin
++  select * into b from public.bookings where id = _booking for update;
++  if not found or b.landlord_id <> _landlord then raise exception 'FORBIDDEN'; end if;
++  if b.status <> 'pending' or b.offer_status <> 'pending' then raise exception 'OFFER_INVALID_STATE: no open offer to decide'; end if;
++  select rent_amount, room_number into _rent, _rn from public.rooms where id = b.room_id;
++
++  if _action = 'approve' then
++    update public.bookings set offer_status = 'approved', agreed_rent = b.offered_rent, offer_expires_at = null where id = _booking;
++    perform public.notify_user(b.tenant_user_id, 'booking_offer_approved', 'Your offer was approved',
++      'The landlord approved Rs ' || b.offered_rent::bigint || ' for room ' || coalesce(_rn, '') || '. Your booking will be confirmed shortly.', '/myr/bookings');
++    return jsonb_build_object('offer_status', 'approved', 'agreed_rent', b.offered_rent);
++  elsif _action = 'deny' then
++    update public.bookings set status = 'rejected', decided_at = now() where id = _booking; -- trigger sets offer_status = declined
++    perform public.notify_user(b.tenant_user_id, 'booking_offer_declined', 'Offer not accepted',
++      'The landlord did not accept this offer for room ' || coalesce(_rn, '') || '. You can send a new request.', '/myr/bookings');
++    return jsonb_build_object('offer_status', 'declined');
++  elsif _action = 'counter' then
++    if _counter is null or _counter <= b.offered_rent or _counter > _rent then
++      raise exception 'COUNTER_INVALID: the counter must be above the offer and not above the listed rent';
++    end if;
++    if b.offer_rounds >= 1 then raise exception 'COUNTER_LIMIT: only one counter offer is allowed'; end if;
++    _counter := round(_counter);
++    update public.bookings set offer_status = 'countered', counter_rent = _counter, offer_rounds = offer_rounds + 1,
++      offer_expires_at = now() + interval '24 hours' where id = _booking;
++    perform public.notify_user(b.tenant_user_id, 'booking_offer_counter', 'Counter offer: Rs ' || _counter::bigint,
++      'The landlord countered with Rs ' || _counter::bigint || ' for room ' || coalesce(_rn, '') || '. Reply within 24 hours.', '/myr/bookings');
++    return jsonb_build_object('offer_status', 'countered', 'counter_rent', _counter);
++  end if;
++  raise exception 'OFFER_INVALID_ACTION';
++end $$;
++
++create or replace function public.offer_respond(_booking uuid, _tenant uuid, _action text) returns jsonb
++language plpgsql security definer set search_path = public as $$
++declare b public.bookings; _rn text;
++begin
++  select * into b from public.bookings where id = _booking for update;
++  if not found or b.tenant_user_id <> _tenant then raise exception 'FORBIDDEN'; end if;
++  if b.status <> 'pending' or b.offer_status <> 'countered' then raise exception 'OFFER_INVALID_STATE: no counter offer to answer'; end if;
++  if b.offer_expires_at is not null and b.offer_expires_at < now() then
++    -- do NOT raise: that would roll the expiry back. Close it and report.
++    perform public.expire_booking_offers();
++    return jsonb_build_object('offer_status', 'expired');
++  end if;
++  select room_number into _rn from public.rooms where id = b.room_id;
++
++  if _action = 'accept' then
++    update public.bookings set offer_status = 'approved', agreed_rent = b.counter_rent, offer_expires_at = null where id = _booking;
++    perform public.notify_user(b.landlord_id, 'booking_offer_counter_accepted', 'Tenant accepted your counter',
++      b.tenant_name || ' accepted Rs ' || b.counter_rent::bigint || ' for room ' || coalesce(_rn, '') || '. Accept the request to confirm.', '/bookings');
++    return jsonb_build_object('offer_status', 'approved', 'agreed_rent', b.counter_rent);
++  elsif _action = 'decline' then
++    update public.bookings set status = 'cancelled' where id = _booking; -- trigger sets offer_status = withdrawn
++    update public.bookings set offer_status = 'declined' where id = _booking;
++    perform public.notify_user(b.landlord_id, 'booking_offer_counter_declined', 'Tenant declined your counter',
++      b.tenant_name || ' did not accept Rs ' || b.counter_rent::bigint || ' for room ' || coalesce(_rn, '') || '.', '/bookings');
++    return jsonb_build_object('offer_status', 'declined');
++  end if;
++  raise exception 'OFFER_INVALID_ACTION';
++end $$;
++
++-- Rent to use when a request is accepted: the agreed rent, or NULL (= normal listed rent). Raises if an offer is still open.
++create or replace function public.offer_agreed_rent(_booking uuid) returns numeric
++language plpgsql security definer stable set search_path = public as $$
++declare b public.bookings;
++begin
++  select * into b from public.bookings where id = _booking;
++  if not found then return null; end if;
++  if b.offer_status in ('pending','countered') then
++    raise exception 'OFFER_OPEN: decide the rent offer (approve, deny or counter) before accepting this request';
++  end if;
++  if b.offer_status = 'approved' then return b.agreed_rent; end if;
++  return null;
++end $$;
++
++-- Expire unanswered counters (also called lazily by the app, so this works even if cron is not running).
++create or replace function public.expire_booking_offers() returns int
++language plpgsql security definer set search_path = public as $$
++declare r record; n int := 0;
++begin
++  for r in select id, landlord_id, tenant_user_id from public.bookings
++            where status = 'pending' and offer_status = 'countered' and offer_expires_at < now() for update skip locked
++  loop
++    update public.bookings set status = 'cancelled' where id = r.id;
++    update public.bookings set offer_status = 'expired' where id = r.id;
++    perform public.notify_user(r.tenant_user_id, 'booking_offer_expired', 'Counter offer expired', 'You did not reply in time, so the request was closed.', '/myr/bookings');
++    perform public.notify_user(r.landlord_id, 'booking_offer_expired', 'Counter offer expired', 'The tenant did not reply to your counter offer, so the request was closed.', '/bookings');
++    n := n + 1;
++  end loop;
++  return n;
++end $$;
++
++revoke all on function public.offer_submit(uuid, uuid, numeric) from public, anon, authenticated;
++revoke all on function public.offer_decide(uuid, uuid, text, numeric) from public, anon, authenticated;
++revoke all on function public.offer_respond(uuid, uuid, text) from public, anon, authenticated;
++revoke all on function public.offer_agreed_rent(uuid) from public, anon, authenticated;
++revoke all on function public.expire_booking_offers() from public, anon, authenticated;
++grant execute on function public.offer_submit(uuid, uuid, numeric) to service_role;
++grant execute on function public.offer_decide(uuid, uuid, text, numeric) to service_role;
++grant execute on function public.offer_respond(uuid, uuid, text) to service_role;
++grant execute on function public.offer_agreed_rent(uuid) to service_role;
++grant execute on function public.expire_booking_offers() to service_role;
++
++do $$ begin perform cron.unschedule('booking-offers-expiry'); exception when others then null; end $$;
++do $$ begin perform cron.schedule('booking-offers-expiry', '*/30 * * * *', 'select public.expire_booking_offers()'); exception when others then null; end $$;

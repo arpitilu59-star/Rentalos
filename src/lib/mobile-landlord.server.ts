@@ -873,10 +873,11 @@ export async function publishListing(me: string, body: Record<string, unknown>) 
 
 export async function listRequests(me: string) {
   const a = await admin();
+  await (await import("./offers.server")).expireOffers(a);
   const { data } = await a
     .from("bookings")
     .select(
-      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)",
+      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
     )
     .eq("landlord_id", me)
     .order("created_at", { ascending: false })
@@ -950,6 +951,12 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
     .eq("active", true);
   if ((occ ?? 0) >= (rr?.capacity ?? 1))
     throw new Error("Room full hai. Request reject karein ya pehle jagah khali karein.");
+  // Agreed offer rent wins; an unresolved offer blocks the accept before any tenant row exists.
+  const rentShare = await (await import("./offers.server")).rentForAccept(
+    a,
+    b.id,
+    num(body.rent_share) ?? rr?.rent_amount ?? null,
+  );
   const { data: code } = await a.rpc("generate_tenant_code");
   const { data: t, error } = await a
     .from("tenants")
@@ -961,7 +968,7 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
       email: b.tenant_email,
       persons: 1,
       move_in_date: iso(body.move_in_date) ?? d2(new Date()),
-      rent_share: num(body.rent_share) ?? rr?.rent_amount ?? null,
+      rent_share: rentShare,
       active: true,
       tenant_user_id: b.tenant_user_id,
       tenant_code: (code as string) ?? null,
@@ -1005,6 +1012,31 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
     }
   }
   return { ok: true, tenant_id: t.id as string };
+}
+
+// ---------------------------------------------------------------- rent offers
+
+/** Landlord: approve / deny / counter a tenant's rent offer. Approve then lets the normal accept run at the agreed rent. */
+export async function decideOfferFromApp(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const O = await import("./offers.server");
+  return O.decideOffer(a, me, uuid(body.booking_id), body.action, body.counter_rent);
+}
+
+/** Landlord's private offer settings for one room (includes the floor). */
+export async function offerSettings(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  return (await import("./offers.server")).getOwnerOfferSettings(a, me, uuid(body.room_id));
+}
+
+export async function saveOfferSettings(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  return (await import("./offers.server")).saveOwnerOfferSettings(a, me, {
+    room_id: uuid(body.room_id),
+    offers_enabled: body.offers_enabled === true,
+    min_rent: body.min_rent as unknown,
+    auto_approve: body.auto_approve === true,
+  });
 }
 
 // ---------------------------------------------------------------- tenants

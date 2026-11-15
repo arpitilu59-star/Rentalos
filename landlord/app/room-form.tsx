@@ -8,6 +8,7 @@ import { Switch, View } from "react-native";
 import { Text } from "@/components/Text";
 import { useColors } from "@/theme";
 import { Choice, Field, useUnsavedGuard } from "@/lib/ui2";
+import { OfferSettings } from "@/components/OfferSettings";
 
 const OCC: Array<[string, string]> = [
   ["boys", "Boys only"],
@@ -198,6 +199,7 @@ export default function RoomForm() {
           />
         </>
       ) : null}
+      {id ? <OfferSettings roomId={id} /> : null}
       <ErrorText error={save.error} />
       <Button
         title={id ? "Save karein" : "Room banayein aur details bharein"}
