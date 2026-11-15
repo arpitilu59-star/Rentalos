@@ -15,10 +15,18 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-      {Icon && <Icon className="size-8 mx-auto mb-2 opacity-50" />}
-      <div className="text-sm">{title}</div>
-      {action && <div className="mt-3">{action}</div>}
+    <div className="min-w-0 rounded-2xl border border-dashed border-border p-6 sm:p-8 text-center text-muted-foreground">
+      {Icon && (
+        <span aria-hidden="true">
+          <Icon className="size-8 mx-auto mb-2 opacity-50" />
+        </span>
+      )}
+      <div className="text-sm leading-relaxed [overflow-wrap:anywhere]">{title}</div>
+      {action && (
+        <div className="mt-3 flex flex-wrap justify-center gap-2 [overflow-wrap:anywhere]">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

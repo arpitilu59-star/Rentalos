@@ -15,8 +15,15 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
-import { OCCUPANT_TYPES, OCCUPANT_LABEL, ROOM_SIZES, ROOM_SIZE_LABEL, roomProfileLabel } from "@/lib/room-profile";
+import {
+  OCCUPANT_TYPES,
+  OCCUPANT_LABEL,
+  ROOM_SIZES,
+  ROOM_SIZE_LABEL,
+  roomProfileLabel,
+} from "@/lib/room-profile";
 import { LiveFeedCover } from "@/components/LiveFeedCover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { seo } from "@/lib/seo";
 import { groupCities, slugifyCity } from "@/lib/cities";
 import {
@@ -100,8 +107,8 @@ function BudgetSlider({
   }, [min, max]);
 
   const commit = (nMin: number, nMax: number) => {
-    const safeMin = Math.min(nMin, nMax - RENT_STEP);
-    const safeMax = Math.max(nMax, nMin + RENT_STEP);
+    const safeMin = Math.max(RENT_MIN, Math.min(nMin, nMax - RENT_STEP));
+    const safeMax = Math.min(RENT_MAX, Math.max(nMax, nMin + RENT_STEP));
     setLocalMin(safeMin);
     setLocalMax(safeMax);
     onChange(safeMin, safeMax);
@@ -119,7 +126,7 @@ function BudgetSlider({
           {localMax >= RENT_MAX ? "+" : ""}
         </span>
       </div>
-      <div className="relative h-5">
+      <div className="relative h-11 flex items-center">
         <div className="absolute top-1/2 -translate-y-1/2 w-full h-1.5 rounded-full bg-muted" />
         <div
           className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-primary"
@@ -131,8 +138,10 @@ function BudgetSlider({
           max={RENT_MAX}
           step={RENT_STEP}
           value={localMin}
+          aria-label="Minimum monthly rent"
+          aria-valuetext={formatINR(localMin)}
           onChange={(e) => commit(Number(e.target.value), localMax)}
-          className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
+          className="absolute w-full h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
         />
         <input
           type="range"
@@ -140,8 +149,10 @@ function BudgetSlider({
           max={RENT_MAX}
           step={RENT_STEP}
           value={localMax}
+          aria-label="Maximum monthly rent"
+          aria-valuetext={`${formatINR(localMax)}${localMax >= RENT_MAX ? " or more" : ""}`}
           onChange={(e) => commit(localMin, Number(e.target.value))}
-          className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
+          className="absolute w-full h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-background"
         />
       </div>
     </div>
@@ -159,60 +170,62 @@ function CityPicker({
   onSelect: (c: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
 
   return (
-    <div ref={ref} className="relative col-span-2 md:col-span-1">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 pl-3 pr-3 py-2.5 rounded-xl bg-background border border-input text-sm text-left"
-      >
-        <MapPin className="size-4 text-muted-foreground shrink-0" />
-        <span className={value ? "" : "text-muted-foreground"}>{value || "Select city"}</span>
-        <ChevronDown className="size-3.5 text-muted-foreground ml-auto shrink-0" />
-        {value && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect("");
-            }}
-            className="p-0.5 rounded hover:bg-accent"
+    <div className="min-w-0 col-span-2 md:col-span-1 flex items-center gap-1">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`City: ${value || "all cities"}`}
+            className="min-w-0 flex-1 min-h-11 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-background border border-input text-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <X className="size-3.5" />
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="absolute z-40 mt-1 w-full max-h-64 overflow-y-auto rounded-xl bg-card border border-border shadow-elevated p-2 grid grid-cols-2 gap-1">
+            <MapPin className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className={`min-w-0 break-words ${value ? "" : "text-muted-foreground"}`}>
+              {value || "Select city"}
+            </span>
+            <ChevronDown
+              className="size-3.5 text-muted-foreground ml-auto shrink-0"
+              aria-hidden="true"
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          aria-label="Choose city"
+          className="max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-xl p-2 grid grid-cols-2 gap-1"
+        >
           {cities.length === 0 ? (
-            <div className="col-span-2 text-xs text-muted-foreground p-2">Loading cities…</div>
+            <div className="col-span-2 text-xs text-muted-foreground p-2">
+              No cities available yet.
+            </div>
           ) : (
             cities.map((c) => (
               <button
                 key={c}
                 type="button"
+                aria-pressed={value === c}
                 onClick={() => {
                   onSelect(c);
                   setOpen(false);
                 }}
-                className={`text-left px-2.5 py-1.5 rounded-lg text-sm ${value === c ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                className={`min-h-11 min-w-0 break-words text-left px-2.5 py-2 rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${value === c ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
               >
                 {c}
               </button>
             ))
           )}
-        </div>
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <button
+          type="button"
+          aria-label="Clear city"
+          onClick={() => onSelect("")}
+          className="min-h-11 min-w-11 grid place-items-center rounded-lg hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
       )}
     </div>
   );
@@ -370,7 +383,7 @@ function BrowsePage() {
   };
 
   const chip = (on: boolean) =>
-    `px-3 py-1.5 rounded-full text-xs border transition ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`;
+    `min-h-11 px-3 py-1.5 rounded-full text-xs border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -409,6 +422,7 @@ function BrowsePage() {
               <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={text}
+                aria-label="Area or property name"
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Area or property name"
                 maxLength={60}
@@ -439,6 +453,7 @@ function BrowsePage() {
             <button
               type="button"
               onClick={() => update({ type: undefined })}
+              aria-pressed={!search.type}
               className={chip(!search.type)}
             >
               All types
@@ -448,6 +463,7 @@ function BrowsePage() {
                 key={t}
                 type="button"
                 onClick={() => update({ type: search.type === t ? undefined : t })}
+                aria-pressed={search.type === t}
                 className={`${chip(search.type === t)} capitalize`}
               >
                 {t}
@@ -462,6 +478,7 @@ function BrowsePage() {
                 key={o}
                 type="button"
                 onClick={() => update({ occ: search.occ === o ? undefined : o })}
+                aria-pressed={search.occ === o}
                 className={chip(search.occ === o)}
               >
                 {OCCUPANT_LABEL[o]}
@@ -473,6 +490,7 @@ function BrowsePage() {
                 key={z}
                 type="button"
                 onClick={() => update({ size: search.size === z ? undefined : z })}
+                aria-pressed={search.size === z}
                 className={chip(search.size === z)}
               >
                 {ROOM_SIZE_LABEL[z]}
@@ -579,7 +597,7 @@ function BrowsePage() {
                     key={r.id}
                     to="/myr/room/$id"
                     params={{ id: r.id }}
-                    className="group rounded-2xl bg-card border border-border overflow-hidden hover:shadow-elevated transition"
+                    className="group min-w-0 rounded-2xl bg-card border border-border overflow-hidden hover:shadow-elevated transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <LiveFeedCover
                       target={{ kind: "room", id: r.id }}
@@ -601,19 +619,23 @@ function BrowsePage() {
                     </div>
                     <div className="p-3">
                       {roomProfileLabel(r) && (
-                        <div className="mb-1 text-[11px] font-medium text-primary">{roomProfileLabel(r)}</div>
+                        <div className="mb-1 text-[11px] font-medium text-primary">
+                          {roomProfileLabel(r)}
+                        </div>
                       )}
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col items-start gap-2">
                         <div className="min-w-0">
-                          <div className="font-semibold truncate">
+                          <div className="font-semibold [overflow-wrap:anywhere]">
                             {r.properties?.name ?? "Property"} · Room {r.room_number}
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-muted-foreground break-words">
                             <MapPin className="size-3 inline -mt-0.5" /> {location}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-semibold">{formatINR(Number(r.rent_amount))}</div>
+                        <div className="flex flex-wrap items-baseline gap-1 min-w-0">
+                          <div className="font-semibold tabular-nums [overflow-wrap:anywhere]">
+                            {formatINR(Number(r.rent_amount))}
+                          </div>
                           <div className="text-[10px] text-muted-foreground">/ month</div>
                         </div>
                       </div>
