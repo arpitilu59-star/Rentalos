@@ -107,8 +107,8 @@ function BudgetSlider({
   }, [min, max]);
 
   const commit = (nMin: number, nMax: number) => {
-    const safeMin = Math.min(nMin, nMax - RENT_STEP);
-    const safeMax = Math.max(nMax, nMin + RENT_STEP);
+    const safeMin = Math.max(RENT_MIN, Math.min(nMin, nMax - RENT_STEP));
+    const safeMax = Math.min(RENT_MAX, Math.max(nMax, nMin + RENT_STEP));
     setLocalMin(safeMin);
     setLocalMax(safeMax);
     onChange(safeMin, safeMax);

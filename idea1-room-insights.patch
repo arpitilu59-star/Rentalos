@@ -1,0 +1,564 @@
+diff --git a/landlord/app/(tabs)/index.tsx b/landlord/app/(tabs)/index.tsx
+index 3f7f9e9..9117e7b 100644
+--- a/landlord/app/(tabs)/index.tsx
++++ b/landlord/app/(tabs)/index.tsx
+@@ -34,6 +34,11 @@ export default function HomeTab() {
+       ),
+   });
+   const q = useQuery({ queryKey: ["home"], queryFn: () => api<Home>("l/home") });
++  const ins = useQuery({
++    queryKey: ["insights"],
++    queryFn: () =>
++      api<{ totals: { views: number; saves: number; requests: number; public_rooms: number } }>("l/insights", { days: 7 }),
++  });
+   const d = q.data;
+   const stat = (label: string, value: string, go: string, tone?: string) => (
+     <Pressable
+@@ -151,6 +156,28 @@ export default function HomeTab() {
+               <Text style={{ color: c.muted }}>Abhi koi kaam pending nahi hai. 🎉</Text>
+             </Card>
+           )}
++          {ins.data && ins.data.totals.public_rooms > 0 ? (
++            <Card style={{ gap: 6 }}>
++              <Text style={{ color: c.text, fontWeight: "800" }}>Pichhle 7 din — aapke rooms</Text>
++              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
++                {([
++                  ["Dekha", ins.data.totals.views],
++                  ["Save", ins.data.totals.saves],
++                  ["Requests", ins.data.totals.requests],
++                ] as const).map(([l, v]) => (
++                  <View key={l} style={{ alignItems: "center", flex: 1 }}>
++                    <Text style={{ color: c.text, fontSize: 22, fontWeight: "800" }}>{v}</Text>
++                    <Text style={{ color: c.muted, fontSize: 12 }}>{l}</Text>
++                  </View>
++                ))}
++              </View>
++              <Text style={{ color: c.muted, fontSize: 12 }}>
++                {ins.data.totals.views === 0
++                  ? "Abhi koi view nahi. Video aur saaf photos jodne se log zyada dekhte hain."
++                  : "Sirf count, kaun aaya ye nahi dikhta."}
++              </Text>
++            </Card>
++          ) : null}
+           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+             {stat("Rooms / beds", `${d.rooms} / ${d.beds}`, "/rooms")}
+             {stat("Bhare / khali beds", `${d.filled} / ${d.vacant}`, "/tenants")}
+diff --git a/mobile/app/room/[id].tsx b/mobile/app/room/[id].tsx
+index f0ea9b4..ca1b6e5 100644
+--- a/mobile/app/room/[id].tsx
++++ b/mobile/app/room/[id].tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from "react";
++import React, { useEffect, useState } from "react";
+ import { Dimensions, FlatList, Image, Linking, ScrollView, Share, View } from "react-native";
+ import { Text } from "@/components/Text";
+ import { useLocalSearchParams, useRouter } from "expo-router";
+@@ -22,6 +22,9 @@ export default function RoomScreen() {
+   const router = useRouter();
+   const t = useT();
+   const [idx, setIdx] = useState(0);
++  useEffect(() => {
++    if (id) api("room/view", { room_id: id }).catch(() => {});
++  }, [id]);
+   const q = useQuery({
+     queryKey: ["room", id],
+     queryFn: async () => {
+diff --git a/src/lib/_tests_/room-insights-db.test.ts b/src/lib/_tests_/room-insights-db.test.ts
+new file mode 100644
+index 0000000..9014b19
+--- /dev/null
++++ b/src/lib/_tests_/room-insights-db.test.ts
+@@ -0,0 +1,137 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- test stubs */
++/** Real migration SQL against in-memory Postgres (PGlite). Not a live Supabase test. */
++import { describe, it, expect, beforeAll } from "vitest";
++import { PGlite } from "@electric-sql/pglite";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const mig = (f: string) => readFileSync(join(process.cwd(), "supabase/migrations", f), "utf8");
++const L = "00000000-0000-0000-0000-0000000000a1";
++const L2 = "00000000-0000-0000-0000-0000000000a2";
++const T = "00000000-0000-0000-0000-0000000000e1";
++let db: PGlite;
++let prop: string, room: string, room2: string, priv: string, other: string;
++const q = async (s: string) => (await db.query<any>(s)).rows;
++const as = async (role: string) => {
++  await db.exec("SET SESSION AUTHORIZATION postgres; RESET ROLE;");
++  await db.exec(`SET SESSION AUTHORIZATION authenticator; SET ROLE ${role};`);
++};
++const fails = async (fn: () => Promise<unknown>, re: RegExp) => {
++  let msg = "";
++  try {
++    await fn();
++  } catch (e) {
++    msg = (e as Error).message;
++  }
++  expect(msg).toMatch(re);
++};
++const view = async (r: string, key: string, user: string | null = null) =>
++  (await q(`select record_room_view('${r}','${key}',${user ? `'${user}'` : "null"}) as r`))[0].r as boolean;
++
++beforeAll(async () => {
++  db = new PGlite();
++  await db.exec(`
++    CREATE ROLE authenticator LOGIN; CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
++    GRANT anon, authenticated, service_role TO authenticator;
++    CREATE TABLE public.properties (id uuid primary key default gen_random_uuid(), name text, owner_id uuid);
++    CREATE TABLE public.rooms (id uuid primary key default gen_random_uuid(), owner_id uuid, property_id uuid, room_number text, is_public boolean not null default false);
++    CREATE TABLE public.app_saved_rooms (user_id uuid not null, room_id uuid not null, created_at timestamptz not null default now(), primary key (user_id, room_id));
++    CREATE TABLE public.bookings (id uuid primary key default gen_random_uuid(), room_id uuid, status text default 'pending', offered_rent numeric, created_at timestamptz not null default now());
++    CREATE TABLE public.myr_notifications (id uuid primary key default gen_random_uuid(), user_id uuid, kind text, title text, body text, link text, created_at timestamptz not null default now());
++    CREATE FUNCTION public.notify_user(u uuid, k text, t text, b text, l text) RETURNS void LANGUAGE sql AS $$ INSERT INTO public.myr_notifications (user_id,kind,title,body,link) VALUES (u,k,t,b,l) $$;
++    CREATE TABLE public.automation_runs (id uuid default gen_random_uuid(), job text not null, entity_type text, entity_id uuid, period_key text not null, status text not null default 'started', detail jsonb default '{}', error text, created_at timestamptz default now(), completed_at timestamptz);
++    CREATE UNIQUE INDEX uq_slot ON public.automation_runs (job, entity_id, period_key);
++    CREATE FUNCTION public.claim_automation_slot(_job text,_e uuid,_p text,_t text default null) RETURNS boolean LANGUAGE plpgsql AS $$ BEGIN INSERT INTO public.automation_runs (job,entity_type,entity_id,period_key) VALUES (_job,_t,_e,_p); RETURN true; EXCEPTION WHEN unique_violation THEN RETURN false; END $$;
++    CREATE FUNCTION public.finish_automation_slot(_job text,_e uuid,_p text,_s text,_err text default null,_d jsonb default '{}') RETURNS void LANGUAGE sql AS $$ UPDATE public.automation_runs SET status=_s, error=_err, detail=_d WHERE job=_job AND entity_id=_e AND period_key=_p $$;
++    GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
++    GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
++  `);
++  await db.exec(mig("20261116000000_room_views_insights.sql"));
++  prop = (await q(`insert into properties (name, owner_id) values ('Sharma PG','${L}') returning id`))[0].id;
++  room = (await q(`insert into rooms (owner_id,property_id,room_number,is_public) values ('${L}','${prop}','101',true) returning id`))[0].id;
++  room2 = (await q(`insert into rooms (owner_id,property_id,room_number,is_public) values ('${L}','${prop}','102',true) returning id`))[0].id;
++  priv = (await q(`insert into rooms (owner_id,property_id,room_number,is_public) values ('${L}','${prop}','103',false) returning id`))[0].id;
++  other = (await q(`insert into rooms (owner_id,property_id,room_number,is_public) values ('${L2}',null,'201',true) returning id`))[0].id;
++});
++
++describe("recording views", () => {
++  it("counts one view per viewer per room per day", async () => {
++    expect(await view(room, "a:abc")).toBe(true);
++    expect(await view(room, "a:abc")).toBe(false);
++    expect(await view(room, "a:def")).toBe(true);
++    expect(await view(room2, "a:abc")).toBe(true);
++  });
++  it("ignores the owner's own views and rooms that are not public", async () => {
++    expect(await view(room, `u:${L}`, L)).toBe(false);
++    expect(await view(priv, "a:zzz")).toBe(false);
++  });
++  it("stops counting a viewer that opens more than 200 rooms in a day (scripts)", async () => {
++    await db.exec(`insert into room_views (room_id, viewer_key) select '${room}', 'bot' where false`);
++    const ids: string[] = [];
++    for (let i = 0; i < 200; i++) ids.push((await q(`insert into rooms (owner_id,room_number,is_public) values ('${L2}','b${i}',true) returning id`))[0].id);
++    await db.exec(`insert into room_views (room_id, viewer_key) select id, 'bot2' from rooms where room_number like 'b%'`);
++    expect(await view(room, "bot2")).toBe(false);
++    expect(await view(room, "human")).toBe(true);
++  });
++  it("app users cannot read or write views, or call the functions", async () => {
++    await as("authenticated");
++    await fails(() => q(`select * from room_views`), /permission denied/);
++    await fails(() => q(`select record_room_view('${room}','x',null)`), /permission denied/);
++    await fails(() => q(`select room_insights('${L}',7)`), /permission denied/);
++    await db.exec("SET SESSION AUTHORIZATION postgres; RESET ROLE;");
++  });
++});
++
++describe("insights", () => {
++  it("counts views, saves, requests and offers for the owner's rooms only", async () => {
++    await db.exec(`
++      insert into app_saved_rooms (user_id, room_id) values ('${T}','${room}');
++      insert into bookings (room_id, offered_rent) values ('${room}', 7000), ('${room}', null);
++      insert into bookings (room_id) values ('${other}');
++    `);
++    const r = (await q(`select room_insights('${L}', 7) as r`))[0].r;
++    expect(r.totals).toMatchObject({ saves: 1, requests: 2, offers: 1, public_rooms: 2 });
++    expect(Number(r.totals.views)).toBeGreaterThanOrEqual(3);
++    expect(r.rooms.map((x: any) => x.room_id)).not.toContain(other);
++    expect(r.rooms[0].label).toBe("Sharma PG · 101");
++    const mine = (await q(`select room_insights('${L2}', 7) as r`))[0].r;
++    expect(mine.rooms.map((x: any) => x.room_id)).toContain(other);
++    expect(mine.rooms.map((x: any) => x.room_id)).not.toContain(room);
++  });
++  it("old views fall in the previous period, not the current one", async () => {
++    await db.exec(`insert into room_views (room_id, viewer_key, day) values ('${room2}', 'old1', (now() at time zone 'Asia/Kolkata')::date - 9)`);
++    const r = (await q(`select room_insights('${L}', 7) as r`))[0].r;
++    expect(Number(r.totals.prev_views)).toBeGreaterThanOrEqual(1);
++  });
++});
++
++describe("weekly summary and save notifications", () => {
++  it("sends one summary per owner per week and stays quiet on a re-run", async () => {
++    const n = (await q(`select send_weekly_room_insights() as n`))[0].n;
++    expect(n).toBeGreaterThanOrEqual(1);
++    const msg = (await q(`select body from myr_notifications where user_id='${L}' and kind='room_insights_weekly'`))[0].body;
++    expect(msg).toMatch(/logon ne dekha/);
++    expect((await q(`select send_weekly_room_insights() as n`))[0].n).toBe(0);
++    expect(await q(`select 1 from myr_notifications where user_id='${L}' and kind='room_insights_weekly'`)).toHaveLength(1);
++  });
++  it("an owner with no views gets an honest 'no views' message, not a fake number", async () => {
++    const quiet = "00000000-0000-0000-0000-0000000000a3";
++    await db.exec(`insert into rooms (owner_id, room_number, is_public) values ('${quiet}', 'q1', true)`);
++    await q(`select send_weekly_room_insights()`);
++    const msg = (await q(`select body from myr_notifications where user_id='${quiet}' and kind='room_insights_weekly'`))[0].body;
++    expect(msg).toMatch(/koi view nahi/);
++  });
++  it("a save notifies the owner once per hour and never reveals who saved", async () => {
++    const T2 = "00000000-0000-0000-0000-0000000000e2";
++    await db.exec(`insert into app_saved_rooms (user_id, room_id) values ('${T2}','${room2}')`);
++    await db.exec(`insert into app_saved_rooms (user_id, room_id) values ('${T2}','${room}')`).catch(() => {});
++    const rows = await q(`select body from myr_notifications where user_id='${L}' and kind='room_saved'`);
++    expect(rows).toHaveLength(1);
++    expect(rows[0].body).not.toContain(T2);
++  });
++  it("the owner saving their own room does not notify", async () => {
++    const before = (await q(`select count(*)::int c from myr_notifications where user_id='${L2}' and kind='room_saved'`))[0].c;
++    await db.exec(`insert into app_saved_rooms (user_id, room_id) values ('${L2}','${other}')`);
++    expect((await q(`select count(*)::int c from myr_notifications where user_id='${L2}' and kind='room_saved'`))[0].c).toBe(before);
++  });
++});
+diff --git a/src/lib/insights.functions.ts b/src/lib/insights.functions.ts
+new file mode 100644
+index 0000000..7ba1c69
+--- /dev/null
++++ b/src/lib/insights.functions.ts
+@@ -0,0 +1,32 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed service-role client */
++import { createServerFn } from "@tanstack/react-start";
++import { getRequestHeader } from "@tanstack/react-start/server";
++import { z } from "zod";
++import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
++
++/** Public: called by the room page after it renders. Optional token lets us skip the owner's own views. */
++export const recordRoomView = createServerFn({ method: "POST" })
++  .inputValidator((i) => z.object({ room_id: z.string().uuid(), token: z.string().max(4000).optional() }).parse(i))
++  .handler(async ({ data }) => {
++    const { getAdmin } = await import("./whatsapp/db");
++    const { recordView } = await import("./insights.server");
++    const admin: any = await getAdmin();
++    let userId: string | null = null;
++    if (data.token) {
++      const { data: u } = await admin.auth.getUser(data.token);
++      userId = u?.user?.id ?? null;
++    }
++    const xf = getRequestHeader("x-forwarded-for");
++    const ip = xf?.split(",")[0]?.trim() || getRequestHeader("x-real-ip") || null;
++    const counted = await recordView(admin, { roomId: data.room_id, userId, ip, ua: getRequestHeader("user-agent") ?? null });
++    return { ok: true, counted };
++  });
++
++export const getMyRoomInsights = createServerFn({ method: "GET" })
++  .middleware([requireSupabaseAuth])
++  .inputValidator((i) => z.object({ days: z.number().int().min(1).max(90).default(7) }).parse(i ?? {}))
++  .handler(async ({ data, context }) => {
++    const { getAdmin } = await import("./whatsapp/db");
++    const { getInsights } = await import("./insights.server");
++    return getInsights(await getAdmin(), context.userId, data.days);
++  });
+diff --git a/src/lib/insights.server.ts b/src/lib/insights.server.ts
+new file mode 100644
+index 0000000..f224df2
+--- /dev/null
++++ b/src/lib/insights.server.ts
+@@ -0,0 +1,51 @@
++/* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed service-role client */
++/**
++ * Landlord visit insights — thin server layer over supabase/migrations/20261116000000_room_views_insights.sql.
++ * Privacy: raw IPs are never stored. Anonymous viewers are a salted SHA-256 of ip+user-agent (one-way);
++ * landlords only ever receive counts, never who viewed.
++ */
++
++const BOT_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|curl|wget|python-requests|headless|lighthouse|monitor|uptime|go-http-client|axios|node-fetch/i;
++
++export function isBotUA(ua: string | null | undefined): boolean {
++  if (!ua || ua.length < 8) return true;
++  return BOT_RE.test(ua);
++}
++
++async function sha256Hex(s: string): Promise<string> {
++  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
++  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
++}
++
++/** Signed-in users are keyed by user id; anonymous visitors by a salted one-way hash (never the raw IP). */
++export async function viewerKey(input: { userId?: string | null; ip?: string | null; ua?: string | null }): Promise<string> {
++  if (input.userId) return `u:${input.userId}`;
++  const salt = process.env.VIEW_HASH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "rentalos-views";
++  return `a:${(await sha256Hex(`${salt}|${input.ip ?? ""}|${input.ua ?? ""}`)).slice(0, 32)}`;
++}
++
++/** Records one (de-duplicated) view. Never throws — analytics must not break a page. Returns whether it counted. */
++export async function recordView(
++  admin: any,
++  args: { roomId: string; userId?: string | null; ip?: string | null; ua?: string | null },
++): Promise<boolean> {
++  try {
++    if (isBotUA(args.ua)) return false;
++    const key = await viewerKey(args);
++    const { data, error } = await admin.rpc("record_room_view", { _room: args.roomId, _viewer: key, _viewer_user: args.userId ?? null });
++    return !error && data === true;
++  } catch {
++    return false;
++  }
++}
++
++export async function getInsights(admin: any, ownerId: string, days = 7) {
++  const d = days === 30 ? 30 : 7;
++  const { data, error } = await admin.rpc("room_insights", { _owner: ownerId, _days: d });
++  if (error) throw new Error("Couldn't load insights.");
++  return data as {
++    days: number;
++    totals: { views: number; prev_views: number; saves: number; requests: number; offers: number; public_rooms: number };
++    rooms: { room_id: string; label: string; views: number; saves: number; requests: number }[];
++  };
++}
+diff --git a/src/lib/mobile-api.server.ts b/src/lib/mobile-api.server.ts
+index f54bbd3..7d16648 100644
+--- a/src/lib/mobile-api.server.ts
++++ b/src/lib/mobile-api.server.ts
+@@ -223,6 +223,12 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
+           return json(await t.cancelBooking(me, uuid(body.booking_id)));
+         case "offer/respond":
+           return json(await t.respondOfferFromApp(me, body));
++        case "room/view": {
++          const { recordView } = await import("./insights.server");
++          const { getAdmin } = await import("./whatsapp/db");
++          const ua = request.headers.get("user-agent");
++          return json({ ok: true, counted: await recordView(await getAdmin(), { roomId: uuid(body.room_id), userId: me, ua: ua && ua.length >= 8 ? ua : "RentalosApp/1.0 (mobile)" }) });
++        }
+         case "bills":
+           return json(await t.myBills(me));
+         case "pay/info":
+@@ -334,6 +340,10 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
+           return json(await L.decideRequest(me, body));
+         case "offer/decide":
+           return json(await L.decideOfferFromApp(me, body));
++        case "insights": {
++          const { getInsights } = await import("./insights.server");
++          return json(await getInsights(await L.adminClient(), me, body.days === 30 ? 30 : 7));
++        }
+         case "offer/settings":
+           return json(await L.offerSettings(me, body));
+         case "offer/settings/save":
+diff --git a/src/lib/mobile-landlord.server.ts b/src/lib/mobile-landlord.server.ts
+index 9374f8f..b60bae3 100644
+--- a/src/lib/mobile-landlord.server.ts
++++ b/src/lib/mobile-landlord.server.ts
+@@ -30,6 +30,8 @@ const cleanDb = (m: string) => m.replace(/^.*?ERROR:\s*/, "").slice(0, 200);
+ const d2 = (x: Date) =>
+   `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+ 
++export const adminClient = () => admin();
++
+ async function admin() {
+   const { getAdmin } = await import("./whatsapp/db");
+   return (await getAdmin()) as any;
+diff --git a/src/routes/_authenticated/rentdesk.tsx b/src/routes/_authenticated/rentdesk.tsx
+index c9acf65..5927596 100644
+--- a/src/routes/_authenticated/rentdesk.tsx
++++ b/src/routes/_authenticated/rentdesk.tsx
+@@ -7,7 +7,9 @@ import { WhatsAppAutomationPanel } from "@/components/WhatsAppAutomationPanel";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { StatCard } from "@/components/ui/stat-card";
+ import { EmptyState } from "@/components/ui/empty-state";
+-import { DoorOpen, Users, Wallet, CheckCircle2, Clock, Search, Receipt } from "lucide-react";
++import { useServerFn } from "@tanstack/react-start";
++import { getMyRoomInsights } from "@/lib/insights.functions";
++import { Eye, Heart, Send, DoorOpen, Users, Wallet, CheckCircle2, Clock, Search, Receipt } from "lucide-react";
+ 
+ export const Route = createFileRoute("/_authenticated/rentdesk")({ component: Dashboard });
+ 
+@@ -29,6 +31,12 @@ function Dashboard() {
+     [],
+   );
+   const [search, setSearch] = useState("");
++  const loadInsights = useServerFn(getMyRoomInsights);
++  const [ins, setIns] = useState<Awaited<ReturnType<typeof getMyRoomInsights>> | null>(null);
++  useEffect(() => {
++    loadInsights({ data: { days: 7 } }).then(setIns).catch(() => setIns(null));
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, []);
+ 
+   useEffect(() => {
+     (async () => {
+@@ -88,6 +96,38 @@ function Dashboard() {
+ 
+         <WhatsAppAutomationPanel />
+ 
++        {ins && ins.totals.public_rooms > 0 && (
++          <section className="rounded-2xl bg-card border border-border p-4 shadow-card space-y-3">
++            <div>
++              <h2 className="font-semibold">Pichhle 7 din — aapke rooms</h2>
++              <p className="text-xs text-muted-foreground">
++                Sirf count dikhta hai, kaun aaya ye nahi. Ek vyakti ek room din mein ek baar ginta hai.
++              </p>
++            </div>
++            <div className="grid grid-cols-3 gap-3">
++              <StatCard label="Logon ne dekha" value={String(ins.totals.views)} icon={Eye} />
++              <StatCard label="Save kiya" value={String(ins.totals.saves)} icon={Heart} />
++              <StatCard label="Requests" value={String(ins.totals.requests)} icon={Send} />
++            </div>
++            {ins.totals.views === 0 ? (
++              <p className="text-xs text-muted-foreground">
++                Abhi koi view nahi. Room mein video aur saaf photos jodne se log zyada dekhte hain.
++              </p>
++            ) : (
++              <ul className="text-sm divide-y divide-border">
++                {ins.rooms.slice(0, 5).map((r) => (
++                  <li key={r.room_id} className="flex justify-between py-1.5">
++                    <span className="truncate pr-2">{r.label}</span>
++                    <span className="text-muted-foreground shrink-0">
++                      {r.views} dekha · {r.saves} save · {r.requests} request
++                    </span>
++                  </li>
++                ))}
++              </ul>
++            )}
++          </section>
++        )}
++
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+           <StatCard label="Total rooms" value={String(stats?.totalRooms ?? "—")} icon={DoorOpen} />
+           <StatCard
+diff --git a/src/routes/myr/room.$id.tsx b/src/routes/myr/room.$id.tsx
+index f913d65..22e74ce 100644
+--- a/src/routes/myr/room.$id.tsx
++++ b/src/routes/myr/room.$id.tsx
+@@ -25,6 +25,7 @@ import { LiveFeedCover } from "@/components/LiveFeedCover";
+ import { roomProfileLabel } from "@/lib/room-profile";
+ import { LivePhotoStrip } from "@/components/LivePhotoStrip";
+ import { getPublicRoom } from "@/lib/public-listing.functions";
++import { recordRoomView } from "@/lib/insights.functions";
+ import { seo, SITE_URL, breadcrumbSchema } from "@/lib/seo";
+ import { slugifyCity } from "@/lib/cities";
+ 
+@@ -155,6 +156,20 @@ function RoomDetail() {
+   const doReport = useServerFn(reportMismatch);
+   const doReview = useServerFn(submitRoomReview);
+   const doListReviews = useServerFn(listRoomReviews);
++  const doView = useServerFn(recordRoomView);
++
++  // Count one anonymous, de-duplicated view (server hashes viewer; owner's own views are ignored).
++  useEffect(() => {
++    (async () => {
++      try {
++        const { data: s } = await supabase.auth.getSession();
++        await doView({ data: { room_id: id, token: s.session?.access_token } });
++      } catch {
++        /* analytics must never break the page */
++      }
++    })();
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [id]);
+ 
+   const [r, setR] = useState<RoomDetailData | null>(null);
+   const [loading, setLoading] = useState(true);
+diff --git a/supabase/migrations/20261116000000_room_views_insights.sql b/supabase/migrations/20261116000000_room_views_insights.sql
+new file mode 100644
+index 0000000..e800c5a
+--- /dev/null
++++ b/supabase/migrations/20261116000000_room_views_insights.sql
+@@ -0,0 +1,114 @@
++-- Landlord "visit insights": real, de-duplicated room views + a weekly summary notification.
++-- Privacy: raw IPs are never stored (the server stores an opaque hashed key); landlords only ever see COUNTS.
++
++create table if not exists public.room_views (
++  room_id uuid not null references public.rooms(id) on delete cascade,
++  viewer_key text not null check (char_length(viewer_key) between 3 and 80),
++  day date not null default ((now() at time zone 'Asia/Kolkata')::date),
++  created_at timestamptz not null default now(),
++  primary key (room_id, viewer_key, day)  -- one view per viewer per room per day
++);
++create index if not exists idx_room_views_room_day on public.room_views (room_id, day desc);
++create index if not exists idx_room_views_viewer_day on public.room_views (viewer_key, day);
++alter table public.room_views enable row level security; -- no policies: server (service role) only
++revoke all on public.room_views from anon, authenticated;
++grant all on public.room_views to service_role;
++
++-- Record a view. Ignores: the owner's own views, non-public rooms, and a viewer who has already hit 200 rooms today (scripts).
++create or replace function public.record_room_view(_room uuid, _viewer text, _viewer_user uuid default null) returns boolean
++language plpgsql security definer set search_path = public as $$
++declare _owner uuid; _n int; _today date := (now() at time zone 'Asia/Kolkata')::date;
++begin
++  select owner_id into _owner from public.rooms where id = _room and is_public = true;
++  if not found then return false; end if;
++  if _viewer_user is not null and _viewer_user = _owner then return false; end if;
++  if (select count(*) from public.room_views where viewer_key = _viewer and day = _today) >= 200 then return false; end if;
++  insert into public.room_views (room_id, viewer_key, day) values (_room, _viewer, _today) on conflict do nothing;
++  get diagnostics _n = row_count;
++  return _n > 0;
++end $$;
++
++-- Per-owner insights for the last N days (counts only). Saves come from app_saved_rooms, requests/offers from bookings.
++create or replace function public.room_insights(_owner uuid, _days int default 7) returns jsonb
++language plpgsql security definer stable set search_path = public as $$
++declare _d int := greatest(1, least(coalesce(_days, 7), 90)); _today date := (now() at time zone 'Asia/Kolkata')::date; _out jsonb;
++begin
++  with rs as (
++    select r.id, r.room_number, r.is_public, p.name as property
++      from public.rooms r left join public.properties p on p.id = r.property_id where r.owner_id = _owner
++  ), per as (
++    select rs.id as room_id, rs.room_number, rs.property, rs.is_public,
++      (select count(*) from public.room_views v where v.room_id = rs.id and v.day > _today - _d) as views,
++      (select count(*) from public.room_views v where v.room_id = rs.id and v.day <= _today - _d and v.day > _today - 2 * _d) as prev_views,
++      (select count(*) from public.app_saved_rooms s where s.room_id = rs.id and s.created_at > now() - make_interval(days => _d)) as saves,
++      (select count(*) from public.bookings b where b.room_id = rs.id and b.created_at > now() - make_interval(days => _d)) as requests,
++      (select count(*) from public.bookings b where b.room_id = rs.id and b.offered_rent is not null and b.created_at > now() - make_interval(days => _d)) as offers
++    from rs
++  )
++  select jsonb_build_object(
++    'days', _d,
++    'totals', jsonb_build_object('views', coalesce(sum(views), 0), 'prev_views', coalesce(sum(prev_views), 0),
++      'saves', coalesce(sum(saves), 0), 'requests', coalesce(sum(requests), 0), 'offers', coalesce(sum(offers), 0),
++      'public_rooms', coalesce(sum(case when is_public then 1 else 0 end), 0)),
++    'rooms', coalesce(jsonb_agg(jsonb_build_object('room_id', room_id, 'label', coalesce(property, '') || ' · ' || coalesce(room_number, ''),
++      'is_public', is_public, 'views', views, 'saves', saves, 'requests', requests, 'offers', offers) order by views desc, saves desc), '[]'::jsonb))
++  into _out from per;
++  return _out;
++end $$;
++
++-- Weekly summary (Mon 09:00 IST). Idempotent per owner per ISO week via claim_automation_slot. Counts only.
++create or replace function public.send_weekly_room_insights() returns int
++language plpgsql security definer set search_path = public as $$
++declare o record; ins jsonb; v int; pv int; s int; r int; best text; body text; _key text := to_char(now() at time zone 'Asia/Kolkata', 'IYYY-"W"IW'); n int := 0; delta text;
++begin
++  for o in select distinct owner_id from public.rooms where is_public = true and owner_id is not null loop
++    if not public.claim_automation_slot('weekly_room_insights', o.owner_id, _key, 'owner') then continue; end if;
++    begin
++      ins := public.room_insights(o.owner_id, 7);
++      v := (ins->'totals'->>'views')::int; pv := (ins->'totals'->>'prev_views')::int;
++      s := (ins->'totals'->>'saves')::int; r := (ins->'totals'->>'requests')::int;
++      if v = 0 and s = 0 and r = 0 then
++        body := 'Is hafte aapke listed rooms ko abhi koi view nahi mila. Photos/video verify karke aur rent-terms check karke listing behtar karein.';
++      else
++        delta := case when pv > 0 then ' (pichhle hafte ' || pv || ')' else '' end;
++        select (x->>'label') into best from jsonb_array_elements(ins->'rooms') x order by (x->>'views')::int desc limit 1;
++        body := 'Is hafte aapke rooms ko ' || v || ' logon ne dekha' || delta || ', ' || s || ' ne save kiya, ' || r || ' booking request aayi.'
++                || case when v > 0 and best is not null then ' Sabse zyada dekha gaya: ' || best || '.' else '' end;
++      end if;
++      perform public.notify_user(o.owner_id, 'room_insights_weekly', 'Aapke rooms is hafte', body, '/rentdesk');
++      perform public.finish_automation_slot('weekly_room_insights', o.owner_id, _key, 'completed', null, ins->'totals');
++      n := n + 1;
++    exception when others then
++      perform public.finish_automation_slot('weekly_room_insights', o.owner_id, _key, 'failed', sqlerrm, '{}'::jsonb);
++    end;
++  end loop;
++  delete from public.room_views where day < ((now() at time zone 'Asia/Kolkata')::date - 90); -- retention: 90 days
++  return n;
++end $$;
++
++-- A save is a strong signal: tell the owner (grouped: at most one per hour, never who saved it).
++create or replace function public.trg_room_saved() returns trigger language plpgsql security definer set search_path = public as $$
++declare _owner uuid; _rn text;
++begin
++  select owner_id, room_number into _owner, _rn from public.rooms where id = new.room_id;
++  if _owner is null or _owner = new.user_id then return new; end if;
++  if exists (select 1 from public.myr_notifications where user_id = _owner and kind = 'room_saved' and created_at > now() - interval '1 hour') then
++    return new;
++  end if;
++  perform public.notify_user(_owner, 'room_saved', 'Kisi ne aapka room save kiya', 'Room ' || coalesce(_rn, '') || ' ko ek tenant ne save kiya. Wo baad mein request bhej sakta hai.', '/rentdesk');
++  return new;
++exception when others then
++  return new; -- a notification problem must never block saving
++end $$;
++drop trigger if exists trg_room_saved on public.app_saved_rooms;
++create trigger trg_room_saved after insert on public.app_saved_rooms for each row execute function public.trg_room_saved();
++
++revoke all on function public.record_room_view(uuid, text, uuid) from public, anon, authenticated;
++revoke all on function public.room_insights(uuid, int) from public, anon, authenticated;
++revoke all on function public.send_weekly_room_insights() from public, anon, authenticated;
++grant execute on function public.record_room_view(uuid, text, uuid) to service_role;
++grant execute on function public.room_insights(uuid, int) to service_role;
++grant execute on function public.send_weekly_room_insights() to service_role;
++
++do $$ begin perform cron.unschedule('weekly-room-insights'); exception when others then null; end $$;
++do $$ begin perform cron.schedule('weekly-room-insights', '30 3 * * 1', 'select public.send_weekly_room_insights()'); exception when others then null; end $$;

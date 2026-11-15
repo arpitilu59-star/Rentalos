@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { activeFilterCount, type TermsFilters } from "@/lib/terms/match";
 
 type BoolKey =
@@ -63,6 +70,9 @@ export function TermsFilterDrawer({
       >
         <SheetHeader>
           <SheetTitle>Filter by terms</SheetTitle>
+          <SheetDescription>
+            Choose rental rules and facilities, then show matching results.
+          </SheetDescription>
         </SheetHeader>
         <div className="space-y-5 py-4">
           <div>
