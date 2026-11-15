@@ -28,7 +28,7 @@ For an approved staging integration, `npm run dev` starts the regular Vite app. 
 - Report exposed credentials or sensitive findings privately to the founder. Do not paste keys, tenant details or exploit instructions into public issues or screenshots.
 
 ## Checks before a PR
-
+The full test suite imports the mobile translation module, so install its development dependencies once with `npm ci --prefix mobile` before running all tests. This installs packages only; it does not require Expo login, a build, deployment or native app changes. Without those dependencies, `mobile-i18n.test.ts` cannot resolve `expo/tsconfig.base`.
 ```sh
 npm run lint
 npm run test
