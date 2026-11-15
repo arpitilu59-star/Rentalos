@@ -1,6 +1,6 @@
 {
   "buildCommand": "vite build --config vite.config.vercel.ts",
   "framework": null,
-  "outputDirectory": ".vercel/output",
+  "outputDirectory": null,
   "installCommand": "npm install"
 }

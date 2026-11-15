@@ -6,8 +6,10 @@ import ffmpegPath from "ffmpeg-static";
 export default defineConfig({
   traceDeps: ["ffmpeg-static"],
   vercel: { functions: { maxDuration: 300 } },
-  hooks: {
-    compiled: async (nitro) => {
+  modules: [
+    (nitro) => {
+      // Register alongside the preset's hook; config hooks replace the preset's function.
+      nitro.hooks.hook("compiled", async () => {
       if (!nitro.options.node || !ffmpegPath) return;
       // Copy the dynamically resolved executable explicitly, once, after dependency tracing.
       const dir = join(nitro.options.output.serverDir, "node_modules", "ffmpeg-static");
@@ -16,6 +18,7 @@ export default defineConfig({
       await copyFile(ffmpegPath, executable);
       await chmod(executable, 0o755);
       await copyFile(`${ffmpegPath}.LICENSE`, `${executable}.LICENSE`);
+      });
     },
-  },
+  ],
 });
