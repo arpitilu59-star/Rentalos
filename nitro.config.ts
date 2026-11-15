@@ -10,14 +10,14 @@ export default defineConfig({
     (nitro) => {
       // Register alongside the preset's hook; config hooks replace the preset's function.
       nitro.hooks.hook("compiled", async () => {
-      if (!nitro.options.node || !ffmpegPath) return;
-      // Copy the dynamically resolved executable explicitly, once, after dependency tracing.
-      const dir = join(nitro.options.output.serverDir, "node_modules", "ffmpeg-static");
-      await mkdir(dir, { recursive: true });
-      const executable = join(dir, basename(ffmpegPath));
-      await copyFile(ffmpegPath, executable);
-      await chmod(executable, 0o755);
-      await copyFile(`${ffmpegPath}.LICENSE`, `${executable}.LICENSE`);
+        if (!nitro.options.node || !ffmpegPath) return;
+        // Copy the dynamically resolved executable explicitly, once, after dependency tracing.
+        const dir = join(nitro.options.output.serverDir, "node_modules", "ffmpeg-static");
+        await mkdir(dir, { recursive: true });
+        const executable = join(dir, basename(ffmpegPath));
+        await copyFile(ffmpegPath, executable);
+        await chmod(executable, 0o755);
+        await copyFile(`${ffmpegPath}.LICENSE`, `${executable}.LICENSE`);
       });
     },
   ],

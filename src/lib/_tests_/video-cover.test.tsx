@@ -57,3 +57,19 @@ it("rechecks an initially missing upload on focus instead of caching null foreve
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(container.querySelector("video")?.getAttribute("src")).toBe("/preview.mp4");
 });
+it("preserves the player and playback position when the same recording is re-signed on focus", async () => {
+  await act(async () =>
+    root.render(<LiveFeedCover target={{ kind: "room", id: "one" }} mode="full" />),
+  );
+  const player = container.querySelector("video")!;
+  player.currentTime = 8;
+  calls.url.mockResolvedValueOnce({
+    url: "/full.mp4?new-signature",
+    previewUrl: "/preview.mp4?new-signature",
+    posterUrl: "/poster.jpg",
+  });
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(container.querySelector("video")).toBe(player);
+  expect(player.currentTime).toBe(8);
+  expect(player.getAttribute("src")).toBe("/full.mp4");
+});

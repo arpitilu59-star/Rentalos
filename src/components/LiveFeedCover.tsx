@@ -113,7 +113,18 @@ export function LiveFeedCover({
         });
         const assets = id ? await api.current.getUrl({ data: { id } }) : { ...EMPTY_VIDEO_ASSETS };
         if (!cancelled && serial === request)
-          setState({ key, id, assets, error: !!id && !assets.url, loaded: true });
+          setState((old) => ({
+            key,
+            id,
+            // A newly signed URL for the same recording must not remount/reset the player.
+            // Expired URL retries are handled by ResilientVideo; a changed ID replaces media.
+            assets:
+              old.key === key && old.id === id && old.assets.url && assets.url
+                ? old.assets
+                : assets,
+            error: !!id && !assets.url,
+            loaded: true,
+          }));
       } catch {
         if (!cancelled && serial === request)
           setState((old) => ({
