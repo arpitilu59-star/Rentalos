@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Menu, X } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const LINKS = [
   { label: "Home", to: "/" },
@@ -45,16 +46,24 @@ export function SiteNavbar() {
   const nav = useNavigate();
   const [showLandlordWarn, setShowLandlordWarn] = useState(false);
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const landlordButton = useRef<HTMLButtonElement>(null);
+  const warningOrigin = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
   const itemCls =
-    "px-3 py-1.5 rounded-md text-sm hover:bg-accent text-muted-foreground [&.active]:text-foreground [&.active]:font-medium focus-visible:outline-none focus-visible:ring-2 ring-ring/60";
+    "inline-flex items-center min-h-11 px-2 py-1.5 rounded-md text-sm whitespace-nowrap hover:bg-accent text-muted-foreground [&.active]:text-foreground [&.active]:font-medium focus-visible:outline-none focus-visible:ring-2 ring-ring/60";
 
   return (
     <>
@@ -67,15 +76,19 @@ export function SiteNavbar() {
             <div className="font-semibold tracking-tight">RentalOS</div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main">
+          <nav className="hidden xl:flex items-center gap-0.5" aria-label="Main">
             {LINKS.map((l) => (
               <NavItem key={l.label} item={l} className={itemCls} />
             ))}
           </nav>
 
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setShowLandlordWarn(true)}
+              ref={landlordButton}
+              onClick={() => {
+                warningOrigin.current = landlordButton.current;
+                setShowLandlordWarn(true);
+              }}
               className="px-3 py-1.5 text-sm rounded-lg hover:bg-accent text-muted-foreground focus-visible:outline-none focus-visible:ring-2 ring-ring/60"
             >
               Landlord
@@ -95,7 +108,8 @@ export function SiteNavbar() {
           </div>
 
           <button
-            className="lg:hidden p-2 rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 ring-ring/60"
+            ref={menuButton}
+            className="xl:hidden min-h-11 min-w-11 grid place-items-center p-2 rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 ring-ring/60"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-nav"
@@ -109,7 +123,7 @@ export function SiteNavbar() {
           <nav
             id="mobile-nav"
             aria-label="Mobile"
-            className="lg:hidden border-t border-border bg-card px-4 py-3 flex flex-col gap-1"
+            className="xl:hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-t border-border bg-card px-4 py-3 flex flex-col gap-1"
           >
             {LINKS.map((l) => (
               <NavItem
@@ -121,6 +135,7 @@ export function SiteNavbar() {
             ))}
             <button
               onClick={() => {
+                warningOrigin.current = menuButton.current;
                 setOpen(false);
                 setShowLandlordWarn(true);
               }}
@@ -148,21 +163,22 @@ export function SiteNavbar() {
         )}
       </header>
 
-      {showLandlordWarn && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Landlord access"
-          className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4"
+      <Dialog open={showLandlordWarn} onOpenChange={setShowLandlordWarn}>
+        <DialogContent
+          className="w-[calc(100%-2rem)] max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            warningOrigin.current?.focus();
+          }}
         >
-          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-elevated p-6">
+          <div>
             <div className="flex items-start gap-3">
               <div className="size-10 rounded-xl bg-destructive/15 text-destructive grid place-items-center shrink-0">
-                <AlertTriangle className="size-5" />
+                <AlertTriangle className="size-5" aria-hidden="true" />
               </div>
               <div>
-                <div className="font-semibold">Landlord access only</div>
-                <p className="text-sm text-muted-foreground mt-1">
+                <DialogTitle className="font-semibold pr-4">Landlord access only</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-2">
                   This portal is only for verified property owners. Fake property information or
                   misuse may lead to
                   <span className="text-foreground font-medium">
@@ -170,7 +186,7 @@ export function SiteNavbar() {
                     account suspension and applicable legal action
                   </span>{" "}
                   under Indian IT & fraud laws.
-                </p>
+                </DialogDescription>
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
@@ -181,7 +197,6 @@ export function SiteNavbar() {
                 Cancel
               </button>
               <button
-                autoFocus
                 onClick={() => {
                   setShowLandlordWarn(false);
                   nav({ to: "/landlord/login" });
@@ -192,8 +207,8 @@ export function SiteNavbar() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

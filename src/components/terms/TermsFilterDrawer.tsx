@@ -28,7 +28,7 @@ const TOGGLES: { key: BoolKey; text: string }[] = [
 ];
 
 const chip = (on: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm transition ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`;
+  `min-h-11 rounded-full border px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-accent"}`;
 
 /** Filter drawer (bottom sheet on mobile feel via Sheet). Chips + a few numeric limits. */
 export function TermsFilterDrawer({
@@ -47,7 +47,7 @@ export function TermsFilterDrawer({
       <SheetTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent"
+          className="min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent"
         >
           <SlidersHorizontal className="size-4" /> Rules & facilities
           {n > 0 && (
@@ -72,6 +72,7 @@ export function TermsFilterDrawer({
                 <button
                   key={g}
                   type="button"
+                  aria-pressed={value.gender === g}
                   className={chip(value.gender === g)}
                   onClick={() => set({ gender: value.gender === g ? undefined : g })}
                 >
@@ -85,6 +86,7 @@ export function TermsFilterDrawer({
             <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
+                aria-pressed={value.food === "included"}
                 className={chip(value.food === "included")}
                 onClick={() => set({ food: value.food === "included" ? undefined : "included" })}
               >
@@ -92,6 +94,7 @@ export function TermsFilterDrawer({
               </button>
               <button
                 type="button"
+                aria-pressed={value.food === "veg"}
                 className={chip(value.food === "veg")}
                 onClick={() => set({ food: value.food === "veg" ? undefined : "veg" })}
               >
@@ -111,6 +114,7 @@ export function TermsFilterDrawer({
                 <button
                   key={k}
                   type="button"
+                  aria-pressed={value.parking === k}
                   className={chip(value.parking === k)}
                   onClick={() => set({ parking: value.parking === k ? undefined : k })}
                 >
@@ -126,6 +130,7 @@ export function TermsFilterDrawer({
                 <button
                   key={t.key}
                   type="button"
+                  aria-pressed={!!value[t.key]}
                   className={chip(!!value[t.key])}
                   onClick={() => toggle(t.key)}
                 >
@@ -135,10 +140,10 @@ export function TermsFilterDrawer({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm">
+            <label className="min-w-0 text-sm">
               <span className="text-xs text-muted-foreground">Max notice period (days)</span>
               <input
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
+                className="mt-1 min-w-0 w-full min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
                 inputMode="numeric"
                 value={value.maxNoticeDays ?? ""}
                 onChange={(e) =>
@@ -149,10 +154,10 @@ export function TermsFilterDrawer({
                 }
               />
             </label>
-            <label className="text-sm">
+            <label className="min-w-0 text-sm">
               <span className="text-xs text-muted-foreground">Max lock-in (months)</span>
               <input
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
+                className="mt-1 min-w-0 w-full min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
                 inputMode="numeric"
                 value={value.maxLockInMonths ?? ""}
                 onChange={(e) =>
@@ -178,14 +183,14 @@ export function TermsFilterDrawer({
           <button
             type="button"
             onClick={() => onChange({ includeUnknown: value.includeUnknown })}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" /> Clear all
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-xl bg-primary text-primary-foreground px-5 py-2 text-sm font-medium"
+            className="min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl bg-primary text-primary-foreground px-5 py-2 text-sm font-medium"
           >
             Show results
           </button>

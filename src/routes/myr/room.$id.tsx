@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createBooking } from "@/lib/bookings.functions";
+import { createBooking, getRoomOffer } from "@/lib/bookings.functions";
 import { getPublicTerms } from "@/lib/terms.functions";
 import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
 import { PublicTermsSection } from "@/components/terms/PublicTermsSection";
@@ -721,7 +721,11 @@ function BookModal({
   onDone: () => void;
 }) {
   const create = useServerFn(createBooking);
+  const fetchOffer = useServerFn(getRoomOffer);
   const fetchTerms = useServerFn(getPublicTerms);
+  // Public offer rules only (never the landlord's floor).
+  const [offerInfo, setOfferInfo] = useState<{ enabled: boolean; min_allowed: number | null } | null>(null);
+  const [offerText, setOfferText] = useState("");
   const [termsInfo, setTermsInfo] = useState<{
     terms: Terms | null;
     version: number | null;
@@ -737,6 +741,12 @@ function BookModal({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOffer({ data: { room_id: roomId } })
+      .then((o) => setOfferInfo({ enabled: o.enabled, min_allowed: o.min_allowed }))
+      .catch(() => setOfferInfo({ enabled: false, min_allowed: null }));
+  }, [roomId, fetchOffer]);
 
   useEffect(() => {
     if (!propertyId) {
@@ -770,11 +780,19 @@ function BookModal({
       setErr("Please read the terms and tick every box to continue.");
       return;
     }
+    const offered = offerInfo?.enabled && offerText.trim() ? Number(offerText.replace(/[, ₹]/g, "")) : null;
+    if (offered !== null) {
+      if (!Number.isFinite(offered) || offered <= 0) return setErr("Offer amount sahi likhein.");
+      if (offered >= rent) return setErr("Offer rent se kam hona chahiye. Poore rent par seedha request bhejein (offer khali chhodein).");
+      if (offerInfo?.min_allowed && offered < offerInfo.min_allowed)
+        return setErr(`Offer kam se kam ₹${offerInfo.min_allowed.toLocaleString("en-IN")} hona chahiye.`);
+    }
     setBusy(true);
     setErr(null);
     try {
       await create({
         data: {
+          ...(offered !== null ? { offered_rent: offered } : {}),
           acknowledgements: termsInfo?.terms
             ? (gate.acknowledgements as Record<string, boolean>)
             : undefined,
@@ -843,6 +861,25 @@ function BookModal({
             className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input"
           />
         </label>
+        {offerInfo?.enabled && (
+          <label className="block rounded-lg border border-border bg-muted/30 p-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Apna offer (optional) — listed rent ₹{rent.toLocaleString("en-IN")}
+            </span>
+            <input
+              value={offerText}
+              onChange={(e) => setOfferText(e.target.value)}
+              inputMode="numeric"
+              placeholder="Monthly rent jo aap dena chahte hain"
+              className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input"
+            />
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              Landlord approve, deny ya counter karega. Kam se kam ₹
+              {(offerInfo.min_allowed ?? 0).toLocaleString("en-IN")}. Ek room par 7 din mein max 2 offers.
+              Khali chhodein to listed rent par request jayegi.
+            </span>
+          </label>
+        )}
         {termsInfo === null && (
           <div className="text-xs text-muted-foreground">Loading rental terms…</div>
         )}

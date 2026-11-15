@@ -16,12 +16,16 @@ export function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-card border border-border p-4 shadow-card">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{label}</span>
-        <Icon className={`size-4 ${accent ?? "text-muted-foreground"}`} />
+    <div className="min-w-0 rounded-2xl bg-card border border-border p-3 sm:p-4 shadow-card">
+      <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
+        <span className="min-w-0 break-words">{label}</span>
+        <span aria-hidden="true" className="shrink-0">
+          <Icon className={`size-4 ${accent ?? "text-muted-foreground"}`} />
+        </span>
       </div>
-      <div className="mt-2 text-xl md:text-2xl font-semibold">{value}</div>
+      <div className="mt-2 text-lg sm:text-xl xl:text-2xl font-semibold tabular-nums [overflow-wrap:anywhere]">
+        {value}
+      </div>
     </div>
   );
 }

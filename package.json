@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run --maxWorkers=2 --hookTimeout=30000 --testTimeout=30000",
-    "video:process": "tsx scripts/process-room-videos.ts"
+    "video:process": "tsx scripts/process-room-videos.ts",
+    "dev:qa": "vite --config scripts/frontend-qa/vite.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.47",

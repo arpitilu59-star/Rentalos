@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";
 import { useColors, inr } from "@/theme";
 
-type B = { needsReaccept: boolean; terms: any; version: number | null; id: string; status: string; created_at: string; rooms: { room_number: string; rent_amount: number; myr_deposit?: number | null; properties: { name: string; myr_city: string | null; city: string | null } | null } | null };
+type Offer = { status: string; offered_rent: number | null; counter_rent: number | null; agreed_rent: number | null; expires_at: string | null };
+type B = { offer?: Offer | null; needsReaccept: boolean; terms: any; version: number | null; id: string; status: string; created_at: string; rooms: { room_number: string; rent_amount: number; myr_deposit?: number | null; properties: { name: string; myr_city: string | null; city: string | null } | null } | null };
 
 function Reaccept({ b, acks }: { b: B; acks: Array<{ key: string; label: string }> }) {
   const c = useColors();
@@ -42,6 +43,40 @@ function Reaccept({ b, acks }: { b: B; acks: Array<{ key: string; label: string 
   );
 }
 
+function OfferBox({ b }: { b: B }) {
+  const c = useColors();
+  const qc = useQueryClient();
+  const o = b.offer;
+  const respond = useMutation({
+    mutationFn: (action: "accept" | "decline") => api("offer/respond", { booking_id: b.id, action }),
+    onSettled: () => { qc.invalidateQueries({ queryKey: ["bookings"] }); qc.invalidateQueries({ queryKey: ["home"] }); },
+  });
+  if (!o) return null;
+  const text: Record<string, string> = {
+    pending: `Aapka offer ${inr(o.offered_rent)} landlord ke jawab ka intezaar kar raha hai.`,
+    approved: `Offer approve: ${inr(o.agreed_rent)}/month. Landlord booking confirm karega.`,
+    declined: "Landlord ne ye offer accept nahi kiya.",
+    expired: "Counter offer expire ho gaya, request band ho gayi.",
+    withdrawn: "Offer wapas le liya gaya.",
+    countered: `Landlord ka counter offer: ${inr(o.counter_rent)}/month (listed ${inr(b.rooms?.rent_amount)}).`,
+  };
+  return (
+    <View style={{ marginTop: 10, backgroundColor: c.bg, borderRadius: 10, padding: 10, gap: 8 }}>
+      <Text style={{ color: c.text }}>{text[o.status] ?? ""}</Text>
+      {o.status === "countered" ? (
+        <>
+          {o.expires_at ? <Text style={{ color: c.muted, fontSize: 12 }}>24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString("en-IN")}).</Text> : null}
+          <ErrorText error={respond.error} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button kind="ghost" title="Decline" busy={respond.isPending} onPress={() => respond.mutate("decline")} style={{ flex: 1 }} />
+            <Button title={`Accept ${inr(o.counter_rent)}`} busy={respond.isPending} onPress={() => respond.mutate("accept")} style={{ flex: 1 }} />
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 export default function Bookings() {
   const c = useColors();
   const t = useT();
@@ -63,6 +98,7 @@ export default function Bookings() {
             <Text style={{ color: col(b.status), fontWeight: "800", textTransform: "capitalize" }}>{b.status}</Text>
             {b.status === "pending" && <Button kind="ghost" title="Cancel" onPress={() => Alert.alert(t("Request cancel karein?"), "", [{ text: t("Nahi"), style: "cancel" }, { text: t("Haan, cancel"), style: "destructive", onPress: () => cancel.mutate(b.id) }])} />}
           </View>
+          <OfferBox b={b} />
           {b.needsReaccept && b.terms ? <Reaccept b={b} acks={q.data?.acks ?? []} /> : null}
         </Card>
       )}

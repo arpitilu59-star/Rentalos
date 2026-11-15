@@ -92,6 +92,8 @@ const CreateBookingSchema = z.object({
   message: z.string().max(1000).optional(),
   acknowledgements: z.record(z.string(), z.boolean()).optional(),
   listened: z.boolean().optional(),
+  /** Optional rent offer (below the listed rent). Validated again in the database. */
+  offered_rent: z.number().positive().max(10_000_000).optional(),
 });
 
 export const createBooking = createServerFn({ method: "POST" })
@@ -179,6 +181,17 @@ export const createBooking = createServerFn({ method: "POST" })
           "Couldn't record the terms. Please try again.",
       );
     }
+    // Optional rent offer: rules (enabled, >= 50%, 2 per week) live in the database. No offer, no request.
+    let offerStatus: string | null = null;
+    if (data.offered_rent != null) {
+      try {
+        const { submitOffer } = await import("./offers.server");
+        offerStatus = (await submitOffer(adminForTerms, ins.id, userId, data.offered_rent)).offer_status;
+      } catch (e) {
+        await adminForTerms.from("bookings").delete().eq("id", ins.id);
+        throw e;
+      }
+    }
     // Admin visibility: every new booking is surfaced so a human can confirm it is genuine.
     try {
       const { data: admins } = await adminForTerms.from("admin_users").select("user_id").eq("active", true);
@@ -195,7 +208,7 @@ export const createBooking = createServerFn({ method: "POST" })
     } catch {
       /* best-effort: the Admin → Bookings page is the source of truth */
     }
-    return { booking_id: ins.id };
+    return { booking_id: ins.id, offer: offerStatus ? "sent" : null };
   });
 
 // Tenant lists own bookings
@@ -203,10 +216,14 @@ export const listMyBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await (await import("./offers.server")).expireOffers(supabaseAdmin);
+    }
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
+        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
       )
       .eq("tenant_user_id", userId)
       .order("created_at", { ascending: false });
@@ -219,10 +236,14 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await (await import("./offers.server")).expireOffers(supabaseAdmin);
+    }
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, rooms(room_number, rent_amount), properties(name)",
+        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
       )
       .eq("landlord_id", userId)
       .order("created_at", { ascending: false });
@@ -282,14 +303,16 @@ export const decideBooking = createServerFn({ method: "POST" })
     ]);
     if ((occupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1))
       throw new Error("This room is already full. Reject the request or free a slot first.");
-    const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
-    const tenantCode = (codeRow as string) ?? null;
-
     const { data: room } = await supabaseAdmin
       .from("rooms")
       .select("rent_amount")
       .eq("id", b.room_id)
       .single();
+    // Agreed offer rent wins; an unresolved offer blocks the accept (before any tenant row is created).
+    const { rentForAccept } = await import("./offers.server");
+    const rentShare = await rentForAccept(supabaseAdmin, b.id, data.rent_share ?? room?.rent_amount ?? null);
+    const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
+    const tenantCode = (codeRow as string) ?? null;
 
     const { data: newTenant, error: tErr } = await supabaseAdmin
       .from("tenants")
@@ -301,7 +324,7 @@ export const decideBooking = createServerFn({ method: "POST" })
         email: b.tenant_email,
         persons: 1,
         move_in_date: data.move_in_date ?? new Date().toISOString().slice(0, 10),
-        rent_share: data.rent_share ?? room?.rent_amount ?? null,
+        rent_share: rentShare,
         active: true,
         tenant_user_id: b.tenant_user_id,
         tenant_code: tenantCode,
@@ -352,4 +375,69 @@ export const decideBooking = createServerFn({ method: "POST" })
     }
 
     return { ok: true, tenant_id: newTenant.id, tenant_code: tenantCode };
+  });
+
+
+// ============================================================
+// Tenant rent offers (negotiation) — rules live in the database
+// ============================================================
+
+/** Tenant-safe: is the room taking offers and the public minimum. Never returns the landlord's floor. */
+export const getRoomOffer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ room_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getRoomOfferInfo } = await import("./offers.server");
+    return getRoomOfferInfo(supabaseAdmin, data.room_id);
+  });
+
+export const decideBookingOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({ booking_id: z.string().uuid(), action: z.enum(["approve", "deny", "counter"]), counter_rent: z.number().positive().optional() })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { decideOffer } = await import("./offers.server");
+    return decideOffer(supabaseAdmin, context.userId, data.booking_id, data.action, data.counter_rent);
+  });
+
+export const respondBookingOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ booking_id: z.string().uuid(), action: z.enum(["accept", "decline"]) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { respondOffer } = await import("./offers.server");
+    return respondOffer(supabaseAdmin, context.userId, data.booking_id, data.action);
+  });
+
+/** Owner only: includes the private floor. */
+export const getMyRoomOfferSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ room_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getOwnerOfferSettings } = await import("./offers.server");
+    return getOwnerOfferSettings(supabaseAdmin, context.userId, data.room_id);
+  });
+
+export const saveMyRoomOfferSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        room_id: z.string().uuid(),
+        offers_enabled: z.boolean(),
+        min_rent: z.number().nonnegative().nullable(),
+        auto_approve: z.boolean(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { saveOwnerOfferSettings } = await import("./offers.server");
+    return saveOwnerOfferSettings(supabaseAdmin, context.userId, data);
   });

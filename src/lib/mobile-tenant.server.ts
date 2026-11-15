@@ -61,6 +61,8 @@ export async function roomTerms(roomId: string) {
     deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null,
     speech: terms ? termsToSpeech(terms, { rent: Number(r.rent_amount ?? 0), deposit: r.myr_deposit != null ? Number(r.myr_deposit) : null }) : null,
     acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })),
+    // Public offer rules only (never the landlord's floor).
+    offer: await (await import("./offers.server")).getRoomOfferInfo(a, roomId),
   };
 }
 
@@ -104,6 +106,21 @@ export async function createBookingFromApp(me: string, body: Record<string, unkn
     await a.from("bookings").delete().eq("id", ins.id); // never a request without its terms record
     throw new Error(cleanDb(accErr.message) || "Couldn't record the terms. Please try again.");
   }
+  // Optional rent offer (rules enforced in the database). If it is refused, the request is not created at all.
+  const O = await import("./offers.server");
+  const offered = O.parseAmount(body.offered_rent);
+  if (body.offered_rent != null && body.offered_rent !== "" && offered === null) {
+    await a.from("bookings").delete().eq("id", ins.id);
+    throw O.offerError("OFFER_INVALID");
+  }
+  if (offered !== null) {
+    try {
+      await O.submitOffer(a, ins.id, me, offered);
+    } catch (e) {
+      await a.from("bookings").delete().eq("id", ins.id);
+      throw e;
+    }
+  }
   try {
     const { data: admins } = await a.from("admin_users").select("user_id").eq("active", true);
     if (admins?.length)
@@ -114,14 +131,16 @@ export async function createBookingFromApp(me: string, body: Record<string, unkn
         })),
       );
   } catch { /* best-effort */ }
-  return { booking_id: ins.id as string };
+  return { booking_id: ins.id as string, offer: offered !== null ? "sent" : null };
 }
 
 export async function myBookings(me: string) {
   const a = await admin();
+  const O = await import("./offers.server");
+  await O.expireOffers(a);
   const { data } = await a
     .from("bookings")
-    .select("id, status, created_at, property_id, rooms(room_number, rent_amount, myr_deposit, properties(name, myr_city, city, terms_summary, current_terms_version))")
+    .select("id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount, myr_deposit, properties(name, myr_city, city, terms_summary, current_terms_version))")
     .eq("tenant_user_id", me)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -139,7 +158,7 @@ export async function myBookings(me: string) {
       }
     }
     const { terms_summary: _t, current_terms_version: _v, ...prop } = b.rooms?.properties ?? {};
-    bookings.push({ id: b.id, status: b.status, created_at: b.created_at, rooms: b.rooms ? { ...b.rooms, properties: prop } : null, needsReaccept, terms, version });
+    bookings.push({ id: b.id, status: b.status, created_at: b.created_at, rooms: b.rooms ? { ...b.rooms, properties: prop } : null, needsReaccept, terms, version, offer: O.tenantOfferView(b) });
   }
   return { bookings, acks: REQUIRED_ACKS.map((k) => ({ key: k, label: ACK_LABELS[k] })) };
 }
@@ -152,6 +171,13 @@ export async function reacceptBooking(me: string, body: Record<string, unknown>)
   const { error } = await a.rpc("record_terms_reacceptance", { _user: me, _booking: uuid(body.booking_id), _acks: acks, _listened: body.listened === true });
   if (error) throw new Error(cleanDb(error.message) || "Couldn't record the terms. Please try again.");
   return { ok: true };
+}
+
+/** Tenant answers the landlord's counter offer: accept or decline. */
+export async function respondOfferFromApp(me: string, body: Record<string, unknown>) {
+  const a = await admin();
+  const { respondOffer } = await import("./offers.server");
+  return respondOffer(a, me, uuid(body.booking_id), body.action);
 }
 
 export async function cancelBooking(me: string, id: string) {

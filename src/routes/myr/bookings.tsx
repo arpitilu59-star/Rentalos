@@ -9,6 +9,7 @@ import { CalendarCheck, Loader2, Clock } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { listMyRoomRequests, reacceptTerms } from "@/lib/terms.functions";
+import { respondBookingOffer } from "@/lib/bookings.functions";
 import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
 
 export const Route = createFileRoute("/myr/bookings")({ component: BookingsPage });
@@ -25,11 +26,52 @@ const STATUS_STYLE: Record<string, string> = {
   accepted: "bg-success text-success-foreground",
 };
 
+type OfferView = { status: string; offered_rent: number | null; counter_rent: number | null; agreed_rent: number | null; expires_at: string | null };
+
+function OfferLine({ o, rent, busy, onAnswer }: { o: OfferView; rent: number; busy: boolean; onAnswer: (a: "accept" | "decline") => void }) {
+  const inr = (n: number | null) => (n == null ? "—" : formatINR(n));
+  const text: Record<string, string> = {
+    pending: `Aapka offer ${inr(o.offered_rent)} landlord ke jawab ka intezaar kar raha hai.`,
+    approved: `Offer approve: ${inr(o.agreed_rent)}/month. Landlord booking confirm karega.`,
+    declined: "Landlord ne ye offer accept nahi kiya.",
+    expired: "Counter offer expire ho gaya, request band ho gayi.",
+    withdrawn: "Offer wapas le liya gaya.",
+    countered: `Landlord ka counter offer: ${inr(o.counter_rent)}/month (listed ${formatINR(rent)}).`,
+  };
+  return (
+    <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
+      <div>{text[o.status] ?? ""}</div>
+      {o.status === "countered" && (
+        <>
+          {o.expires_at && <div className="mt-1 text-muted-foreground">24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString()}).</div>}
+          <div className="mt-2 flex gap-2">
+            <button disabled={busy} onClick={() => onAnswer("accept")} className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50">Accept {inr(o.counter_rent)}</button>
+            <button disabled={busy} onClick={() => onAnswer("decline")} className="rounded-md border border-border px-3 py-1.5 disabled:opacity-50">Decline</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function RoomRequests() {
   const qc = useQueryClient();
   const list = useServerFn(listMyRoomRequests);
   const reaccept = useServerFn(reacceptTerms);
+  const respond = useServerFn(respondBookingOffer);
   const q = useQuery({ queryKey: ["my-room-requests"], queryFn: () => list() });
+  const answer = async (id: string, action: "accept" | "decline") => {
+    setBusy(true);
+    try {
+      await respond({ data: { booking_id: id, action } });
+      toast.success(action === "accept" ? "Counter offer accept ho gaya. Landlord booking confirm karega." : "Counter offer decline kar diya.");
+      await qc.invalidateQueries({ queryKey: ["my-room-requests"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const [open, setOpen] = useState<string | null>(null);
   const [gate, setGate] = useState<GateValue | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,6 +105,7 @@ function RoomRequests() {
               </div>
               <div className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${STATUS_STYLE[r.status] ?? "bg-muted text-muted-foreground"}`}>{r.status}</div>
             </div>
+            {r.offer && <OfferLine o={r.offer} rent={r.rent} busy={busy} onAnswer={(a) => answer(r.id, a)} />}
             <div className="mt-2 text-xs text-muted-foreground">
               {r.acceptedVersion ? `You accepted rental terms v${r.acceptedVersion}.` : "No structured terms were published for this request."}
             </div>

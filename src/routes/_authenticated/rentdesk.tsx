@@ -88,7 +88,7 @@ function Dashboard() {
 
         <WhatsAppAutomationPanel />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <StatCard label="Total rooms" value={String(stats?.totalRooms ?? "—")} icon={DoorOpen} />
           <StatCard
             label="Occupied"
@@ -110,10 +110,10 @@ function Dashboard() {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
+        <div className="grid xl:grid-cols-2 gap-4">
+          <div className="min-w-0 rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-card">
             <div className="flex items-center justify-between mb-3">
-              <div className="font-medium">Recent bills</div>
+              <h2 className="font-medium">Recent bills</h2>
               <Link to="/bills" className="text-xs text-primary font-medium hover:underline">
                 View all →
               </Link>
@@ -123,15 +123,20 @@ function Dashboard() {
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {bills.slice(0, 6).map((b) => (
-                  <li key={b.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <li
+                    key={b.id}
+                    className="py-2.5 flex flex-wrap items-start justify-between gap-2"
+                  >
                     <div className="min-w-0">
-                      <div className="font-medium truncate">
+                      <div className="font-medium [overflow-wrap:anywhere]">
                         {b.tenants?.name || "Tenant"} · Room {b.rooms?.room_number}
                       </div>
                       <div className="text-xs text-muted-foreground">Due {b.due_date}</div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-semibold">{formatINR(Number(b.total_amount))}</div>
+                    <div className="min-w-0 ml-auto text-right">
+                      <div className="font-semibold tabular-nums [overflow-wrap:anywhere]">
+                        {formatINR(Number(b.total_amount))}
+                      </div>
                       <div
                         className={`text-[10px] uppercase tracking-wide ${b.status === "paid" ? "text-success" : "text-warning"}`}
                       >
@@ -144,32 +149,41 @@ function Dashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="font-medium">Active tenants</div>
-              <div className="relative">
+          <div className="min-w-0 rounded-2xl bg-card border border-border p-4 sm:p-5 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h2 className="font-medium">Active tenants</h2>
+              <div className="relative min-w-0 flex-1 basis-36">
                 <Search className="size-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  aria-label="Search tenants by name, phone or room"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search…"
-                  className="pl-7 pr-2 py-1.5 text-xs rounded-md bg-background border border-input outline-none focus:ring-2 ring-ring/40 w-36"
+                  className="min-h-11 pl-7 pr-2 py-2 text-sm rounded-md bg-background border border-input outline-none focus:ring-2 ring-ring/40 w-full"
                 />
               </div>
             </div>
             {filteredTenants.length === 0 ? (
-              <EmptyState icon={Users} title="Koi tenant nahi mila." />
+              <EmptyState
+                icon={Users}
+                title={
+                  q ? "Is search se koi tenant nahi mila." : "Abhi koi active tenant nahi hai."
+                }
+              />
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {filteredTenants.slice(0, 6).map((t) => (
                   <li key={t.id} className="py-2.5 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-medium truncate">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="font-medium [overflow-wrap:anywhere]">{t.name}</div>
+                      <div className="text-xs text-muted-foreground break-words">
                         Room {t.rooms?.room_number} · {t.phone}
                       </div>
                     </div>
-                    <CheckCircle2 className="size-4 text-success" />
+                    <CheckCircle2
+                      className="size-4 shrink-0 text-success"
+                      aria-label="Active tenant"
+                    />
                   </li>
                 ))}
               </ul>
