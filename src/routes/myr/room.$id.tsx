@@ -1,3 +1,5 @@
+import { recordRoomEvent } from "@/lib/room-engagement";
+import { RoomSaveButton } from "@/components/RoomSaveButton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -75,9 +77,7 @@ export const Route = createFileRoute("/myr/room/$id")({
             breadcrumbSchema([
               { name: "Home", path: "/" },
               { name: "Browse rentals", path: "/myr/browse" },
-              ...(r.city
-                ? [{ name: r.city, path: `/rooms-in/${slugifyCity(r.city)}` }]
-                : []),
+              ...(r.city ? [{ name: r.city, path: `/rooms-in/${slugifyCity(r.city)}` }] : []),
             ]),
           ),
         },
@@ -181,6 +181,14 @@ function RoomDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    if (!r) return;
+    const timer = setTimeout(() => {
+      if (!document.hidden) void recordRoomEvent(id, "view");
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [id, r]);
+
   const onBook = async () => {
     const {
       data: { session },
@@ -229,6 +237,7 @@ function RoomDetail() {
           >
             <ArrowLeft className="size-4" /> Back
           </button>
+          <RoomSaveButton roomId={id} />
           <Link to="/tenant" className="text-sm px-3 py-1.5 rounded-md hover:bg-accent">
             Tenant portal
           </Link>
@@ -724,7 +733,10 @@ function BookModal({
   const fetchOffer = useServerFn(getRoomOffer);
   const fetchTerms = useServerFn(getPublicTerms);
   // Public offer rules only (never the landlord's floor).
-  const [offerInfo, setOfferInfo] = useState<{ enabled: boolean; min_allowed: number | null } | null>(null);
+  const [offerInfo, setOfferInfo] = useState<{
+    enabled: boolean;
+    min_allowed: number | null;
+  } | null>(null);
   const [offerText, setOfferText] = useState("");
   const [termsInfo, setTermsInfo] = useState<{
     terms: Terms | null;
@@ -780,12 +792,18 @@ function BookModal({
       setErr("Please read the terms and tick every box to continue.");
       return;
     }
-    const offered = offerInfo?.enabled && offerText.trim() ? Number(offerText.replace(/[, ₹]/g, "")) : null;
+    const offered =
+      offerInfo?.enabled && offerText.trim() ? Number(offerText.replace(/[, ₹]/g, "")) : null;
     if (offered !== null) {
       if (!Number.isFinite(offered) || offered <= 0) return setErr("Offer amount sahi likhein.");
-      if (offered >= rent) return setErr("Offer rent se kam hona chahiye. Poore rent par seedha request bhejein (offer khali chhodein).");
+      if (offered >= rent)
+        return setErr(
+          "Offer rent se kam hona chahiye. Poore rent par seedha request bhejein (offer khali chhodein).",
+        );
       if (offerInfo?.min_allowed && offered < offerInfo.min_allowed)
-        return setErr(`Offer kam se kam ₹${offerInfo.min_allowed.toLocaleString("en-IN")} hona chahiye.`);
+        return setErr(
+          `Offer kam se kam ₹${offerInfo.min_allowed.toLocaleString("en-IN")} hona chahiye.`,
+        );
     }
     setBusy(true);
     setErr(null);
@@ -875,8 +893,8 @@ function BookModal({
             />
             <span className="mt-1 block text-[11px] text-muted-foreground">
               Landlord approve, deny ya counter karega. Kam se kam ₹
-              {(offerInfo.min_allowed ?? 0).toLocaleString("en-IN")}. Ek room par 7 din mein max 2 offers.
-              Khali chhodein to listed rent par request jayegi.
+              {(offerInfo.min_allowed ?? 0).toLocaleString("en-IN")}. Ek room par 7 din mein max 2
+              offers. Khali chhodein to listed rent par request jayegi.
             </span>
           </label>
         )}

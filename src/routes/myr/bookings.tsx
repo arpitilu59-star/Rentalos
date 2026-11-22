@@ -1,5 +1,6 @@
+import { OfferConfirmation } from "@/components/OfferConfirmation";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { MyrShell } from "@/components/MyrShell";
@@ -15,8 +16,13 @@ import { TermsGate, type GateValue } from "@/components/terms/TermsGate";
 export const Route = createFileRoute("/myr/bookings")({ component: BookingsPage });
 
 type Row = {
-  id: string; status: string; reserved_until: string | null; move_in_date: string | null;
-  amount: number; deposit: number; payment_status: string;
+  id: string;
+  status: string;
+  reserved_until: string | null;
+  move_in_date: string | null;
+  amount: number;
+  deposit: number;
+  payment_status: string;
   myr_listings: { id: string; title: string; city: string | null } | null;
   myr_listing_rooms: { label: string } | null;
 };
@@ -26,13 +32,32 @@ const STATUS_STYLE: Record<string, string> = {
   accepted: "bg-success text-success-foreground",
 };
 
-type OfferView = { status: string; offered_rent: number | null; counter_rent: number | null; agreed_rent: number | null; expires_at: string | null };
+type OfferView = {
+  status: string;
+  offered_rent: number | null;
+  counter_rent: number | null;
+  agreed_rent: number | null;
+  expires_at: string | null;
+  confirmed_at?: string | null;
+};
 
-function OfferLine({ o, rent, busy, onAnswer }: { o: OfferView; rent: number; busy: boolean; onAnswer: (a: "accept" | "decline") => void }) {
+function OfferLine({
+  o,
+  rent,
+  busy,
+  onAnswer,
+  bookingId,
+}: {
+  bookingId: string;
+  o: OfferView;
+  rent: number;
+  busy: boolean;
+  onAnswer: (a: "accept" | "decline") => void;
+}) {
   const inr = (n: number | null) => (n == null ? "—" : formatINR(n));
   const text: Record<string, string> = {
     pending: `Aapka offer ${inr(o.offered_rent)} landlord ke jawab ka intezaar kar raha hai.`,
-    approved: `Offer approve: ${inr(o.agreed_rent)}/month. Landlord booking confirm karega.`,
+    approved: `Offer approve: ${inr(o.agreed_rent)}/month. ${o.confirmed_at ? "Booking confirmed." : "24 ghante mein booking confirm karein."}`,
     declined: "Landlord ne ye offer accept nahi kiya.",
     expired: "Counter offer expire ho gaya, request band ho gayi.",
     withdrawn: "Offer wapas le liya gaya.",
@@ -41,12 +66,31 @@ function OfferLine({ o, rent, busy, onAnswer }: { o: OfferView; rent: number; bu
   return (
     <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
       <div>{text[o.status] ?? ""}</div>
+      {o.status === "approved" && !o.confirmed_at && o.agreed_rent != null && (
+        <OfferConfirmation bookingId={bookingId} rent={o.agreed_rent} expiresAt={o.expires_at} />
+      )}
       {o.status === "countered" && (
         <>
-          {o.expires_at && <div className="mt-1 text-muted-foreground">24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString()}).</div>}
+          {o.expires_at && (
+            <div className="mt-1 text-muted-foreground">
+              24 ghante mein jawab dein (till {new Date(o.expires_at).toLocaleString()}).
+            </div>
+          )}
           <div className="mt-2 flex gap-2">
-            <button disabled={busy} onClick={() => onAnswer("accept")} className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50">Accept {inr(o.counter_rent)}</button>
-            <button disabled={busy} onClick={() => onAnswer("decline")} className="rounded-md border border-border px-3 py-1.5 disabled:opacity-50">Decline</button>
+            <button
+              disabled={busy}
+              onClick={() => onAnswer("accept")}
+              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50"
+            >
+              Accept {inr(o.counter_rent)}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => onAnswer("decline")}
+              className="rounded-md border border-border px-3 py-1.5 disabled:opacity-50"
+            >
+              Decline
+            </button>
           </div>
         </>
       )}
@@ -64,7 +108,11 @@ function RoomRequests() {
     setBusy(true);
     try {
       await respond({ data: { booking_id: id, action } });
-      toast.success(action === "accept" ? "Counter offer accept ho gaya. Landlord booking confirm karega." : "Counter offer decline kar diya.");
+      toast.success(
+        action === "accept"
+          ? "Counter offer accept ho gaya. Landlord booking confirm karega."
+          : "Counter offer decline kar diya.",
+      );
       await qc.invalidateQueries({ queryKey: ["my-room-requests"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save. Please try again.");
@@ -82,7 +130,13 @@ function RoomRequests() {
     if (!gate?.complete) return toast.error("Please tick every acknowledgement first.");
     setBusy(true);
     try {
-      await reaccept({ data: { bookingId: id, acknowledgements: gate.acknowledgements as Record<string, boolean>, listened: gate.listened } });
+      await reaccept({
+        data: {
+          bookingId: id,
+          acknowledgements: gate.acknowledgements as Record<string, boolean>,
+          listened: gate.listened,
+        },
+      });
       toast.success("Updated terms accepted.");
       setOpen(null);
       await qc.invalidateQueries({ queryKey: ["my-room-requests"] });
@@ -100,32 +154,75 @@ function RoomRequests() {
           <div key={r.id} className="rounded-2xl bg-card border border-border p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-semibold truncate">{r.property ?? "Property"} · Room {r.room ?? "—"}</div>
-                <div className="text-xs text-muted-foreground">{r.city} · {formatINR(r.rent)}/month</div>
+                <div className="font-semibold truncate">
+                  {r.property ?? "Property"} · Room {r.room ?? "—"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {r.city} · {formatINR(r.rent)}/month
+                </div>
               </div>
-              <div className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${STATUS_STYLE[r.status] ?? "bg-muted text-muted-foreground"}`}>{r.status}</div>
+              <div
+                className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${STATUS_STYLE[r.status] ?? "bg-muted text-muted-foreground"}`}
+              >
+                {r.status}
+              </div>
             </div>
-            {r.offer && <OfferLine o={r.offer} rent={r.rent} busy={busy} onAnswer={(a) => answer(r.id, a)} />}
+            {r.offer && (
+              <OfferLine
+                bookingId={r.id}
+                o={r.offer}
+                rent={r.rent}
+                busy={busy}
+                onAnswer={(a) => answer(r.id, a)}
+              />
+            )}
             <div className="mt-2 text-xs text-muted-foreground">
-              {r.acceptedVersion ? `You accepted rental terms v${r.acceptedVersion}.` : "No structured terms were published for this request."}
+              {r.acceptedVersion
+                ? `You accepted rental terms v${r.acceptedVersion}.`
+                : "No structured terms were published for this request."}
             </div>
             {r.needsReaccept && (
               <div className="mt-3 rounded-lg border border-warning/50 bg-warning/10 p-3 space-y-3">
-                <div className="text-sm font-medium">The landlord updated the terms (v{r.currentVersion}). Please review and accept them.</div>
+                <div className="text-sm font-medium">
+                  The landlord updated the terms (v{r.currentVersion}). Please review and accept
+                  them.
+                </div>
                 {open === r.id ? (
                   <>
                     {r.terms && r.currentVersion != null && (
-                      <TermsGate terms={r.terms} version={r.currentVersion} rent={r.rent} deposit={null} onChange={setGate} />
+                      <TermsGate
+                        terms={r.terms}
+                        version={r.currentVersion}
+                        rent={r.rent}
+                        deposit={null}
+                        onChange={setGate}
+                      />
                     )}
                     <div className="flex gap-2 justify-end">
-                      <button className="text-xs rounded-md border border-border px-3 py-1.5" onClick={() => setOpen(null)} disabled={busy}>Close</button>
-                      <button className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50" onClick={() => submit(r.id)} disabled={busy || !gate?.complete}>
+                      <button
+                        className="text-xs rounded-md border border-border px-3 py-1.5"
+                        onClick={() => setOpen(null)}
+                        disabled={busy}
+                      >
+                        Close
+                      </button>
+                      <button
+                        className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 disabled:opacity-50"
+                        onClick={() => submit(r.id)}
+                        disabled={busy || !gate?.complete}
+                      >
                         {busy ? "Saving…" : "I accept the updated terms"}
                       </button>
                     </div>
                   </>
                 ) : (
-                  <button className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5" onClick={() => { setGate(null); setOpen(r.id); }}>
+                  <button
+                    className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5"
+                    onClick={() => {
+                      setGate(null);
+                      setOpen(r.id);
+                    }}
+                  >
                     Review updated terms
                   </button>
                 )}
@@ -151,23 +248,37 @@ function BookingsPage() {
     return () => clearInterval(t);
   }, []);
 
-  const load = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { nav({ to: "/login" }); return; }
+  const load = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      nav({ to: "/login" });
+      return;
+    }
     const { data } = await supabase
       .from("myr_bookings")
-      .select("id,status,reserved_until,move_in_date,amount,deposit,payment_status, myr_listings(id,title,city), myr_listing_rooms(label)")
+      .select(
+        "id,status,reserved_until,move_in_date,amount,deposit,payment_status, myr_listings(id,title,city), myr_listing_rooms(label)",
+      )
       .eq("tenant_id", session.user.id)
       .order("created_at", { ascending: false });
     setRows((data ?? []) as unknown as Row[]);
     setLoading(false);
-  };
+  }, [nav]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const onCancel = async (id: string) => {
     setBusy(id);
-    try { await cancel({ data: { booking_id: id } }); await load(); } finally { setBusy(null); }
+    try {
+      await cancel({ data: { booking_id: id } });
+      await load();
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -178,32 +289,59 @@ function BookingsPage() {
       </div>
       <RoomRequests />
       {loading ? (
-        <div className="py-20 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+        <div className="py-20 grid place-items-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
       ) : rows.length === 0 ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">No bookings yet. <Link to="/myr/browse" className="text-primary underline">Browse listings</Link></div>
+        <div className="py-20 text-center text-sm text-muted-foreground">
+          No bookings yet.{" "}
+          <Link to="/myr/browse" className="text-primary underline">
+            Browse listings
+          </Link>
+        </div>
       ) : (
         <div className="space-y-3">
           {rows.map((r) => {
-            const remaining = r.reserved_until ? Math.max(0, new Date(r.reserved_until).getTime() - now) : 0;
-            const mm = Math.floor(remaining / 60000), ss = Math.floor((remaining % 60000) / 1000);
+            const remaining = r.reserved_until
+              ? Math.max(0, new Date(r.reserved_until).getTime() - now)
+              : 0;
+            const mm = Math.floor(remaining / 60000),
+              ss = Math.floor((remaining % 60000) / 1000);
             return (
               <div key={r.id} className="rounded-2xl bg-card border border-border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{r.myr_listings?.title}</div>
-                    <div className="text-xs text-muted-foreground">Room: {r.myr_listing_rooms?.label} · {r.myr_listings?.city}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Room: {r.myr_listing_rooms?.label} · {r.myr_listings?.city}
+                    </div>
                   </div>
-                  <div className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${r.status === "reserved" ? "bg-warning text-warning-foreground" : r.status === "confirmed" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}`}>{r.status}</div>
+                  <div
+                    className={`text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full ${r.status === "reserved" ? "bg-warning text-warning-foreground" : r.status === "confirmed" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}`}
+                  >
+                    {r.status}
+                  </div>
                 </div>
                 <div className="mt-2 text-sm flex items-center justify-between">
-                  <div>{formatINR(Number(r.amount))} <span className="text-muted-foreground text-xs">+ deposit {formatINR(Number(r.deposit))}</span></div>
+                  <div>
+                    {formatINR(Number(r.amount))}{" "}
+                    <span className="text-muted-foreground text-xs">
+                      + deposit {formatINR(Number(r.deposit))}
+                    </span>
+                  </div>
                   {r.status === "reserved" && remaining > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs text-warning"><Clock className="size-3" /> {mm}:{String(ss).padStart(2,"0")}</span>
+                    <span className="inline-flex items-center gap-1 text-xs text-warning">
+                      <Clock className="size-3" /> {mm}:{String(ss).padStart(2, "0")}
+                    </span>
                   )}
                 </div>
                 {(r.status === "reserved" || r.status === "confirmed") && (
                   <div className="mt-3 flex justify-end">
-                    <button onClick={() => onCancel(r.id)} disabled={busy === r.id} className="text-xs text-destructive hover:underline">
+                    <button
+                      onClick={() => onCancel(r.id)}
+                      disabled={busy === r.id}
+                      className="text-xs text-destructive hover:underline"
+                    >
                       {busy === r.id ? "Cancelling…" : "Cancel"}
                     </button>
                   </div>

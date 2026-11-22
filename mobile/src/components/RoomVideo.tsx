@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Image, Pressable, View } from "react-native";
 import { useEvent } from "expo";
 import { useFocusEffect } from "expo-router";
@@ -15,11 +15,13 @@ export function RoomVideo({
   preview = false,
   active = true,
   onRefresh,
+  onComplete,
 }: {
   url: string;
   preview?: boolean;
   active?: boolean;
   onRefresh?: () => Promise<string | null>;
+  onComplete?: () => void;
 }) {
   const c = useColors();
   const [focused, setFocused] = useState(false);
@@ -28,8 +30,39 @@ export function RoomVideo({
   const [retryError, setRetryError] = useState(false);
   const player = useVideoPlayer(url, (p) => {
     p.loop = preview;
+    p.timeUpdateEventInterval = 0.25;
     p.muted = preview;
   });
+  const watched = useRef(0),
+    previous = useRef(0),
+    complete = useRef(false);
+  useEffect(() => {
+    watched.current = 0;
+    previous.current = 0;
+    complete.current = false;
+  }, [url]);
+  useEffect(() => {
+    const progress = player.addListener("timeUpdate", ({ currentTime }) => {
+      const delta = currentTime - previous.current;
+      if (player.playing && delta > 0 && delta < 1) watched.current += delta;
+      previous.current = currentTime;
+    });
+    const end = player.addListener("playToEnd", () => {
+      if (
+        !preview &&
+        !complete.current &&
+        player.duration > 0 &&
+        watched.current >= player.duration - 0.75
+      ) {
+        complete.current = true;
+        onComplete?.();
+      }
+    });
+    return () => {
+      progress.remove();
+      end.remove();
+    };
+  }, [player, preview, onComplete]);
   const { status } = useEvent(player, "statusChange", { status: player.status });
   useFocusEffect(
     useCallback(() => {

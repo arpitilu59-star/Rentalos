@@ -1,3 +1,4 @@
+import { InsightsCard } from "@/components/InsightsCard";
 import React from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { Text } from "@/components/Text";
@@ -86,21 +87,21 @@ export default function HomeTab() {
           d.pending.payments,
           `${d.pending.payments} payment proof verify karne hain`,
           "/money",
-          c.warn,
+          c.gold,
           "shield-checkmark-outline",
         ),
         todo(
           d.pending.bookings,
           `${d.pending.bookings} naye booking requests`,
           "/requests",
-          c.warn,
+          c.gold,
           "mail-unread-outline",
         ),
         todo(
           d.pending.meters,
           `${d.pending.meters} meter readings approve karni hain`,
           "/money",
-          c.warn,
+          c.gold,
           "speedometer-outline",
         ),
         todo(
@@ -119,10 +120,11 @@ export default function HomeTab() {
     >
       <View>
         <Text style={{ color: c.muted }}>Namaste</Text>
-        <Text style={{ color: c.text, fontSize: 24, fontWeight: "800" }}>
+        <Text style={{ color: c.text, fontSize: 28, fontWeight: "800" }}>
           {me.data?.name ?? "Landlord"}
         </Text>
       </View>
+      <InsightsCard />
       <ErrorText error={q.error ?? me.error} />
       {!d ? (
         <SkeletonList n={3} height={80} />
@@ -137,8 +139,15 @@ export default function HomeTab() {
                 [d.filled > 0, "Pehla tenant add karein", "/tenants"],
                 [d.collected > 0, "Pehla payment collect karein", "/money"],
               ].map(([done, label, href]) => (
-                <Pressable key={String(label)} onPress={() => router.push(href as never)} style={{ paddingVertical: 6 }}>
-                  <Text style={{ color: done ? c.ok : c.text }}>{done ? "✅ " : "⬜ "}{String(label)}</Text>
+                <Pressable
+                  key={String(label)}
+                  onPress={() => router.push(href as never)}
+                  style={{ paddingVertical: 6 }}
+                >
+                  <Text style={{ color: done ? c.ok : c.text }}>
+                    {done ? "✅ " : "⬜ "}
+                    {String(label)}
+                  </Text>
                 </Pressable>
               ))}
             </Card>
@@ -156,8 +165,6 @@ export default function HomeTab() {
             {stat("Bhare / khali beds", `${d.filled} / ${d.vacant}`, "/tenants")}
             {stat("Is mahine collect hua", inr(d.collected), "/money", c.ok)}
             {stat("Baaki rent", inr(d.due), "/money", d.due ? c.warn : c.text)}
-            {stat("Overdue", inr(d.overdue), "/money", d.overdue ? c.danger : c.text)}
-            {stat("Properties", String(d.properties), "/rooms")}
           </View>
           {d.upcoming.length ? (
             <>

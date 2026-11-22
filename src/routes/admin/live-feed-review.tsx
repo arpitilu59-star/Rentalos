@@ -29,6 +29,7 @@ function LiveFeedReview() {
     setBusy(id);
     try {
       const { url } = await sign({ data: { id } });
+      if (!url) throw new Error("Video could not load. Please try again.");
       setPlaying({ id, url });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't load the video.");
@@ -178,8 +179,8 @@ function PhotoReview() {
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Live photos to review</h2>
       <p className="text-xs text-muted-foreground">
-        Photos taken within 50 m of the property are verified automatically. These are the ones without GPS data for the
-        property or taken far away.
+        Photos taken within 50 m of the property are verified automatically. These are the ones
+        without GPS data for the property or taken far away.
       </p>
       {q.isLoading ? (
         <Loader2 className="size-5 animate-spin" />
@@ -190,12 +191,19 @@ function PhotoReview() {
           {items.map((p) => (
             <div key={p.id} className="rounded-xl border border-border bg-card overflow-hidden">
               <a href={p.url} target="_blank" rel="noreferrer">
-                <img src={p.url} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                <img
+                  src={p.url}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-[4/3] w-full object-cover"
+                />
               </a>
               <div className="p-2 space-y-2 text-[11px] text-muted-foreground">
                 <div>
                   {p.verification_status}
-                  {p.distance_m != null ? ` · ${Math.round(p.distance_m)} m from property` : " · no property GPS"}
+                  {p.distance_m != null
+                    ? ` · ${Math.round(p.distance_m)} m from property`
+                    : " · no property GPS"}
                 </div>
                 <div className="flex gap-1.5">
                   <button

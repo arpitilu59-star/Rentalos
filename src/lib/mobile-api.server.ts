@@ -10,7 +10,7 @@ const json = (data: unknown, status = 200) =>
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 
-async function userFromRequest(request: Request): Promise<string | null> {
+export async function userFromRequest(request: Request): Promise<string | null> {
   const h = request.headers.get("authorization") ?? "";
   if (!h.startsWith("Bearer ")) return null;
   const token = h.slice(7).trim();
@@ -48,6 +48,19 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
     if (!me) return json({ error: "Please sign in again." }, 401);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
+    if (path === "/api/app/room/engagement") {
+      const { recordEngagement } = await import("./room-insights.server");
+      return recordEngagement(request, me, body);
+    }
+    if (path === "/api/app/l/insights" || path === "/api/app/l/insights/preferences") {
+      const I = await import("./room-insights.server");
+      return json(
+        path.endsWith("/preferences")
+          ? await I.saveInsightPreferences(me, body)
+          : await I.getOwnerInsights(me),
+      );
+    }
+
     if (path === "/api/app/push-token") {
       const token = str(body.token, 200);
       const platform = body.platform === "ios" ? "ios" : "android";
@@ -68,7 +81,9 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
       const P = await import("./product.server");
       const { getAdmin } = await import("./whatsapp/db");
       const admin = await getAdmin();
-      const role = (await (await import("./mobile-landlord.server")).isLandlord(admin, me)) ? "landlord" : "tenant";
+      const role = (await (await import("./mobile-landlord.server")).isLandlord(admin, me))
+        ? "landlord"
+        : "tenant";
       const platform = body.platform === "ios" ? "ios" : "android";
       if (path === "/api/app/track") {
         await P.trackEvent(me, str(body.event, 60), { role, platform, props: body.props });
@@ -200,9 +215,8 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
         .neq("user_id", me);
       if (mine.city) q = q.eq("city", mine.city);
       const { data: cands } = await q.limit(200);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose rows, same as the web function
-      const matches = ((cands ?? []) as any[])
-        .map((c) => ({ ...c, ...scoreMatch(mine as any, c) }))
+      const matches = (cands ?? [])
+        .map((c) => ({ ...c, ...scoreMatch(mine, c) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 20);
       return json({ matches, profile: mine });
@@ -221,6 +235,18 @@ export async function handleMobileApi(request: Request, path: string): Promise<R
           return json(await t.reacceptBooking(me, body));
         case "booking/cancel":
           return json(await t.cancelBooking(me, uuid(body.booking_id)));
+        case "offer/confirm": {
+          const { getAdmin } = await import("./whatsapp/db");
+          const { confirmOffer } = await import("./offers.server");
+          return json(
+            await confirmOffer(
+              await getAdmin(),
+              me,
+              uuid(body.booking_id),
+              str(body.move_in_date, 10),
+            ),
+          );
+        }
         case "offer/respond":
           return json(await t.respondOfferFromApp(me, body));
         case "bills":

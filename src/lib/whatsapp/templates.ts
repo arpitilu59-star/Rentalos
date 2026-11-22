@@ -48,6 +48,7 @@ export function eventForNotificationKind(rawKind: string): WhatsAppEventType | n
   if (kind === "payment_submitted") return "payment_submitted";
   if (kind === "payment_verified" || kind === "payment_approved") return "payment_verified";
   if (kind.startsWith("maintenance")) return "maintenance_update";
+  if (kind.startsWith("room_insight")) return "generic_update";
   if (kind.startsWith("booking")) return "booking_update";
   if (kind.startsWith("lease")) return "lease_expiring";
   if (kind.startsWith("verification") || kind.startsWith("kyc")) return "verification_update";
@@ -64,7 +65,8 @@ export function eventForNotificationKind(rawKind: string): WhatsAppEventType | n
 }
 
 /** Events that concern a room/booking: the message must say that terms apply and where to read them. */
-const TERMS_NOTE = "Rent, deposit, room type & house rules = your accepted terms (Rentalos > Bookings).";
+const TERMS_NOTE =
+  "Rent, deposit, room type & house rules = your accepted terms (Rentalos > Bookings).";
 const MAX_DETAIL = 200;
 
 /**
@@ -73,7 +75,9 @@ const MAX_DETAIL = 200;
  * Meta rejects newlines/tabs inside variables, so whitespace is collapsed.
  */
 export function detailWithTerms(event: WhatsAppEventType, body: string | null | undefined): string {
-  const main = (body ?? "Open Rentalos for details").replace(/\s+/g, " ").trim() || "Open Rentalos for details";
+  const main =
+    (body ?? "Open Rentalos for details").replace(/\s+/g, " ").trim() ||
+    "Open Rentalos for details";
   if (event !== "booking_update") return main.slice(0, MAX_DETAIL);
   const room = MAX_DETAIL - TERMS_NOTE.length - 1;
   const head = main.length > room ? main.slice(0, room - 1).trimEnd() + "…" : main;

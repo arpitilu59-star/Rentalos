@@ -75,7 +75,7 @@ export default function PropertyForm() {
   };
   const save = useMutation({
     mutationFn: () =>
-      api("l/property/save", {
+      api<{ id: string }>("l/property/save", {
         id,
         name,
         city,
@@ -83,11 +83,12 @@ export default function PropertyForm() {
         latitude: geo?.lat ?? null,
         longitude: geo?.lng ?? null,
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["props"] });
       qc.invalidateQueries({ queryKey: ["home"] });
       guard.clear();
-      router.back();
+      if (id) router.back();
+      else router.replace({ pathname: "/room-form", params: { property_id: result.id } } as never);
     },
   });
   return (
@@ -95,6 +96,13 @@ export default function PropertyForm() {
       contentContainerStyle={{ padding: 16, gap: 14 }}
       keyboardShouldPersistTaps="handled"
     >
+      <Text style={{ color: c.text, fontSize: 25, fontWeight: "800" }}>
+        Pehle property ki details
+      </Text>
+      <Text style={{ color: c.muted, lineHeight: 21 }}>
+        Step 1 of 3 · Iske baad room, rent aur photos add karenge. Details save hone par draft ban
+        jayega.
+      </Text>
       <Field
         label="Property ka naam"
         value={name}
@@ -141,7 +149,7 @@ export default function PropertyForm() {
       />
       <ErrorText error={save.error} />
       <Button
-        title="Save karein"
+        title={id ? "Save changes" : "Save & add a room"}
         busy={save.isPending}
         disabled={name.trim().length < 2}
         onPress={() => save.mutate()}

@@ -6,6 +6,7 @@
  */
 import { eventForNotificationKind, detailWithTerms } from "./templates";
 import { sendWhatsAppNotification } from "./service";
+import { DEFAULT_PREFS, categoryForKind, inQuietHours, type Prefs } from "../push";
 
 export type DispatchSummary = {
   scanned: number;
@@ -28,11 +29,25 @@ export async function dispatchPendingNotifications(limit = 100): Promise<Dispatc
       .limit(Math.min(Math.max(limit, 1), 500));
     if (error) throw new Error(error.message);
 
+    const users = [...new Set((data ?? []).map((n) => n.user_id))];
+    const { data: preferenceRows, error: preferenceError } = users.length
+      ? await supabaseAdmin.from("notification_prefs").select("*").in("user_id", users)
+      : { data: [], error: null };
+    if (preferenceError) throw new Error("Notification preferences unavailable");
+    const prefs = new Map(
+      (preferenceRows ?? []).map((p) => [p.user_id, { ...DEFAULT_PREFS, ...p } as Prefs]),
+    );
     for (const n of data ?? []) {
       summary.scanned++;
       try {
         const event = eventForNotificationKind(n.kind);
         if (!event) {
+          summary.skipped++;
+          continue;
+        }
+        const preference = prefs.get(n.user_id) ?? DEFAULT_PREFS;
+        // WhatsApp has its own consent gate. Category switches and quiet hours apply to both channels.
+        if (!preference[categoryForKind(n.kind)] || inQuietHours(preference, new Date())) {
           summary.skipped++;
           continue;
         }

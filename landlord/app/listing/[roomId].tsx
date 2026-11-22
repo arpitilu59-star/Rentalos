@@ -70,6 +70,7 @@ export default function Listing() {
     queryFn: () => api<L>("l/listing", { room_id: roomId }),
   });
   const d = q.data;
+  const [stage, setStage] = useState(0);
   const [ptype, setPtype] = useState<string | null>(null);
   const [pdesc, setPdesc] = useState("");
   const [rdesc, setRdesc] = useState("");
@@ -104,13 +105,17 @@ export default function Listing() {
     },
   });
   const publish = useMutation({
-    mutationFn: (on: boolean) => api("l/listing/publish", { room_id: roomId, publish: on }),
+    mutationFn: (on: boolean) =>
+      api("l/listing/publish", { room_id: roomId, publish: on }),
     onSuccess: refresh,
   });
   const go = (i: Item) => {
     if (!d) return;
     if (i.fix === "property")
-      router.push({ pathname: "/property-form", params: { id: d.property.id } } as never);
+      router.push({
+        pathname: "/property-form",
+        params: { id: d.property.id },
+      } as never);
     else if (i.fix === "room")
       router.push({
         pathname: "/room-form",
@@ -118,7 +123,10 @@ export default function Listing() {
       } as never);
     else if (i.fix === "terms") router.push(`/terms/${d.property.id}` as never);
     else if (i.fix === "photos")
-      router.push({ pathname: "/photos", params: { kind: "room", id: d.room.id } } as never);
+      router.push({
+        pathname: "/photos",
+        params: { kind: "room", id: d.room.id },
+      } as never);
     else if (i.fix === "profile") router.push("/settings" as never);
   };
   const left = d?.items.filter((i) => !i.done).length ?? 0;
@@ -132,12 +140,21 @@ export default function Listing() {
       contentContainerStyle={{ padding: 16, gap: 14 }}
       keyboardShouldPersistTaps="handled"
     >
-      {!d ? (
+      {q.isError && !d ? (
+        <Card>
+          <ErrorText error={q.error} />
+          <Button title="Try again" onPress={() => void q.refetch()} />
+        </Card>
+      ) : !d ? (
         <SkeletonList n={3} height={120} />
       ) : (
         <>
           <View
-            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
             <Text style={{ color: c.text, fontSize: 18, fontWeight: "800" }}>
               {d.property.name} · Room {d.room.number}
@@ -148,139 +165,206 @@ export default function Listing() {
             />
           </View>
 
-          <Card style={{ gap: 4 }}>
-            <Text style={{ color: c.text, fontWeight: "800" }}>
-              {left === 0 ? "Sab kuch bhar diya ✓" : `${left} cheezein baaki hain`}
-            </Text>
-            <Text style={{ color: c.muted, fontSize: 12 }}>
-              Jab tak ye sab poora nahi hota, room tenants ko nahi dikhega.
-            </Text>
-            {d.items.map((i) => (
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            {["Details", "Photos / video", "Review"].map((label, n) => (
               <Pressable
-                key={i.key}
-                disabled={i.done || i.fix === "listing"}
-                onPress={() => go(i)}
+                key={label}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: stage === n }}
+                disabled={save.isPending}
+                onPress={() => {
+                  if (stage === 0 && n !== 0)
+                    save.mutate(undefined, { onSuccess: () => setStage(n) });
+                  else setStage(n);
+                }}
                 style={{
-                  flexDirection: "row",
-                  gap: 10,
-                  paddingVertical: 6,
-                  alignItems: "flex-start",
+                  flex: 1,
+                  minHeight: 48,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: n === stage ? c.primary : c.soft,
                 }}
               >
-                <Ionicons
-                  name={i.done ? "checkmark-circle" : "ellipse-outline"}
-                  size={22}
-                  color={i.done ? c.ok : c.warn}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: i.done ? c.muted : c.text, fontWeight: "600" }}>
-                    {i.label}
-                  </Text>
-                  {i.hint && !i.done ? (
-                    <Text style={{ color: c.warn, fontSize: 12 }}>{i.hint}</Text>
-                  ) : null}
-                </View>
-                {!i.done && i.fix !== "listing" ? (
-                  <Text style={{ color: c.primary, fontWeight: "700", fontSize: 13 }}>
-                    Bharein →
-                  </Text>
-                ) : null}
-              </Pressable>
-            ))}
-          </Card>
-
-          <Text style={{ color: c.text, fontWeight: "800", fontSize: 16 }}>Listing ki details</Text>
-          <Choice
-            label="Property type"
-            required
-            value={ptype}
-            options={TYPES}
-            onChange={guard.wrap(setPtype)}
-          />
-          <Field
-            label="Property ka description"
-            required
-            value={pdesc}
-            onChange={guard.wrap(setPdesc)}
-            multiline
-            placeholder="Location, aas-paas kya hai (metro, market, college), facilities…"
-            hint="Kam se kam 20 akshar."
-            maxLength={2000}
-          />
-          <Field
-            label="Security deposit (₹)"
-            required
-            value={dep}
-            onChange={guard.wrap(setDep)}
-            keyboard="numeric"
-            hint="Deposit nahi hai to 0 likhein."
-          />
-          <View style={{ gap: 6 }}>
-            <Text style={{ color: c.text, fontWeight: "600", fontSize: 13 }}>
-              Amenities <Text style={{ color: c.danger }}>*</Text>
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {AMEN.map((a) => (
-                <Pressable
-                  key={a}
-                  onPress={() => toggle(a)}
+                <Text
                   style={{
-                    paddingVertical: 7,
-                    paddingHorizontal: 12,
-                    borderRadius: 99,
-                    borderWidth: 1,
-                    backgroundColor: amen.includes(a) ? c.primary : c.card,
-                    borderColor: amen.includes(a) ? c.primary : c.border,
+                    fontWeight: "700",
+                    color: n === stage ? c.onPrimary : c.text,
                   }}
                 >
-                  <Text
-                    style={{
-                      color: amen.includes(a) ? c.onPrimary : c.text,
-                      fontSize: 13,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {a}
-                  </Text>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {stage === 2 && (
+            <Card style={{ gap: 4 }}>
+              <Text style={{ color: c.text, fontWeight: "800" }}>
+                {left === 0
+                  ? "Sab kuch bhar diya ✓"
+                  : `${left} cheezein baaki hain`}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 12 }}>
+                Jab tak ye sab poora nahi hota, room tenants ko nahi dikhega.
+              </Text>
+              {d.items.map((i) => (
+                <Pressable
+                  key={i.key}
+                  disabled={i.done}
+                  onPress={() => (i.fix === "listing" ? setStage(0) : go(i))}
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    paddingVertical: 6,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Ionicons
+                    name={i.done ? "checkmark-circle" : "ellipse-outline"}
+                    size={22}
+                    color={i.done ? c.ok : c.warn}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: i.done ? c.muted : c.text,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {i.label}
+                    </Text>
+                    {i.hint && !i.done ? (
+                      <Text style={{ color: c.warn, fontSize: 12 }}>
+                        {i.hint}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {!i.done && i.fix !== "listing" ? (
+                    <Text
+                      style={{
+                        color: c.primary,
+                        fontWeight: "700",
+                        fontSize: 13,
+                      }}
+                    >
+                      Bharein →
+                    </Text>
+                  ) : null}
                 </Pressable>
               ))}
-            </View>
-          </View>
-          <Field
-            label="Room ka description"
-            required
-            value={rdesc}
-            onChange={guard.wrap(setRdesc)}
-            multiline
-            placeholder="Room kaisa hai, floor, kya-kya milta hai…"
-            hint="Kam se kam 20 akshar."
-            maxLength={1000}
-          />
-          <Card style={{ gap: 4, borderStyle: "dashed" }}>
-            <Text style={{ color: c.muted, fontSize: 12 }}>Tenants ko aisa dikhega (preview)</Text>
-            <Text style={{ color: c.text, fontSize: 16, fontWeight: "800" }}>
-              {d.property.name} · Room {d.room.number}
-            </Text>
-            <Text style={{ color: c.text, fontSize: 13 }}>
-              {[TYPES.find(([k]) => k === ptype)?.[1], dep !== "" ? `Deposit ₹${dep}` : null]
-                .filter(Boolean)
-                .join(" · ") || "Type / deposit baaki"}
-            </Text>
-            <Text style={{ color: c.muted, fontSize: 13 }}>
-              {amen.length ? amen.join(", ") : "Amenities baaki"}
-            </Text>
-            <Text style={{ color: c.muted, fontSize: 13 }} numberOfLines={3}>
-              {rdesc.trim() || "Room description baaki"}
-            </Text>
-          </Card>
+            </Card>
+          )}
+
+          {stage === 0 && (
+            <>
+              <Text style={{ color: c.text, fontWeight: "800", fontSize: 16 }}>
+                Listing ki details
+              </Text>
+              <Choice
+                label="Property type"
+                required
+                value={ptype}
+                options={TYPES}
+                onChange={guard.wrap(setPtype)}
+              />
+              <Field
+                label="Property ka description"
+                required
+                value={pdesc}
+                onChange={guard.wrap(setPdesc)}
+                multiline
+                placeholder="Location, aas-paas kya hai (metro, market, college), facilities…"
+                hint="Kam se kam 20 akshar."
+                maxLength={2000}
+              />
+              <Field
+                label="Security deposit (₹)"
+                required
+                value={dep}
+                onChange={guard.wrap(setDep)}
+                keyboard="numeric"
+                hint="Deposit nahi hai to 0 likhein."
+              />
+              <View style={{ gap: 6 }}>
+                <Text
+                  style={{ color: c.text, fontWeight: "600", fontSize: 13 }}
+                >
+                  Amenities <Text style={{ color: c.danger }}>*</Text>
+                </Text>
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  {AMEN.map((a) => (
+                    <Pressable
+                      key={a}
+                      onPress={() => toggle(a)}
+                      style={{
+                        paddingVertical: 7,
+                        paddingHorizontal: 12,
+                        borderRadius: 99,
+                        borderWidth: 1,
+                        backgroundColor: amen.includes(a) ? c.primary : c.card,
+                        borderColor: amen.includes(a) ? c.primary : c.border,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: amen.includes(a) ? c.onPrimary : c.text,
+                          fontSize: 13,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {a}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <Field
+                label="Room ka description"
+                required
+                value={rdesc}
+                onChange={guard.wrap(setRdesc)}
+                multiline
+                placeholder="Room kaisa hai, floor, kya-kya milta hai…"
+                hint="Kam se kam 20 akshar."
+                maxLength={1000}
+              />
+              <Button
+                title="Save & continue"
+                busy={save.isPending}
+                onPress={() =>
+                  save.mutate(undefined, { onSuccess: () => setStage(1) })
+                }
+              />
+            </>
+          )}
+          {stage === 2 && (
+            <Card style={{ gap: 4, borderStyle: "dashed" }}>
+              <Text style={{ color: c.muted, fontSize: 12 }}>
+                Tenants ko aisa dikhega (preview)
+              </Text>
+              <Text style={{ color: c.text, fontSize: 16, fontWeight: "800" }}>
+                {d.property.name} · Room {d.room.number}
+              </Text>
+              <Text style={{ color: c.text, fontSize: 13 }}>
+                {[
+                  TYPES.find(([k]) => k === ptype)?.[1],
+                  dep !== "" ? `Deposit ₹${dep}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Type / deposit baaki"}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 13 }}>
+                {amen.length ? amen.join(", ") : "Amenities baaki"}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 13 }} numberOfLines={3}>
+                {rdesc.trim() || "Room description baaki"}
+              </Text>
+            </Card>
+          )}
           <ErrorText error={save.error ?? publish.error} />
-          <Button
-            kind="ghost"
-            title="Details save karein"
-            busy={save.isPending}
-            onPress={() => save.mutate()}
-          />
-          {d.photosRequired ? (
+          {stage === 1 && d.photosRequired ? (
             <Button
               kind="ghost"
               title="📷 Live photos kheenchein"
@@ -292,16 +376,29 @@ export default function Listing() {
               }
             />
           ) : null}
-          {d.photosRequired ? (
+          {stage === 1 && d.photosRequired ? (
             <Button
               kind="ghost"
               title="🎥 Room video record karein"
               onPress={() =>
-                router.push({ pathname: "/videos", params: { room_id: d.room.id } } as never)
+                router.push({
+                  pathname: "/videos",
+                  params: { room_id: d.room.id },
+                } as never)
               }
             />
           ) : null}
-          {d.room.published ? (
+          {stage === 1 && (
+            <>
+              <Text style={{ color: c.muted }}>
+                {d.photosRequired
+                  ? "Verified photo chahiye. Room video optional hai."
+                  : "Is listing ke liye photos ya video zaroori nahi hain."}
+              </Text>
+              <Button title="Review listing" onPress={() => setStage(2)} />
+            </>
+          )}
+          {stage !== 2 ? null : d.room.published ? (
             <Button
               kind="danger"
               title="Listing band karein (unpublish)"
@@ -310,7 +407,11 @@ export default function Listing() {
             />
           ) : (
             <Button
-              title={d.ready ? "Room publish karein" : `Pehle ${left} cheezein poori karein`}
+              title={
+                d.ready
+                  ? "Room publish karein"
+                  : `Pehle ${left} cheezein poori karein`
+              }
               busy={publish.isPending}
               disabled={!d.ready}
               onPress={() => publish.mutate(true)}

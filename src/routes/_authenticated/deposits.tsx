@@ -103,7 +103,7 @@ function DepositsPage() {
                 amount_deducted: number;
                 amount_refunded: number;
                 deduction_reason: string | null;
-                tenants?: { name?: string } | null;
+                tenants?: { name?: string; phone?: string } | null;
               }) => (
                 <div
                   key={d.id}

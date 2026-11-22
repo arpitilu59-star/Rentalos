@@ -41,6 +41,7 @@ function RoomsPage() {
   const [showForm, setShowForm] = useState(false);
   const [filterProp, setFilterProp] = useState<string>("all");
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
+  const [review, setReview] = useState<RoomWithMyr | null>(null);
   const [liveFor, setLiveFor] = useState<RoomWithMyr | null>(null);
   const doPublishRoom = useServerFn(publishRoom);
 
@@ -159,14 +160,18 @@ function RoomsPage() {
                   </div>
                   <div className="mt-1 text-[11px] font-medium">
                     {roomProfileLabel(r) ?? (
-                      <span className="text-amber-600">Add who it's for + room size to publish</span>
+                      <span className="text-amber-600">
+                        Add who it's for + room size to publish
+                      </span>
                     )}
                   </div>
                   <div className="mt-1 text-[11px]">
                     {full ? (
                       <span className="text-amber-600">
                         Full · hidden from Rentalos
-                        {r.auto_unpublished ? " — shows again automatically when a tenant leaves" : ""}
+                        {r.auto_unpublished
+                          ? " — shows again automatically when a tenant leaves"
+                          : ""}
                       </span>
                     ) : r.is_public ? (
                       <span className="text-success">Live on Rentalos</span>
@@ -213,10 +218,10 @@ function RoomsPage() {
                       title="Live verified video"
                     >
                       <Video className="size-3" />
-                      {r.has_verified_video ? " ✓" : ""}
+                      Photos & video {r.has_verified_video ? "✓" : ""}
                     </button>
                     <button
-                      onClick={() => togglePublish(r)}
+                      onClick={() => (r.is_public ? void togglePublish(r) : setReview(r))}
                       disabled={busyRoom === r.id || (full && !r.is_public)}
                       className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-60 ${r.is_public ? "border border-border" : "bg-primary text-primary-foreground"}`}
                       title={
@@ -233,9 +238,11 @@ function RoomsPage() {
                         <EyeOff className="size-3" />
                       ) : (
                         <Globe2 className="size-3" />
-                      )}
+                      )}{" "}
+                      {r.is_public ? "Unpublish" : "Review & publish"}
                     </button>
                     <button
+                      aria-label={"Delete room " + r.room_number}
                       onClick={() => handleDelete(r.id)}
                       className="inline-flex items-center justify-center rounded-lg border border-border px-2 py-1.5 text-xs hover:bg-destructive/10 hover:text-destructive"
                     >
@@ -254,13 +261,55 @@ function RoomsPage() {
         </>
       )}
 
+      {review && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Review room listing"
+            className="w-full max-w-md rounded-3xl bg-card p-6 shadow-elevated"
+          >
+            <h2 className="text-xl font-semibold">Review room {review.room_number}</h2>
+            <p className="mt-2">
+              {propName(review.property_id)} · {formatINR(Number(review.rent_amount))}/month ·{" "}
+              {review.capacity ?? 1} beds
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {roomProfileLabel(review) ?? "Add room size and who can rent before publishing."}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button variant="outline" onClick={() => setReview(null)}>
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setLiveFor(review);
+                  setReview(null);
+                }}
+              >
+                Photos & video
+              </Button>
+              <Button
+                onClick={() => {
+                  setReview(null);
+                  void togglePublish(review);
+                }}
+              >
+                {roomProfileMissing(review).length ? "Complete room details" : "Publish room"}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
       {showForm && (
         <RoomForm
           properties={properties}
           initial={editing ?? undefined}
           onClose={() => setShowForm(false)}
-          onSaved={() => {
+          onSaved={(created) => {
             setShowForm(false);
+            if (created) setReview(created);
             load();
           }}
         />
@@ -297,7 +346,7 @@ function RoomForm({
   properties: Property[];
   initial?: Room;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (created?: RoomWithMyr) => void;
 }) {
   const [property_id, setProp] = useState(initial?.property_id ?? properties[0]?.id ?? "");
   const [room_number, setRoomNumber] = useState(initial?.room_number ?? "");
@@ -314,6 +363,7 @@ function RoomForm({
   const [size, setSize] = useState<string>(
     (initial as { room_size?: string | null } | undefined)?.room_size ?? "",
   );
+  const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -330,13 +380,21 @@ function RoomForm({
       occupant_type: occupant || null,
       room_size: size || null,
     };
-    if (initial) await supabase.from("rooms").update(payload).eq("id", initial.id);
-    else {
-      const owner_id = await getOwnerId();
-      await supabase.from("rooms").insert({ ...payload, owner_id });
+    try {
+      const result = initial
+        ? await supabase.from("rooms").update(payload).eq("id", initial.id).select("*").single()
+        : await supabase
+            .from("rooms")
+            .insert({ ...payload, owner_id: await getOwnerId() })
+            .select("*")
+            .single();
+      if (result.error) throw result.error;
+      onSaved(initial ? undefined : (result.data as RoomWithMyr));
+    } catch {
+      setFormError("Room could not save. Check the details and try again.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onSaved();
   };
 
   return (
@@ -349,6 +407,11 @@ function RoomForm({
           </button>
         </div>
         <form onSubmit={submit} className="p-5 space-y-3 max-h-[85vh] overflow-y-auto">
+          {formError && (
+            <p role="alert" className="text-sm text-destructive">
+              {formError}
+            </p>
+          )}
           <Field label="Property">
             <select
               required

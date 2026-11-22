@@ -210,6 +210,11 @@ export default function Profile() {
         title="Help & feedback"
         onPress={() => router.push("/feedback" as never)}
       />
+      <Button
+        kind="ghost"
+        title="Help & support"
+        onPress={() => router.push("/support" as never)}
+      />
       <Button kind="ghost" title="Sign out" onPress={() => supabase.auth.signOut()} />
     </ScrollView>
   );

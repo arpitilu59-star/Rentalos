@@ -63,12 +63,13 @@ export const decideLiveFeedVideo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    const patch: Record<string, unknown> = {
-      verification_status: data.decision,
-      reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
-      verification_notes: data.decision === "rejected" ? (data.reason ?? null) : null,
-    };
+    const patch: import("@/integrations/supabase/types").Database["public"]["Tables"]["live_feed_videos"]["Update"] =
+      {
+        verification_status: data.decision,
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+        verification_notes: data.decision === "rejected" ? (data.reason ?? null) : null,
+      };
     if (data.decision === "verified") {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { processLiveVideo } = await import("./video-processing.server");

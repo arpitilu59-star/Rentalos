@@ -1,3 +1,4 @@
+import { getRoomActivitySpikes } from "@/lib/room-insights.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/admin/fraud")({ component: FraudPage });
 function FraudPage() {
   const qc = useQueryClient();
   const fetchFlags = useServerFn(listFraudFlags);
+  const fetchSpikes = useServerFn(getRoomActivitySpikes);
+  const spikes = useQuery({ queryKey: ["room-activity-spikes"], queryFn: () => fetchSpikes() });
   const detect = useServerFn(detectDuplicates);
   const detectPhotos = useServerFn(detectDuplicatePhotos);
   const resolve = useServerFn(resolveFraudFlag);
@@ -66,10 +69,41 @@ function FraudPage() {
           disabled={scanning}
           className="disabled:opacity-50 inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-border hover:bg-accent"
         >
-          <RefreshCw className={`size-3.5 ${scanning ? "animate-spin" : ""}`} /> {scanning ? "Scanning…" : "Scan duplicates"}
+          <RefreshCw className={`size-3.5 ${scanning ? "animate-spin" : ""}`} />{" "}
+          {scanning ? "Scanning…" : "Scan duplicates"}
         </button>
       </div>
 
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold">Room activity · last 24 hours</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Flags for review: more than 500 daily views or 20 offers. High activity alone is not
+          evidence of abuse.
+        </p>
+        {spikes.isError ? (
+          <p role="alert">
+            Activity could not load.{" "}
+            <button className="underline" onClick={() => void spikes.refetch()}>
+              Try again
+            </button>
+          </p>
+        ) : spikes.isLoading ? (
+          <p className="mt-3 text-sm">Loading activity…</p>
+        ) : spikes.data?.rooms.length ? (
+          <ul className="mt-3 divide-y">
+            {spikes.data.rooms.map((r) => (
+              <li key={r.room_id} className="flex flex-wrap justify-between gap-3 py-3 text-sm">
+                <span>Room {r.room_number}</span>
+                <span>
+                  {r.views} views · {r.offers} offers
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">No unusual room activity detected.</p>
+        )}
+      </section>
       {q.isLoading ? (
         <Loader2 className="size-5 animate-spin" />
       ) : (q.data?.items ?? []).length === 0 ? (

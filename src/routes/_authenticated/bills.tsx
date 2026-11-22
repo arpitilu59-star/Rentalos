@@ -756,7 +756,7 @@ function GenerateBillForm({
     prev?.reading?.toString() ?? tenant?.initial_reading?.toString() ?? "0",
   );
   const [curr_reading, setCurr] = useState(latest?.reading?.toString() ?? "0");
-  const [rent_amount, setRentAmt] = useState(room?.rent_amount?.toString() ?? "0");
+  const [rent_amount, setRentAmt] = useState((tenant?.rent_share ?? room?.rent_amount)?.toString() ?? "0");
   const [persons, setPersons] = useState(
     roomTenants.reduce((s, t) => s + t.persons, 0).toString() || "1",
   );
@@ -800,8 +800,9 @@ function GenerateBillForm({
   }, [room_id]);
 
   useEffect(() => {
-    // Re-anchor dates and prev reading whenever tenant changes
+    // Re-anchor dates, agreed rent and previous reading whenever tenant changes
     const t = tenants.find((x) => x.id === tenant_id);
+    setRentAmt((t?.rent_share ?? room?.rent_amount)?.toString() ?? "0");
     if (t?.move_in_date) {
       const r = anniversaryRange(t.move_in_date);
       setRentStart(toISODate(r.rentStart));

@@ -1,4 +1,6 @@
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route as Contact } from "@/routes/contact";
 import { createRoot } from "react-dom/client";
 import {
   createRootRoute,
@@ -30,6 +32,11 @@ const dashboard = createRoute({
   path: "/rentdesk",
   component: Dashboard.options.component,
 });
+const contact = createRoute({
+  getParentRoute: () => root,
+  path: "/contact",
+  component: Contact.options.component,
+});
 const fallback = createRoute({
   getParentRoute: () => root,
   path: "$",
@@ -39,5 +46,11 @@ const fallback = createRoute({
     </main>
   ),
 });
-const router = createRouter({ routeTree: root.addChildren([home, browse, dashboard, fallback]) });
-createRoot(document.getElementById("root")!).render(<RouterProvider router={router} />);
+const router = createRouter({
+  routeTree: root.addChildren([home, browse, dashboard, contact, fallback]),
+});
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={new QueryClient()}>
+    <RouterProvider router={router} />
+  </QueryClientProvider>,
+);

@@ -142,56 +142,11 @@ export async function saveProfile(me: string, body: Record<string, unknown>) {
 
 export async function landlordHome(me: string) {
   const a = await admin();
-  const [props, rooms, tenants, bills, pay, bookings, meters, tickets] = await Promise.all([
-    a.from("properties").select("id", { count: "exact", head: true }).eq("owner_id", me),
-    a.from("rooms").select("id, capacity").eq("owner_id", me),
-    a.from("tenants").select("id, room_id").eq("owner_id", me).eq("active", true),
-    a
-      .from("bills")
-      .select("total_amount, amount_paid, status, due_date, paid_at")
-      .eq("owner_id", me)
-      .neq("status", "paid"),
-    a
-      .from("payments")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", me)
-      .in("verification_status", ["submitted", "pending"]),
-    a
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("landlord_id", me)
-      .eq("status", "pending"),
-    a
-      .from("meter_submissions")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", me)
-      .eq("status", "pending"),
-    a
-      .from("maintenance_tickets")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", me)
-      .in("status", ["open", "in_progress"]),
-  ]);
-  const beds = (rooms.data ?? []).reduce((s: number, r: any) => s + Number(r.capacity ?? 1), 0);
-  const filled = (tenants.data ?? []).length;
-  const today = d2(new Date());
-  let due = 0,
-    overdue = 0;
-  for (const b of bills.data ?? []) {
-    const left = Number(b.total_amount) - Number(b.amount_paid ?? 0);
-    due += left;
-    if (b.due_date && b.due_date < today) overdue += left;
-  }
-  const monthStart = d2(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const { data: paidRows } = await a
-    .from("bills")
-    .select("amount_paid")
-    .eq("owner_id", me)
-    .gte("paid_at", monthStart);
-  const collected = (paidRows ?? []).reduce(
-    (s: number, b: any) => s + Number(b.amount_paid ?? 0),
-    0,
-  );
+  const { data: totals, error: totalsError } = await a.rpc("landlord_dashboard_totals", {
+    _owner: me,
+  });
+  if (totalsError || !totals) throw new Error("Dashboard totals could not load. Please try again.");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
   const soon = d2(new Date(Date.now() + 7 * 864e5));
   const [{ data: upcoming }, { data: recent }] = await Promise.all([
     a
@@ -199,6 +154,7 @@ export async function landlordHome(me: string) {
       .select("id, total_amount, amount_paid, due_date, tenants(name), rooms(room_number)")
       .eq("owner_id", me)
       .neq("status", "paid")
+      .eq("archived", false)
       .gte("due_date", today)
       .lte("due_date", soon)
       .order("due_date")
@@ -219,20 +175,8 @@ export async function landlordHome(me: string) {
       room: b.rooms?.room_number ?? "",
     })),
     recent: recent ?? [],
-    properties: props.count ?? 0,
-    rooms: (rooms.data ?? []).length,
-    beds,
-    filled,
-    vacant: Math.max(0, beds - filled),
-    due,
-    overdue,
-    collected,
-    pending: {
-      bookings: bookings.count ?? 0,
-      payments: pay.count ?? 0,
-      meters: meters.count ?? 0,
-      tickets: tickets.count ?? 0,
-    },
+    ...totals,
+    vacant: Math.max(0, Number(totals.beds) - Number(totals.filled)),
   };
 }
 
@@ -877,7 +821,7 @@ export async function listRequests(me: string) {
   const { data } = await a
     .from("bookings")
     .select(
-      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
+      "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, offer_confirmed_at, rooms(room_number, rent_amount), properties(name)",
     )
     .eq("landlord_id", me)
     .order("created_at", { ascending: false })
@@ -939,79 +883,15 @@ export async function decideRequest(me: string, body: Record<string, unknown>) {
       .eq("id", id);
     return { ok: true };
   }
-  const { data: rr } = await a
-    .from("rooms")
-    .select("capacity, rent_amount")
-    .eq("id", b.room_id)
-    .maybeSingle();
-  const { count: occ } = await a
-    .from("tenants")
-    .select("id", { count: "exact", head: true })
-    .eq("room_id", b.room_id)
-    .eq("active", true);
-  if ((occ ?? 0) >= (rr?.capacity ?? 1))
-    throw new Error("Room full hai. Request reject karein ya pehle jagah khali karein.");
-  // Agreed offer rent wins; an unresolved offer blocks the accept before any tenant row exists.
-  const rentShare = await (await import("./offers.server")).rentForAccept(
+  const { acceptBookingAtomically } = await import("./offers.server");
+  return acceptBookingAtomically(
     a,
+    me,
     b.id,
-    num(body.rent_share) ?? rr?.rent_amount ?? null,
+    iso(body.move_in_date) ??
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()),
+    num(body.rent_share),
   );
-  const { data: code } = await a.rpc("generate_tenant_code");
-  const { data: t, error } = await a
-    .from("tenants")
-    .insert({
-      owner_id: me,
-      room_id: b.room_id,
-      name: b.tenant_name,
-      phone: b.tenant_mobile,
-      email: b.tenant_email,
-      persons: 1,
-      move_in_date: iso(body.move_in_date) ?? d2(new Date()),
-      rent_share: rentShare,
-      active: true,
-      tenant_user_id: b.tenant_user_id,
-      tenant_code: (code as string) ?? null,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(cleanDb(error.message));
-  await a
-    .from("bookings")
-    .update({ status: "accepted", decided_at: new Date().toISOString(), tenant_id: t.id })
-    .eq("id", id);
-  const { count: now } = await a
-    .from("tenants")
-    .select("id", { count: "exact", head: true })
-    .eq("room_id", b.room_id)
-    .eq("active", true);
-  if ((now ?? 0) >= (rr?.capacity ?? 1)) {
-    const { data: others } = await a
-      .from("bookings")
-      .select("id, tenant_user_id")
-      .eq("room_id", b.room_id)
-      .eq("status", "pending")
-      .neq("id", id);
-    if (others?.length) {
-      await a
-        .from("bookings")
-        .update({ status: "rejected", decided_at: new Date().toISOString() })
-        .in(
-          "id",
-          others.map((o: any) => o.id),
-        );
-      await a.from("myr_notifications").insert(
-        others.map((o: any) => ({
-          user_id: o.tenant_user_id,
-          kind: "booking_closed",
-          title: "Room no longer available",
-          body: "Another tenant booked this room. Browse similar rooms on Rentalos.",
-          link: "/explore",
-        })),
-      );
-    }
-  }
-  return { ok: true, tenant_id: t.id as string };
 }
 
 // ---------------------------------------------------------------- rent offers
@@ -2813,7 +2693,7 @@ export async function listVideos(me: string, body: Record<string, unknown>) {
   const rows = await Promise.all(
     ((data ?? []) as any[]).map(async (v) => {
       const { signVideoAssets } = await import("./video-processing.server");
-      return { ...v, ...await signVideoAssets(a, v, 3600) };
+      return { ...v, ...(await signVideoAssets(a, v, 3600)) };
     }),
   );
   return { videos: rows, can_record: await entitled(me, "live_feed_video") };

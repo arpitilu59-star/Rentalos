@@ -21,6 +21,7 @@ import {
   CreditCard,
   ScrollText,
   Lock,
+  Menu,
 } from "lucide-react";
 import { useEntitlements } from "@/lib/subscription/use-entitlements";
 import { featureForPath } from "@/lib/subscription/keys";
@@ -35,25 +36,49 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const NAV = [
-  { to: "/rentdesk", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/rentdesk", label: "Home", icon: LayoutDashboard },
   { to: "/properties", label: "Properties", icon: Building2 },
   { to: "/rooms", label: "Rooms", icon: DoorOpen },
   { to: "/tenants", label: "Tenants", icon: Users },
-  { to: "/bookings", label: "Rentalos Bookings", icon: Inbox },
+  { to: "/bookings", label: "Booking requests", icon: Inbox },
   { to: "/payment-verify", label: "Verify Payments", icon: BadgeCheck },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/verifications", label: "Verify", icon: ShieldCheck },
   { to: "/verify-identity", label: "Verify Identity", icon: BadgeCheck },
   { to: "/partner-import", label: "Partner Import", icon: Building2 },
-  { to: "/maintenance", label: "Tickets", icon: Wrench },
+  { to: "/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/moves", label: "Moves", icon: LogIn },
   { to: "/deposits", label: "Deposits", icon: Wallet },
   { to: "/meters", label: "Meters", icon: Zap },
   { to: "/bills", label: "Bills", icon: Receipt },
   { to: "/rental-terms", label: "Rental terms", icon: ScrollText },
   { to: "/subscription", label: "Subscription", icon: CreditCard },
-  { to: "/settings", label: "Pricing", icon: Settings },
-  { to: "/feedback", label: "Help & feedback", icon: Inbox },
+  { to: "/settings", label: "Rent & utility rates", icon: Settings },
+  { to: "/feedback", label: "Product feedback", icon: Inbox },
+  { to: "/contact", label: "Help & support", icon: Inbox },
+] as const;
+
+const GROUPS = [
+  {
+    label: "Daily work",
+    paths: ["/rentdesk", "/rooms", "/tenants", "/bookings", "/notifications"],
+  },
+  { label: "Money", paths: ["/bills", "/payment-verify", "/deposits", "/meters"] },
+  {
+    label: "Property setup",
+    paths: ["/properties", "/rental-terms", "/settings", "/maintenance", "/moves"],
+  },
+  {
+    label: "Account & tools",
+    paths: ["/verifications", "/verify-identity", "/partner-import", "/subscription", "/feedback", "/contact"],
+  },
+];
+const MOBILE_NAV = [
+  NAV[0],
+  NAV[2],
+  NAV[3],
+  { to: "/bills", label: "Money", icon: Wallet },
+  { to: "/bookings", label: "Requests", icon: Inbox },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -105,31 +130,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav aria-label="RentDesk" className="px-3 py-2 space-y-1">
-          {NAV.map((item) => {
-            const active =
-              pathname === item.to || (item.to !== "/rentdesk" && pathname.startsWith(item.to));
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60"
-                }`}
-              >
-                <Icon className="size-4" /> {item.label}
-                {locked(item.to) && (
-                  <Lock
-                    className="size-3 ml-auto text-muted-foreground"
-                    aria-label="Not in your plan"
-                  />
-                )}
-              </Link>
-            );
-          })}
+          {GROUPS.map((group) => (
+            <section key={group.label} className="pb-3">
+              <h2 className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {group.label}
+              </h2>
+              {NAV.filter((item) => group.paths.includes(item.to)).map((item) => {
+                const active =
+                  pathname === item.to || (item.to !== "/rentdesk" && pathname.startsWith(item.to));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/60"
+                    }`}
+                  >
+                    <Icon className="size-4" /> {item.label}
+                    {locked(item.to) && (
+                      <Lock
+                        className="size-3 ml-auto text-muted-foreground"
+                        aria-label="Not in your plan"
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </section>
+          ))}
         </nav>
         <div className="mt-auto p-3 space-y-1">
           <Link
@@ -172,14 +204,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <DropdownMenu open={menu} onOpenChange={setMenu}>
             <DropdownMenuTrigger asChild>
               <button
-                aria-label="Account menu"
+                aria-label="All tools and account"
                 className="min-h-11 min-w-11 grid place-items-center p-2 rounded-lg hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <UserCircle className="size-5" aria-hidden="true" />
+                <Menu className="size-5" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-72 max-h-[80vh] overflow-y-auto">
               <DropdownMenuLabel className="break-words">{name || "Account"}</DropdownMenuLabel>
+              {GROUPS.map((group) => (
+                <div key={group.label}>
+                  <DropdownMenuLabel className="mt-2 text-xs text-muted-foreground">
+                    {group.label}
+                  </DropdownMenuLabel>
+                  {NAV.filter((item) => group.paths.includes(item.to)).map((item) => (
+                    <DropdownMenuItem asChild key={item.to}>
+                      <Link to={item.to} className="min-h-11 gap-3">
+                        <item.icon className="size-4" />
+                        {item.label}
+                        {locked(item.to) && (
+                          <Lock className="ml-auto size-3" aria-label="Not in your plan" />
+                        )}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              ))}
               <DropdownMenuItem asChild>
                 <Link to="/profile" className="min-h-11">
                   Profile
@@ -195,9 +245,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <nav
         aria-label="RentDesk mobile"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar border-t border-sidebar-border flex gap-1 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] overflow-x-auto"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar border-t border-sidebar-border flex gap-1 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] justify-between"
       >
-        {NAV.map((item) => {
+        {MOBILE_NAV.map((item) => {
           const active =
             pathname === item.to || (item.to !== "/rentdesk" && pathname.startsWith(item.to));
           const Icon = item.icon;
@@ -206,7 +256,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.to}
               to={item.to}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-12 min-w-14 flex-col justify-center items-center gap-0.5 px-2 py-1.5 text-[10px] rounded-md shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "text-primary bg-sidebar-accent font-semibold" : "text-muted-foreground"}`}
+              className={`flex min-h-12 min-w-0 flex-1 flex-col justify-center items-center gap-0.5 px-2 py-1.5 text-[10px] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${active ? "text-primary bg-sidebar-accent font-semibold" : "text-muted-foreground"}`}
             >
               <Icon className="size-5" aria-hidden="true" />
               <span className="inline-flex items-center gap-1">
