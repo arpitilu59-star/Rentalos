@@ -8,3 +8,5 @@ export function WhatsAppAutomationPanel() {
     </p>
   );
 }
+
+export function LiveFeedManager({label}:{label:string}){return <p className="text-sm text-muted-foreground">{label}</p>;}

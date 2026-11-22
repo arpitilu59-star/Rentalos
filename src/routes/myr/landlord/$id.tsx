@@ -171,7 +171,8 @@ function EditListing() {
 
   const roomsReady =
     rooms.length > 0 && rooms.every((r) => r.label.trim() && r.rent > 0 && r.capacity > 0);
-  const photoReady = media.some((m) => m.kind !== "video");
+  const photoCount = media.filter((m) => m.kind === "image").length;
+  const photoReady = photoCount > 0;
   const persist = async () =>
     Boolean(await saveMeta()) && (await Promise.all(rooms.map(updateRoom))).every(Boolean);
   const goStep = async (next: number) => {
@@ -231,7 +232,7 @@ function EditListing() {
           <div
             className={`text-[10px] uppercase font-medium px-2 py-1 rounded-full ${l.status === "active" ? "bg-success text-success-foreground" : l.status === "pending_review" ? "bg-warning text-warning-foreground" : "bg-muted text-muted-foreground"}`}
           >
-            {l.status}
+            {l.status === "pending_review" ? "Under review" : l.status}
           </div>
         </div>
       </div>
@@ -500,7 +501,7 @@ function EditListing() {
                 {r.label} · ₹{r.rent.toLocaleString("en-IN")}/month · {r.capacity} beds
               </p>
             ))}
-            <p>{media.filter((m) => m.kind !== "video").length} photos</p>
+            <p>{photoCount} {photoCount === 1 ? "photo" : "photos"}</p>
             {!roomsReady && (
               <button onClick={() => void goStep(0)} className="block underline">
                 Add a room with a name, rent and capacity

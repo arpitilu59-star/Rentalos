@@ -45,14 +45,18 @@ export const supabase = {
     getUser: async () => ({ data: { user: { user_metadata: { full_name: "Sample owner" } } } }),
     signOut: async () => ({ error: null }),
   },
+  storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:null}})})},
   from(table: string) {
     let data: unknown[] =
       table === "rooms" ? rooms : table === "tenants" ? tenants : table === "bills" ? bills : [];
+    if(table==="myr_listing_rooms") data=[{id:"sample-room",label:"Room 204",rent:6500,capacity:2,deposit:1000,furnishing:"semi",gender_pref:"any"}];
+    if(table==="myr_listing_media") data=[{id:"sample-photo",kind:"image",storage_path:"fixture"}];
     if (new URLSearchParams(window.location.search).has("empty")) data = [];
     const chain = new Proxy(
       {},
       {
         get(_target, key) {
+          if(key==="single" && table==="myr_listings")return async()=>({error:null,data:{id:"sample",title:"Garden Residence",city:"Jaipur",state:"Rajasthan",status:"draft"}});
           if (key === "then")
             return Promise.resolve({ data, count: data.length, error: null }).then.bind(
               Promise.resolve({ data, count: data.length, error: null }),

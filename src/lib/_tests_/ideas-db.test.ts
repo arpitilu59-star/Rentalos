@@ -202,10 +202,10 @@ describe("offer commitment and money", () => {
     expect((await q(`select offer_status from bookings where id='${other}'`))[0].offer_status).toBe(
       "expired",
     );
-    await expect(q(`select accept_room_booking('${id}','${L}',current_date,1)`)).rejects.toThrow(
-      /OFFER_CONFIRM_REQUIRED/,
-    );
-    await q(`select confirm_room_offer('${id}','${T}',current_date)`);
+    await expect(
+      q(`select accept_room_booking('${id}','${L}',(now() at time zone 'Asia/Kolkata')::date,1)`),
+    ).rejects.toThrow(/OFFER_CONFIRM_REQUIRED/);
+    await q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date)`);
     expect((await q(`select rent_share,phone from tenants where room_id='${room}'`))[0]).toEqual({
       rent_share: "9000",
       phone: "9999999999",
@@ -220,7 +220,7 @@ describe("offer commitment and money", () => {
       (await q(`select agreed_rent from booking_offer_confirmations where booking_id='${id}'`))[0]
         .agreed_rent,
     ).toBe("9000");
-    await q(`select confirm_room_offer('${id}','${T}',current_date)`);
+    await q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date)`);
     expect((await q(`select count(*)::int as n from tenants where room_id='${room}'`))[0].n).toBe(
       1,
     );
@@ -237,9 +237,9 @@ describe("offer commitment and money", () => {
     await db.exec(
       `update bookings set offer_expires_at=now()-interval '1 second' where id='${id}'`,
     );
-    await expect(q(`select confirm_room_offer('${id}','${T}',current_date)`)).rejects.toThrow(
-      /OFFER_EXPIRED/,
-    );
+    await expect(
+      q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date)`),
+    ).rejects.toThrow(/OFFER_EXPIRED/);
     await q("select expire_booking_offers()");
     expect((await q(`select status from bookings where id='${id}'`))[0].status).toBe("cancelled");
   });
@@ -250,9 +250,9 @@ describe("offer commitment and money", () => {
     await expect(
       q(`update bookings set offer_confirmed_at=now() where id='${id}'`),
     ).rejects.toThrow(/OFFER_FIELDS_LOCKED/);
-    await expect(q(`select confirm_room_offer('${id}','${T}',current_date)`)).rejects.toThrow(
-      /permission denied/,
-    );
+    await expect(
+      q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date)`),
+    ).rejects.toThrow(/permission denied/);
   });
 });
 
@@ -277,9 +277,9 @@ describe("atomic creation, summaries and portfolio totals", () => {
     expect((await q(`select offer_status from bookings where id='${id}'`))[0].offer_status).toBe(
       "approved",
     );
-    await expect(q(`select confirm_room_offer('${id}','${T}',current_date-1)`)).rejects.toThrow(
-      /OFFER_MOVE_IN_INVALID/,
-    );
+    await expect(
+      q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date-1)`),
+    ).rejects.toThrow(/OFFER_MOVE_IN_INVALID/);
     expect(
       (await q(`select offer_confirmed_at from bookings where id='${id}'`))[0].offer_confirmed_at,
     ).toBeNull();
@@ -292,7 +292,9 @@ describe("atomic creation, summaries and portfolio totals", () => {
     expect((await q(`select offer_status from bookings where id='${id}'`))[0].offer_status).toBe(
       "expired",
     );
-    await q(`select confirm_room_offer('${second}','${T2}',current_date)`);
+    await q(
+      `select confirm_room_offer('${second}','${T2}',(now() at time zone 'Asia/Kolkata')::date)`,
+    );
     expect((await q(`select rent_share from tenants where room_id='${room}'`))[0].rent_share).toBe(
       "8500",
     );
@@ -300,7 +302,7 @@ describe("atomic creation, summaries and portfolio totals", () => {
   it("sends one portfolio summary per day and honors opt-out and retention", async () => {
     const { room } = await fixture();
     await db.exec(`insert into room_insight_preferences(owner_id,summary_frequency,signals_enabled) values('${L}','daily',false) on conflict(owner_id) do update set summary_frequency='daily',signals_enabled=false;
-   insert into room_views(room_id,viewer_key,day) values('${room}','${"f".repeat(64)}',current_date),('${room}','${"f".repeat(64)}',current_date-91);`);
+   insert into room_views(room_id,viewer_key,day) values('${room}','${"f".repeat(64)}',(now() at time zone 'Asia/Kolkata')::date),('${room}','${"f".repeat(64)}',current_date-91);`);
     const before = Number(
       (
         await q(
@@ -336,7 +338,7 @@ describe("atomic creation, summaries and portfolio totals", () => {
   });
   it("includes more than 20 bills and excludes other landlords and archived bills", async () => {
     await pg();
-    await db.exec(`insert into bills(owner_id,total_amount,due_date) select '${L}',100,current_date-1 from generate_series(1,25);
+    await db.exec(`insert into bills(owner_id,total_amount,due_date) select '${L}',100,(now() at time zone 'Asia/Kolkata')::date-1 from generate_series(1,25);
    insert into bills(owner_id,total_amount,archived) values('${L}',9999,true),('${L2}',8888,false)`);
     const totals = (await q(`select landlord_dashboard_totals('${L}') as total`))[0].total as {
       due: number;
@@ -356,7 +358,7 @@ describe("negotiated monthly billing", () => {
     const { room, booking } = await fixture(true);
     const id = await booking();
     await q(`select offer_submit('${id}','${T}',8100)`);
-    await q(`select confirm_room_offer('${id}','${T}',current_date)`);
+    await q(`select confirm_room_offer('${id}','${T}',(now() at time zone 'Asia/Kolkata')::date)`);
     const tenant = String(
       (await q(`select tenant_id from bookings where id='${id}'`))[0].tenant_id,
     );

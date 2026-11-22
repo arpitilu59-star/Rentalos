@@ -13,6 +13,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
+      { find: "@/components/LiveFeedManager", replacement:resolve(here,"mock-panels.tsx") },
       { find: "@/integrations/supabase/client", replacement: resolve(here, "mock-client.ts") },
       {
         find: "@/lib/subscription/use-entitlements",
