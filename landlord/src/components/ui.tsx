@@ -63,7 +63,12 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
           borderRadius: R.l,
           borderWidth: 1,
           borderColor: c.border,
-          padding: 16,
+          padding: 18,
+          shadowColor: "#111b3d",
+          shadowOpacity: 0.035,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 1,
         },
         style,
       ]}

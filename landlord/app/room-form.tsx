@@ -129,6 +129,11 @@ export default function RoomForm() {
       contentContainerStyle={{ padding: 16, gap: 14 }}
       keyboardShouldPersistTaps="handled"
     >
+      <Text style={{ color: c.text, fontSize: 25, fontWeight: "800" }}>Room aur monthly rent</Text>
+      <Text style={{ color: c.muted, lineHeight: 21 }}>
+        Step 2 of 3 · Zaroori details bharein. Save ke baad photos, terms aur publish ka review
+        milega.
+      </Text>
       <Field
         label="Room number / naam"
         value={number}

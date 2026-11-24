@@ -31,7 +31,9 @@ export function RoomOfferSettings({ roomId }: { roomId: string }) {
     setMsg(null);
     try {
       const n = min.trim() ? Number(min.replace(/[, ₹]/g, "")) : null;
-      await save({ data: { room_id: roomId, offers_enabled: enabled, min_rent: n, auto_approve: auto } });
+      await save({
+        data: { room_id: roomId, offers_enabled: enabled, min_rent: n, auto_approve: auto },
+      });
       setMsg({ ok: true, text: "Offer settings saved." });
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
@@ -55,21 +57,33 @@ export function RoomOfferSettings({ roomId }: { roomId: string }) {
               value={min}
               onChange={(e) => setMin(e.target.value)}
               inputMode="numeric"
-              placeholder={rent ? `e.g. ${Math.round(rent * 0.9)} (listed ${rent})` : "minimum rent"}
+              placeholder={
+                rent ? `e.g. ${Math.round(rent * 0.9)} (listed ${rent})` : "minimum rent"
+              }
               className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-input text-foreground"
             />
           </label>
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
-            Floor ya usse upar ke offer ka rent auto-approve karein (booking aap phir bhi khud accept karenge)
+            Floor ya usse upar ke offer ka rent auto-approve karein (tenant ko 24 ghante mein
+            booking confirm karni hogi)
           </label>
         </>
       )}
       <div className="flex items-center gap-3">
-        <button type="button" onClick={submit} disabled={busy} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground disabled:opacity-60">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy}
+          className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground disabled:opacity-60"
+        >
           {busy ? "Saving…" : "Save offer settings"}
         </button>
-        {msg && <span className={`text-xs ${msg.ok ? "text-emerald-600" : "text-destructive"}`}>{msg.text}</span>}
+        {msg && (
+          <span className={`text-xs ${msg.ok ? "text-emerald-600" : "text-destructive"}`}>
+            {msg.text}
+          </span>
+        )}
       </div>
     </div>
   );

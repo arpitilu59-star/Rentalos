@@ -13,12 +13,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
+      { find: "@/components/LiveFeedManager", replacement:resolve(here,"mock-panels.tsx") },
       { find: "@/integrations/supabase/client", replacement: resolve(here, "mock-client.ts") },
       {
         find: "@/lib/subscription/use-entitlements",
         replacement: resolve(here, "mock-entitlements.ts"),
       },
       { find: "@/lib/live-feed.functions", replacement: resolve(here, "mock-video.ts") },
+      { find: "@/lib/room-insights.functions", replacement: resolve(here, "mock-insights.ts") },
       { find: "@tanstack/react-start", replacement: resolve(here, "mock-server.ts") },
       {
         find: "@/components/subscription/PublicPlans",

@@ -1,3 +1,4 @@
+import { recordRoomEvent } from "@/lib/room-engagement";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Play, ShieldCheck, Clock, Video, RefreshCw } from "lucide-react";
@@ -55,6 +56,16 @@ export function LiveFeedCover({
     error: false,
     loaded: false,
   });
+  useEffect(() => {
+    if (target.kind !== "room" || !(expanded || mode === "full")) return;
+    const timer = setTimeout(() => {
+      if (!document.hidden) void recordRoomEvent(target.id, "view");
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [expanded, mode, target.kind, target.id]);
+  const completed = () => {
+    if (target.kind === "room") void recordRoomEvent(target.id, "video_complete");
+  };
   const key = `${target.kind}:${target.id}`;
   const isFull = mode === "full";
   const current =
@@ -180,6 +191,7 @@ export function LiveFeedCover({
             muted={!isFull}
             loop={!isFull}
             controls={isFull}
+            onComplete={isFull ? completed : undefined}
             playing={isFull ? undefined : inView && visible && !reduced && !expanded}
             ariaLabel={alt ? `Video of ${alt}` : "Room video"}
             className={`absolute inset-0 w-full h-full ${isFull ? "object-contain bg-black" : "object-cover"}`}
@@ -253,6 +265,7 @@ export function LiveFeedCover({
                 controls
                 autoPlay
                 poster={poster}
+                onComplete={completed}
                 ariaLabel="Full room video"
                 className="absolute inset-0 w-full h-full object-contain"
               />

@@ -80,29 +80,32 @@ function Bookings() {
   const [counterFor, setCounterFor] = useState<string | null>(null);
   const [counterAmt, setCounterAmt] = useState("");
   const offer = useMutation({
-    mutationFn: async (p: { id: string; action: "approve" | "deny" | "counter"; amount?: number }) => {
+    mutationFn: async (p: {
+      id: string;
+      action: "approve" | "deny" | "counter";
+      amount?: number;
+    }) => {
       await api("l/offer/decide", { booking_id: p.id, action: p.action, counter_rent: p.amount });
-      // Approve = agree the price AND confirm the booking at that rent in one tap.
-      if (p.action === "approve") await api("l/request/decide", { booking_id: p.id, decision: "accept" });
     },
     onSuccess: () => {
       setCounterFor(null);
       setCounterAmt("");
     },
     onSettled: () => {
-      for (const k of ["requests", "home", "tenants", "props"]) qc.invalidateQueries({ queryKey: [k] });
+      for (const k of ["requests", "home", "tenants", "props"])
+        qc.invalidateQueries({ queryKey: [k] });
     },
   });
   const askOffer = (r: Req, action: "approve" | "deny") =>
     Alert.alert(
       action === "approve" ? `${inr(r.offered_rent)} par approve karein?` : "Offer deny karein?",
       action === "approve"
-        ? `Tenant ${r.tenant_name} ${inr(r.offered_rent)}/month par add ho jayega (listed ${inr(r.rooms?.rent_amount)}).`
+        ? `Tenant ${r.tenant_name} ko 24 ghante milenge booking confirm karne ke liye. Confirmation par rent ${inr(r.offered_rent)}/month hoga.`
         : "Ye request band ho jayegi. Tenant ko wajah ya aapka minimum nahi bataya jayega.",
       [
         { text: "Nahi" },
         {
-          text: action === "approve" ? "Approve & accept" : "Deny",
+          text: action === "approve" ? "Approve offer" : "Deny",
           style: action === "deny" ? "destructive" : "default",
           onPress: () => offer.mutate({ id: r.id, action }),
         },
@@ -171,7 +174,8 @@ function Bookings() {
               ) : null}
               {r.offer_status === "approved" ? (
                 <Text style={{ color: c.text, fontWeight: "700" }}>
-                  Agreed rent: {inr(r.agreed_rent)}/month — accept karne par yahi lagega.
+                  Agreed rent: {inr(r.agreed_rent)}/month — tenant ko 24 ghante mein confirm karna
+                  hai.
                 </Text>
               ) : null}
               {["declined", "expired", "withdrawn"].includes(r.offer_status) ? (
@@ -199,7 +203,8 @@ function Bookings() {
           <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
             <Button
               kind="ghost"
-              title="Call"
+              title={r.tenant_mobile ? "Call" : "Contact after confirmation"}
+              disabled={!r.tenant_mobile}
               onPress={() => Linking.openURL(`tel:${r.tenant_mobile}`)}
               style={{ flex: 1, paddingVertical: 10 }}
             />
@@ -228,7 +233,7 @@ function Bookings() {
                 />
               </>
             ) : null}
-            {r.status === "pending" && r.offer_status !== "pending" && r.offer_status !== "countered" ? (
+            {r.status === "pending" && !r.offer_status ? (
               <>
                 <Button
                   kind="danger"

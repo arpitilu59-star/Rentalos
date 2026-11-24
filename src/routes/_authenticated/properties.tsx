@@ -193,6 +193,7 @@ function PropertyForm({
   const [latitude, setLat] = useState<number | null>(initial?.latitude ?? null);
   const [longitude, setLng] = useState<number | null>(initial?.longitude ?? null);
   const [locating, setLocating] = useState(false);
+  const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const useMyLocation = async () => {
@@ -222,13 +223,17 @@ function PropertyForm({
       latitude,
       longitude,
     };
-    if (initial) await supabase.from("properties").update(payload).eq("id", initial.id);
-    else {
-      const owner_id = await getOwnerId();
-      await supabase.from("properties").insert({ ...payload, owner_id });
+    try {
+      const result = initial
+        ? await supabase.from("properties").update(payload).eq("id", initial.id)
+        : await supabase.from("properties").insert({ ...payload, owner_id: await getOwnerId() });
+      if (result.error) throw result.error;
+      onSaved();
+    } catch {
+      setFormError("Property could not save. Your details are still here. Try again.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onSaved();
   };
 
   return (
@@ -241,6 +246,11 @@ function PropertyForm({
           </button>
         </div>
         <form onSubmit={submit} className="p-5 space-y-3">
+          {formError && (
+            <p role="alert" className="text-sm text-destructive">
+              {formError}
+            </p>
+          )}
           <Field label="Property name *">
             <input
               required

@@ -153,7 +153,9 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
     await (await import("./offers.server")).expireOffers(admin);
     const { data: rows, error } = await admin
       .from("bookings")
-      .select("id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)")
+      .select(
+        "id, status, created_at, property_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, offer_confirmed_at, rooms(room_number, rent_amount), properties(name, city, current_terms_version, terms_summary)",
+      )
       .eq("tenant_user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -161,7 +163,11 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
     const out = [];
     for (const b of (rows ?? []) as any[]) {
       const { data: st } = await admin.rpc("terms_reaccept_status", { _booking: b.id });
-      const s = (st ?? {}) as { needs?: boolean; accepted_version?: number | null; current_version?: number | null };
+      const s = (st ?? {}) as {
+        needs?: boolean;
+        accepted_version?: number | null;
+        current_version?: number | null;
+      };
       const needs = !!s.needs && ["pending", "accepted"].includes(b.status);
       let terms: Terms | null = null;
       if (needs && b.properties?.terms_summary) {
@@ -173,7 +179,7 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
         status: b.status as string,
         created_at: b.created_at as string,
         room: b.rooms?.room_number as string | undefined,
-        rent: Number(b.rooms?.rent_amount ?? 0),
+        rent: Number(b.agreed_rent ?? b.rooms?.rent_amount ?? 0),
         property: b.properties?.name as string | undefined,
         city: b.properties?.city as string | undefined,
         acceptedVersion: s.accepted_version ?? null,
@@ -189,7 +195,13 @@ export const listMyRoomRequests = createServerFn({ method: "GET" })
 export const reacceptTerms = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({ bookingId: z.string().uuid(), acknowledgements: z.record(z.string(), z.boolean()), listened: z.boolean().optional() }).parse(d),
+    z
+      .object({
+        bookingId: z.string().uuid(),
+        acknowledgements: z.record(z.string(), z.boolean()),
+        listened: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const admin = await getAdmin();
@@ -209,13 +221,26 @@ export const landlordBookingTermsStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const admin = await getAdmin();
     const { data: rows } = await admin
-      .from("bookings").select("id").eq("landlord_id", context.userId).order("created_at", { ascending: false }).limit(100);
-    const out: Record<string, { accepted: number | null; current: number | null; needs: boolean }> = {};
+      .from("bookings")
+      .select("id")
+      .eq("landlord_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const out: Record<string, { accepted: number | null; current: number | null; needs: boolean }> =
+      {};
     await Promise.all(
       (rows ?? []).map(async (b: { id: string }) => {
         const { data } = await admin.rpc("terms_reaccept_status", { _booking: b.id });
-        const s = (data ?? {}) as { accepted_version?: number | null; current_version?: number | null; needs?: boolean };
-        out[b.id] = { accepted: s.accepted_version ?? null, current: s.current_version ?? null, needs: !!s.needs };
+        const s = (data ?? {}) as {
+          accepted_version?: number | null;
+          current_version?: number | null;
+          needs?: boolean;
+        };
+        out[b.id] = {
+          accepted: s.accepted_version ?? null,
+          current: s.current_version ?? null,
+          needs: !!s.needs,
+        };
       }),
     );
     return out;

@@ -15,6 +15,7 @@ type Props = {
   ariaLabel?: string;
   onReady?: () => void;
   onFailed?: () => void;
+  onComplete?: () => void;
 };
 
 /** Reloads the element even when a refreshed signed URL is identical. Never hides Retry. */
@@ -31,8 +32,10 @@ export function ResilientVideo({
   ariaLabel,
   onReady,
   onFailed,
+  onComplete,
 }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
+  const completed = useRef(false);
   const [url, setUrl] = useState(src);
   const [attempt, setAttempt] = useState(0);
   const [buffering, setBuffering] = useState(true);
@@ -47,7 +50,8 @@ export function ResilientVideo({
   callbacks.current = { getFreshUrl, onReady, onFailed };
 
   useEffect(() => {
-    generation.current++;
+    const currentGeneration = ++generation.current;
+    completed.current = false;
     loading.current = false;
     triedFresh.current = false;
     resumeAt.current = 0;
@@ -57,7 +61,7 @@ export function ResilientVideo({
     setBuffering(true);
     setBlocked(false);
     return () => {
-      generation.current++;
+      generation.current = currentGeneration + 1;
     };
   }, [src]);
 
@@ -161,6 +165,20 @@ export function ResilientVideo({
         onWaiting={() => setBuffering(true)}
         onStalled={() => {
           if (!ref.current?.paused) setBuffering(true);
+        }}
+        onEnded={(e) => {
+          const v = e.currentTarget;
+          let watched = 0;
+          for (let i = 0; i < v.played.length; i++) watched += v.played.end(i) - v.played.start(i);
+          if (
+            !loop &&
+            !completed.current &&
+            Number.isFinite(v.duration) &&
+            watched >= v.duration - 0.5
+          ) {
+            completed.current = true;
+            onComplete?.();
+          }
         }}
         onError={() => void reload(false)}
       />

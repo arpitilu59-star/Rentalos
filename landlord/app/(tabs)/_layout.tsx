@@ -101,6 +101,8 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: c.primary,
         tabBarInactiveTintColor: c.muted,
+        tabBarActiveBackgroundColor: c.soft,
+        tabBarItemStyle: { borderRadius: 18, marginHorizontal: 3, marginVertical: 4 },
         tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border },
         headerStyle: { backgroundColor: c.bg },
         headerTintColor: c.text,

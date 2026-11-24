@@ -12,7 +12,7 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => ((m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry)),
+      (m) => (m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry),
     );
   }
   return serverEntryPromise;
@@ -88,12 +88,16 @@ async function handleWhatsAppRoute(request: Request, path: string): Promise<Resp
     authed = true;
     const { dispatchPendingNotifications } = await import("./lib/whatsapp/dispatch");
     const summary = await dispatchPendingNotifications();
-    return new Response(JSON.stringify(summary), { status: 200, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify(summary), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
   } catch (error) {
     console.error("[whatsapp] route error:", error);
     if (path === "/api/whatsapp/webhook") return new Response("ok", { status: 200 });
     // Only a caller that already proved the shared secret gets the reason (shown in the Actions log).
-    const reason = authed && error instanceof Error ? error.message.slice(0, 300) : "Internal error";
+    const reason =
+      authed && error instanceof Error ? error.message.slice(0, 300) : "Internal error";
     return new Response(JSON.stringify({ error: reason }), {
       status: 500,
       headers: { "content-type": "application/json" },
@@ -116,10 +120,9 @@ async function handleSitemap(): Promise<Response> {
       { path: "/about", changefreq: "monthly", priority: 0.5 },
       { path: "/contact", changefreq: "monthly", priority: 0.5 },
       // Every known city is listed (even with no rooms yet) plus any other city that has live rooms.
-      ...[
-        ...d.cities.map((c) => c.slug),
-        ...KNOWN_CITIES.map((c) => slugifyCity(c)),
-      ].map((slug) => ({ path: `/rooms-in/${slug}`, changefreq: "daily" as const, priority: 0.8 })),
+      ...[...d.cities.map((c) => c.slug), ...KNOWN_CITIES.map((c) => slugifyCity(c))].map(
+        (slug) => ({ path: `/rooms-in/${slug}`, changefreq: "daily" as const, priority: 0.8 }),
+      ),
       ...d.rooms.map((r) => ({
         path: `/myr/room/${r.id}`,
         changefreq: "weekly" as const,
@@ -136,7 +139,10 @@ async function handleSitemap(): Promise<Response> {
     });
   } catch (error) {
     console.error("[sitemap] failed:", error);
-    return new Response("Sitemap temporarily unavailable", { status: 503, headers: { "retry-after": "300" } });
+    return new Response("Sitemap temporarily unavailable", {
+      status: 503,
+      headers: { "retry-after": "300" },
+    });
   }
 }
 
@@ -145,7 +151,10 @@ async function handleHealth(): Promise<Response> {
   let db = false;
   try {
     const { supabaseAdmin } = await import("./integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("admin_users").select("id", { head: true, count: "exact" }).limit(1);
+    const { error } = await supabaseAdmin
+      .from("admin_users")
+      .select("id", { head: true, count: "exact" })
+      .limit(1);
     db = !error;
   } catch {
     db = false;
@@ -160,6 +169,14 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const path = new URL(request.url).pathname;
+      if (path === "/api/support/query") {
+        const { handleSupportQuery } = await import("./lib/support.server");
+        return await handleSupportQuery(request);
+      }
+      if (path === "/api/rooms/engagement") {
+        const { handlePublicEngagement } = await import("./lib/room-insights.server");
+        return await handlePublicEngagement(request);
+      }
       if (path === "/sitemap.xml" && request.method === "GET") return await handleSitemap();
       if (path === "/api/health" && request.method === "GET") return await handleHealth();
       if (path.startsWith("/api/app/")) {

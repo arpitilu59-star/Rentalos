@@ -112,8 +112,16 @@ export const createBooking = createServerFn({ method: "POST" })
     const { supabaseAdmin: guard } = await import("@/integrations/supabase/client.server");
     const [{ data: roomRow }, { count: active }, { data: mine }] = await Promise.all([
       guard.from("rooms").select("capacity").eq("id", r.id).maybeSingle(),
-      guard.from("tenants").select("id", { count: "exact", head: true }).eq("room_id", r.id).eq("active", true),
-      guard.from("bookings").select("id, room_id, status").eq("tenant_user_id", userId).eq("status", "pending"),
+      guard
+        .from("tenants")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", r.id)
+        .eq("active", true),
+      guard
+        .from("bookings")
+        .select("id, room_id, status")
+        .eq("tenant_user_id", userId)
+        .eq("status", "pending"),
     ]);
     if ((active ?? 0) >= ((roomRow as { capacity: number } | null)?.capacity ?? 1))
       throw new Error("Room not available");
@@ -145,6 +153,14 @@ export const createBooking = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ mobile: data.tenant_mobile, primary_role: "tenant" })
       .eq("id", userId);
+
+    if (data.offered_rent != null) {
+      const { createOfferBooking } = await import("./offers.server");
+      return createOfferBooking(adminForTerms, userId, {
+        ...data,
+        offered_rent: data.offered_rent,
+      });
+    }
 
     const { data: ins, error } = await supabase
       .from("bookings")
@@ -181,20 +197,12 @@ export const createBooking = createServerFn({ method: "POST" })
           "Couldn't record the terms. Please try again.",
       );
     }
-    // Optional rent offer: rules (enabled, >= 50%, 2 per week) live in the database. No offer, no request.
-    let offerStatus: string | null = null;
-    if (data.offered_rent != null) {
-      try {
-        const { submitOffer } = await import("./offers.server");
-        offerStatus = (await submitOffer(adminForTerms, ins.id, userId, data.offered_rent)).offer_status;
-      } catch (e) {
-        await adminForTerms.from("bookings").delete().eq("id", ins.id);
-        throw e;
-      }
-    }
     // Admin visibility: every new booking is surfaced so a human can confirm it is genuine.
     try {
-      const { data: admins } = await adminForTerms.from("admin_users").select("user_id").eq("active", true);
+      const { data: admins } = await adminForTerms
+        .from("admin_users")
+        .select("user_id")
+        .eq("active", true);
       if (admins?.length)
         await adminForTerms.from("myr_notifications").insert(
           admins.map((a: { user_id: string }) => ({
@@ -208,7 +216,7 @@ export const createBooking = createServerFn({ method: "POST" })
     } catch {
       /* best-effort: the Admin → Bookings page is the source of truth */
     }
-    return { booking_id: ins.id, offer: offerStatus ? "sent" : null };
+    return { booking_id: ins.id, offer: null };
   });
 
 // Tenant lists own bookings
@@ -223,7 +231,7 @@ export const listMyBookings = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
+        "id, status, created_at, tenant_id, room_id, property_id, tenant_name, tenant_mobile, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, offer_confirmed_at, rooms(room_number, rent_amount, properties(name, myr_city, myr_address))",
       )
       .eq("tenant_user_id", userId)
       .order("created_at", { ascending: false });
@@ -243,7 +251,7 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, rooms(room_number, rent_amount), properties(name)",
+        "id, status, created_at, room_id, property_id, tenant_user_id, tenant_name, tenant_mobile, tenant_email, message, tenant_id, offer_status, offered_rent, counter_rent, agreed_rent, offer_expires_at, offer_confirmed_at, rooms(room_number, rent_amount), properties(name)",
       )
       .eq("landlord_id", userId)
       .order("created_at", { ascending: false });
@@ -253,7 +261,7 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
     const verified = new Set<string>();
     if (rows.length) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: docs } = await (supabaseAdmin as any)
+      const { data: docs } = await supabaseAdmin
         .from("tenant_documents")
         .select("user_id")
         .in("user_id", Array.from(new Set(rows.map((b) => b.tenant_user_id))))
@@ -261,7 +269,9 @@ export const listLandlordBookings = createServerFn({ method: "GET" })
         .neq("doc_type", "photo");
       for (const d of (docs ?? []) as Array<{ user_id: string }>) verified.add(d.user_id);
     }
-    return { bookings: rows.map((b) => ({ ...b, tenant_verified: verified.has(b.tenant_user_id) })) };
+    return {
+      bookings: rows.map((b) => ({ ...b, tenant_verified: verified.has(b.tenant_user_id) })),
+    };
   });
 
 const DecideSchema = z.object({
@@ -297,86 +307,16 @@ export const decideBooking = createServerFn({ method: "POST" })
 
     // Accept path
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: cap }, { count: occupied }] = await Promise.all([
-      supabaseAdmin.from("rooms").select("capacity").eq("id", b.room_id).maybeSingle(),
-      supabaseAdmin.from("tenants").select("id", { count: "exact", head: true }).eq("room_id", b.room_id).eq("active", true),
-    ]);
-    if ((occupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1))
-      throw new Error("This room is already full. Reject the request or free a slot first.");
-    const { data: room } = await supabaseAdmin
-      .from("rooms")
-      .select("rent_amount")
-      .eq("id", b.room_id)
-      .single();
-    // Agreed offer rent wins; an unresolved offer blocks the accept (before any tenant row is created).
-    const { rentForAccept } = await import("./offers.server");
-    const rentShare = await rentForAccept(supabaseAdmin, b.id, data.rent_share ?? room?.rent_amount ?? null);
-    const { data: codeRow } = await supabaseAdmin.rpc("generate_tenant_code");
-    const tenantCode = (codeRow as string) ?? null;
-
-    const { data: newTenant, error: tErr } = await supabaseAdmin
-      .from("tenants")
-      .insert({
-        owner_id: b.landlord_id,
-        room_id: b.room_id,
-        name: b.tenant_name,
-        phone: b.tenant_mobile,
-        email: b.tenant_email,
-        persons: 1,
-        move_in_date: data.move_in_date ?? new Date().toISOString().slice(0, 10),
-        rent_share: rentShare,
-        active: true,
-        tenant_user_id: b.tenant_user_id,
-        tenant_code: tenantCode,
-      })
-      .select("id")
-      .single();
-    if (tErr) throw new Error(tErr.message);
-
-    await supabaseAdmin
-      .from("bookings")
-      .update({
-        status: "accepted",
-        decided_at: new Date().toISOString(),
-        tenant_id: newTenant.id,
-      })
-      .eq("id", b.id);
-
-    // The room's listing state (full => hidden, vacancy => shown) is maintained by the database
-    // trigger on tenants. If this acceptance filled the room, the other waiting requests can't be
-    // honoured: close them so those tenants aren't left hanging.
-    const { count: nowOccupied } = await supabaseAdmin
-      .from("tenants")
-      .select("id", { count: "exact", head: true })
-      .eq("room_id", b.room_id)
-      .eq("active", true);
-    if ((nowOccupied ?? 0) >= ((cap as { capacity: number } | null)?.capacity ?? 1)) {
-      const { data: others } = await supabaseAdmin
-        .from("bookings")
-        .select("id, tenant_user_id")
-        .eq("room_id", b.room_id)
-        .eq("status", "pending")
-        .neq("id", b.id);
-      if (others?.length) {
-        await supabaseAdmin
-          .from("bookings")
-          .update({ status: "rejected", decided_at: new Date().toISOString() })
-          .in("id", others.map((o: { id: string }) => o.id));
-        await supabaseAdmin.from("myr_notifications").insert(
-          others.map((o: { tenant_user_id: string }) => ({
-            user_id: o.tenant_user_id,
-            kind: "booking_closed",
-            title: "Room no longer available",
-            body: "Another tenant booked this room. Browse similar rooms on Rentalos.",
-            link: "/myr/browse",
-          })),
-        );
-      }
-    }
-
-    return { ok: true, tenant_id: newTenant.id, tenant_code: tenantCode };
+    const { acceptBookingAtomically } = await import("./offers.server");
+    return acceptBookingAtomically(
+      supabaseAdmin,
+      userId,
+      b.id,
+      data.move_in_date ??
+        new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()),
+      data.rent_share ?? null,
+    );
   });
-
 
 // ============================================================
 // Tenant rent offers (negotiation) — rules live in the database
@@ -396,18 +336,30 @@ export const decideBookingOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
-      .object({ booking_id: z.string().uuid(), action: z.enum(["approve", "deny", "counter"]), counter_rent: z.number().positive().optional() })
+      .object({
+        booking_id: z.string().uuid(),
+        action: z.enum(["approve", "deny", "counter"]),
+        counter_rent: z.number().positive().optional(),
+      })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { decideOffer } = await import("./offers.server");
-    return decideOffer(supabaseAdmin, context.userId, data.booking_id, data.action, data.counter_rent);
+    return decideOffer(
+      supabaseAdmin,
+      context.userId,
+      data.booking_id,
+      data.action,
+      data.counter_rent,
+    );
   });
 
 export const respondBookingOffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ booking_id: z.string().uuid(), action: z.enum(["accept", "decline"]) }).parse(i))
+  .inputValidator((i) =>
+    z.object({ booking_id: z.string().uuid(), action: z.enum(["accept", "decline"]) }).parse(i),
+  )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { respondOffer } = await import("./offers.server");
@@ -440,4 +392,20 @@ export const saveMyRoomOfferSettings = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { saveOwnerOfferSettings } = await import("./offers.server");
     return saveOwnerOfferSettings(supabaseAdmin, context.userId, data);
+  });
+
+export const confirmBookingOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        booking_id: z.string().uuid(),
+        move_in_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(i),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { confirmOffer } = await import("./offers.server");
+    return confirmOffer(supabaseAdmin, context.userId, data.booking_id, data.move_in_date);
   });

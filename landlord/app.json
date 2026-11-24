@@ -3,20 +3,20 @@
     "name": "RentDesk",
     "slug": "rentdesk",
     "scheme": "rentdesk",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2f4fd8"
+      "backgroundColor": "#111b3d"
     },
     "android": {
       "package": "in.rentalos.rentdesk",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#2f4fd8"
+        "backgroundColor": "#111b3d"
       },
       "permissions": [
         "android.permission.CAMERA",

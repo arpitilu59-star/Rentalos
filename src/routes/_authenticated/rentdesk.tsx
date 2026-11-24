@@ -1,8 +1,11 @@
+import { useServerFn } from "@tanstack/react-start";
+import { getMyLandlordDashboard } from "@/lib/room-insights.functions";
+import { RoomInsightsCard } from "@/components/RoomInsightsCard";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
-import { formatINR, type Bill, type Room, type Tenant } from "@/lib/db";
+import { formatINR, type Bill, type Tenant } from "@/lib/db";
 import { WhatsAppAutomationPanel } from "@/components/WhatsAppAutomationPanel";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -18,6 +21,12 @@ type Stats = {
   pendingAmount: number;
   paidAmount: number;
   monthIncome: number;
+  beds: number;
+  filled: number;
+  vacant: number;
+  overdue: number;
+  pendingPayments: number;
+  pendingBookings: number;
 };
 
 function Dashboard() {
@@ -29,11 +38,13 @@ function Dashboard() {
     [],
   );
   const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+  const dashboard = useServerFn(getMyLandlordDashboard);
 
   useEffect(() => {
     (async () => {
-      const [{ data: rooms }, { data: tenantsRaw }, { data: billsRaw }] = await Promise.all([
-        supabase.from("rooms").select("*"),
+      const [totals, { data: tenantsRaw }, { data: billsRaw }] = await Promise.all([
+        dashboard(),
         supabase.from("tenants").select("*, rooms(room_number)").eq("active", true),
         supabase
           .from("bills")
@@ -41,35 +52,29 @@ function Dashboard() {
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
-      const r = (rooms ?? []) as Room[];
       const t = (tenantsRaw ?? []) as (Tenant & { rooms: { room_number: string } | null })[];
       const b = (billsRaw ?? []) as (Bill & {
         rooms: { room_number: string } | null;
         tenants: { name: string } | null;
       })[];
-      const occupiedIds = new Set(t.map((x) => x.room_id));
-      const now = new Date();
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const monthBills = b.filter((x) => x.rent_period_start?.startsWith(ym));
-      const monthIncome = monthBills.reduce((s, x) => s + Number(x.amount_paid || 0), 0);
-      const pendingAmount = b
-        .filter((x) => x.status !== "paid")
-        .reduce((s, x) => s + (Number(x.total_amount) - Number(x.amount_paid || 0)), 0);
-      const paidAmount = b
-        .filter((x) => x.status === "paid")
-        .reduce((s, x) => s + Number(x.total_amount), 0);
       setStats({
-        totalRooms: r.length,
-        occupied: r.filter((x) => occupiedIds.has(x.id)).length,
-        empty: r.filter((x) => !occupiedIds.has(x.id)).length,
-        pendingAmount,
-        paidAmount,
-        monthIncome,
+        totalRooms: totals.rooms,
+        occupied: totals.occupied,
+        empty: totals.rooms - totals.occupied,
+        pendingAmount: totals.due,
+        paidAmount: totals.paid,
+        monthIncome: totals.collected,
+        beds: totals.beds,
+        filled: totals.filled,
+        vacant: totals.vacant,
+        overdue: totals.overdue,
+        pendingPayments: totals.pending.payments,
+        pendingBookings: totals.pending.bookings,
       });
       setBills(b);
       setTenants(t);
-    })();
-  }, []);
+    })().catch(() => setError("Dashboard could not load. Please refresh to try again."));
+  }, [dashboard]);
 
   const q = search.trim().toLowerCase();
   const filteredTenants = q
@@ -86,13 +91,58 @@ function Dashboard() {
       <div className="space-y-6">
         <PageHeader title="Namaste 👋" subtitle="Aapke property ka quick overview." />
 
-        <WhatsAppAutomationPanel />
+        <RoomInsightsCard />
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        )}
+        {stats && (stats.overdue > 0 || stats.pendingPayments > 0 || stats.pendingBookings > 0) && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Action required</h2>
+            {[
+              [stats.overdue > 0, `${formatINR(stats.overdue)} rent overdue hai`, "/bills", true],
+              [
+                stats.pendingPayments > 0,
+                `${stats.pendingPayments} payment proof verify karne hain`,
+                "/payment-verify",
+                false,
+              ],
+              [
+                stats.pendingBookings > 0,
+                `${stats.pendingBookings} naye booking requests`,
+                "/bookings",
+                false,
+              ],
+            ].map(([show, label, href, urgent]) =>
+              show ? (
+                <a
+                  key={String(href)}
+                  href={String(href)}
+                  className={`flex min-h-20 items-center justify-between gap-4 rounded-2xl border border-border border-l-4 bg-card p-5 font-medium shadow-card ${urgent ? "border-l-destructive" : "border-l-brand-gold"}`}
+                >
+                  <span>{String(label)}</span>
+                  <span aria-hidden="true" className="text-muted-foreground">
+                    →
+                  </span>
+                </a>
+              ) : null,
+            )}
+          </section>
+        )}
 
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <StatCard label="Total rooms" value={String(stats?.totalRooms ?? "—")} icon={DoorOpen} />
           <StatCard
-            label="Occupied"
-            value={String(stats?.occupied ?? "—")}
+            label="Rooms / beds"
+            value={stats ? `${stats.totalRooms} / ${stats.beds}` : "—"}
+            icon={DoorOpen}
+          />
+          <StatCard
+            label="Filled / vacant beds"
+            value={stats ? `${stats.filled} / ${stats.vacant}` : "—"}
             icon={Users}
             accent="text-success"
           />
@@ -190,6 +240,7 @@ function Dashboard() {
             )}
           </div>
         </div>
+        <WhatsAppAutomationPanel />
       </div>
     </AppShell>
   );
