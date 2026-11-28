@@ -30,7 +30,7 @@ export function RoomVideo({
   const [retryError, setRetryError] = useState(false);
   const player = useVideoPlayer(url, (p) => {
     p.loop = preview;
-    p.timeUpdateEventInterval = 0.25;
+    p.timeUpdateEventInterval = preview ? 0 : 0.25;
     p.muted = preview;
   });
   const watched = useRef(0),
@@ -42,6 +42,7 @@ export function RoomVideo({
     complete.current = false;
   }, [url]);
   useEffect(() => {
+    if (preview || !onComplete) return;
     const progress = player.addListener("timeUpdate", ({ currentTime }) => {
       const delta = currentTime - previous.current;
       if (player.playing && delta > 0 && delta < 1) watched.current += delta;
@@ -89,7 +90,7 @@ export function RoomVideo({
     try {
       const fresh = onRefresh ? await onRefresh() : url;
       if (!fresh) throw new Error();
-      await player.replaceAsync(fresh);
+      if (fresh === url) await player.replaceAsync(fresh);
     } catch {
       setRetryError(true);
     } finally {
@@ -167,7 +168,7 @@ export function RoomVideoCover({
     enabled: active,
     staleTime: 60000,
   });
-  if (q.data?.previewUrl)
+  if (active && q.data?.previewUrl)
     return (
       <RoomVideo
         url={q.data.previewUrl}

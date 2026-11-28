@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { Button, Card, Empty, ErrorText } from "@/components/ui";
 import { Heart } from "@/components/Heart";
-import { OCC, SIZES, cover, type RoomRow } from "./(tabs)/explore";
+import { OCC, SIZES, cover, type RoomRow } from "@/lib/rooms";
 import { useColors, inr } from "@/theme";
 
 type Saved = RoomRow & { myr_deposit: number | null; myr_amenities: unknown; myr_available: boolean };

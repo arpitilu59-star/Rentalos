@@ -3,20 +3,21 @@
     "name": "Rentalos",
     "slug": "rentalos",
     "scheme": "rentalos",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#111b3d"
+      "backgroundColor": "#70233b"
     },
     "android": {
+      "versionCode": 2,
       "package": "in.rentalos.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#111b3d"
+        "backgroundColor": "#70233b"
       },
       "permissions": [
         "android.permission.CAMERA",

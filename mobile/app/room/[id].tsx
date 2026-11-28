@@ -20,7 +20,7 @@ import { supabase } from "@/lib/supabase";
 import { WEB } from "@/lib/api";
 import { Button, Card, ErrorText } from "@/components/ui";
 import { useColors, inr } from "@/theme";
-import { OCC, SIZES } from "../(tabs)/explore";
+import { OCC, SIZES } from "@/lib/rooms";
 
 const W = Dimensions.get("window").width;
 const strArr = (v: unknown): string[] =>

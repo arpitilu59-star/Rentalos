@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Text } from "@/components/Text";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -12,16 +12,7 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 1
 
 function Gate() {
   const { session, loading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
   const c = useColors();
-
-  useEffect(() => {
-    if (loading) return;
-    const inLogin = segments[0] === "login";
-    if (!session && !inLogin) router.replace("/login");
-    if (session && inLogin) router.replace("/");
-  }, [session, loading, segments, router]);
 
   if (!configured) {
     return (
@@ -48,32 +39,39 @@ function Gate() {
   };
   return (
     <Stack screenOptions={head}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="property-form" options={{ title: "Property" }} />
-      <Stack.Screen name="room-form" options={{ title: "Room" }} />
-      <Stack.Screen name="listing/[roomId]" options={{ title: "Room list karein" }} />
-      <Stack.Screen name="terms/[propertyId]" options={{ title: "Rental terms" }} />
-      <Stack.Screen name="photos" options={{ title: "Live photos" }} />
-      <Stack.Screen name="tenant-form" options={{ title: "Tenant" }} />
-      <Stack.Screen name="bill/[id]" options={{ title: "Bill" }} />
-      <Stack.Screen name="tenant-statement" options={{ title: "Tenant statement" }} />
-      <Stack.Screen name="terms-history" options={{ title: "Terms versions" }} />
-      <Stack.Screen name="partner-import" options={{ title: "Partner import" }} />
-      <Stack.Screen name="bill-new" options={{ title: "Naya bill" }} />
-      <Stack.Screen name="videos" options={{ title: "Room video" }} />
-      <Stack.Screen name="expenses" options={{ title: "Kharche" }} />
-      <Stack.Screen name="tenant-verify" options={{ title: "Verification request" }} />
-      <Stack.Screen name="reports" options={{ title: "Reports" }} />
-      <Stack.Screen name="meter-analysis" options={{ title: "Meter analysis" }} />
-      <Stack.Screen name="inquiry/[id]" options={{ title: "Message" }} />
-      <Stack.Screen name="meter-add" options={{ title: "Meter reading" }} />
-      <Stack.Screen name="subscription" options={{ title: "Plan & features" }} />
-      <Stack.Screen name="verification" options={{ title: "Verification" }} />
-      <Stack.Screen name="settings" options={{ title: "Settings" }} />
-      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
-      <Stack.Screen name="deposit-form" options={{ title: "Deposit" }} />
-      <Stack.Screen name="move-form" options={{ title: "Move-in / Move-out" }} />
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="property-form" options={{ title: "Property" }} />
+        <Stack.Screen name="room-form" options={{ title: "Room" }} />
+        <Stack.Screen name="listing/[roomId]" options={{ title: "Room list karein" }} />
+        <Stack.Screen name="terms/[propertyId]" options={{ title: "Rental terms" }} />
+        <Stack.Screen name="photos" options={{ title: "Live photos" }} />
+        <Stack.Screen name="tenant-form" options={{ title: "Tenant" }} />
+        <Stack.Screen name="bill/[id]" options={{ title: "Bill" }} />
+        <Stack.Screen name="tenant-statement" options={{ title: "Tenant statement" }} />
+        <Stack.Screen name="terms-history" options={{ title: "Terms versions" }} />
+        <Stack.Screen name="partner-import" options={{ title: "Partner import" }} />
+        <Stack.Screen name="bill-new" options={{ title: "Naya bill" }} />
+        <Stack.Screen name="videos" options={{ title: "Room video" }} />
+        <Stack.Screen name="expenses" options={{ title: "Kharche" }} />
+        <Stack.Screen name="tenant-verify" options={{ title: "Verification request" }} />
+        <Stack.Screen name="reports" options={{ title: "Reports" }} />
+        <Stack.Screen name="meter-analysis" options={{ title: "Meter analysis" }} />
+        <Stack.Screen name="inquiry/[id]" options={{ title: "Message" }} />
+        <Stack.Screen name="meter-add" options={{ title: "Meter reading" }} />
+        <Stack.Screen name="subscription" options={{ title: "Plan & features" }} />
+        <Stack.Screen name="verification" options={{ title: "Verification" }} />
+        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+        <Stack.Screen name="deposit-form" options={{ title: "Deposit" }} />
+        <Stack.Screen name="move-form" options={{ title: "Move-in / Move-out" }} />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="feedback" />
+        <Stack.Screen name="support" />
+      </Stack.Protected>
     </Stack>
   );
 }
